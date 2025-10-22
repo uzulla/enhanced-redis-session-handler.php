@@ -46,7 +46,6 @@ jobs:
         fi
     
     - name: Run PHPStan
-      if: matrix.php-version != '8.4'
       run: composer phpstan
     
     - name: Run PHP CS Fixer
