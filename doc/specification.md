@@ -4,6 +4,96 @@
 
 enhanced-redis-session-handler.phpは、PHPのセッション管理をRedis/ValKeyを使用して実装する拡張可能なライブラリです。本仕様書では、各機能の詳細な動作、インターフェース、使用例を定義します。
 
+## 1.1 例外クラス階層
+
+このライブラリでは、エラー処理のために独自の例外クラス階層を定義します。すべての例外は`RuntimeException`を継承しています。
+
+### 1.1.1 例外クラス定義
+
+```php
+namespace Uzulla\EnhancedRedisSessionHandler\Exception;
+
+/**
+ * ベース例外クラス
+ * すべてのライブラリ固有の例外の基底クラス
+ */
+class RedisSessionException extends \RuntimeException
+{
+}
+
+/**
+ * Redis接続エラー
+ * Redis/ValKeyサーバーへの接続に失敗した場合にスローされます
+ */
+class ConnectionException extends RedisSessionException
+{
+}
+
+/**
+ * Redis操作エラー
+ * Redis/ValKeyへの操作（GET, SET, DELETEなど）が失敗した場合にスローされます
+ */
+class OperationException extends RedisSessionException
+{
+}
+
+/**
+ * セッションデータエラー
+ * セッションデータの読み込み、書き込み、シリアライズ、デシリアライズに失敗した場合にスローされます
+ */
+class SessionDataException extends RedisSessionException
+{
+}
+
+/**
+ * 設定エラー
+ * 不正な設定値や必須パラメータの欠如などの設定関連エラー
+ */
+class ConfigurationException extends RedisSessionException
+{
+}
+
+/**
+ * フックエラー
+ * ReadHook/WriteHookの実行中にエラーが発生した場合にスローされます
+ */
+class HookException extends RedisSessionException
+{
+}
+```
+
+### 1.1.2 例外の使用例
+
+```php
+use Uzulla\EnhancedRedisSessionHandler\Exception\ConnectionException;
+use Uzulla\EnhancedRedisSessionHandler\Exception\OperationException;
+
+try {
+    $connection = new RedisConnection([
+        'host' => 'localhost',
+        'port' => 6379,
+    ]);
+    $connection->connect();
+} catch (ConnectionException $e) {
+    // 接続エラーの処理
+    error_log('Redis connection failed: ' . $e->getMessage());
+    // フォールバック処理（例：ファイルベースのセッションに切り替え）
+} catch (RedisSessionException $e) {
+    // その他のライブラリエラーの処理
+    error_log('Redis session error: ' . $e->getMessage());
+}
+```
+
+### 1.1.3 例外スロー方針
+
+- **ConnectionException**: Redis/ValKey接続失敗時、認証失敗時
+- **OperationException**: Redis操作（GET, SET, DELETE等）失敗時
+- **SessionDataException**: データのシリアライズ/デシリアライズ失敗時、データ破損検出時
+- **ConfigurationException**: 不正な設定値、必須パラメータ欠如時
+- **HookException**: フック実行中の予期しないエラー
+
+**注意**: SessionHandlerInterfaceのメソッド（open, close, read, write, destroy, gc）は、例外をスローする代わりに`false`を返すことでエラーを示すことが推奨されます。例外は、回復不可能な重大なエラーの場合にのみスローします。
+
 ## 2. セッションハンドラ基本機能
 
 ### 2.1 SessionHandlerInterface実装
@@ -31,7 +121,7 @@ public function open(string $path, string $name): bool
 3. 接続に失敗したらエラーログを記録し`false`を返す
 
 **例外:**
-- 接続エラー時に`RuntimeException`をスローする可能性あり
+- 回復不可能な接続エラー時に`ConnectionException`をスローする可能性あり
 
 #### 2.1.2 close()
 
@@ -263,10 +353,16 @@ class DefaultSessionIdGenerator implements SessionIdGeneratorInterface
 
 **特徴:**
 - PHPの`random_bytes()`を使用
-- 32文字の16進数文字列を生成
+- 32文字の16進数文字列を生成（16バイトのランダムデータを16進数エンコード）
 - 暗号学的に安全な乱数生成
 
 **セキュリティレベル:** 標準
+
+**注意事項:**
+- この実装は参考実装であり、32文字（16バイト）のセッションIDを生成します
+- PHPの`session.sid_length`設定は最大256文字まで対応していますが、この実装では32文字を使用しています
+- より長いセッションIDが必要な場合は、`SecureSessionIdGenerator`を使用するか、独自の実装を作成してください
+- セッションIDの長さは、セキュリティ要件とパフォーマンスのバランスを考慮して決定してください
 
 ### 3.3 SecureSessionIdGenerator
 
@@ -463,7 +559,7 @@ namespace Uzulla\EnhancedRedisSessionHandler\Hook;
 
 interface WriteHookInterface
 {
-    public function beforeWrite(string $sessionId, string $data): string;
+    public function beforeWrite(string $sessionId, string $data): string|false;
     
     public function afterWrite(string $sessionId, bool $success): void;
 }
@@ -479,11 +575,19 @@ interface WriteHookInterface
 
 **戻り値:**
 - `string`: 処理後のセッションデータ
+- `false`: 書き込みをキャンセルする場合
+
+**動作:**
+- 処理後のセッションデータを返すと、そのデータがRedisに書き込まれます
+- `false`を返すと、セッションデータの書き込みがキャンセルされます
+- 書き込みがキャンセルされた場合、`write()`メソッドは`false`を返します
 
 **用途例:**
 - データの暗号化
 - データの圧縮
 - データの検証
+- 特定条件下での書き込み制御（例：読み取り専用モード、メンテナンスモード）
+- データサイズ制限のチェック
 
 ### 5.3 afterWrite()
 
@@ -510,7 +614,7 @@ class EncryptionWriteHook implements WriteHookInterface
         $this->key = $key;
     }
 
-    public function beforeWrite(string $sessionId, string $data): string
+    public function beforeWrite(string $sessionId, string $data): string|false
     {
         if (empty($data)) {
             return $data;
@@ -545,7 +649,7 @@ class CompressionWriteHook implements WriteHookInterface
         $this->threshold = $threshold;
     }
 
-    public function beforeWrite(string $sessionId, string $data): string
+    public function beforeWrite(string $sessionId, string $data): string|false
     {
         if (strlen($data) < $this->threshold) {
             return $data;
@@ -573,7 +677,7 @@ class AuditLogWriteHook implements WriteHookInterface
         $this->logger = $logger;
     }
 
-    public function beforeWrite(string $sessionId, string $data): string
+    public function beforeWrite(string $sessionId, string $data): string|false
     {
         return $data;
     }
@@ -590,7 +694,57 @@ class AuditLogWriteHook implements WriteHookInterface
 }
 ```
 
-### 5.7 フックの登録
+### 5.7 実装例: 書き込みキャンセルフック
+
+```php
+class ReadOnlyModeWriteHook implements WriteHookInterface
+{
+    private bool $readOnlyMode;
+
+    public function __construct(bool $readOnlyMode = false)
+    {
+        $this->readOnlyMode = $readOnlyMode;
+    }
+
+    public function beforeWrite(string $sessionId, string $data): string|false
+    {
+        if ($this->readOnlyMode) {
+            // 読み取り専用モードの場合、書き込みをキャンセル
+            error_log("Session write cancelled: read-only mode enabled (session_id: {$sessionId})");
+            return false;
+        }
+        return $data;
+    }
+
+    public function afterWrite(string $sessionId, bool $success): void
+    {
+        // 書き込み後の処理（必要に応じて）
+    }
+
+    public function setReadOnlyMode(bool $enabled): void
+    {
+        $this->readOnlyMode = $enabled;
+    }
+}
+```
+
+**使用例:**
+```php
+$readOnlyHook = new ReadOnlyModeWriteHook();
+$handler->addWriteHook($readOnlyHook);
+
+// メンテナンスモードに入る
+$readOnlyHook->setReadOnlyMode(true);
+
+// この時点でのセッション書き込みはすべてキャンセルされる
+$_SESSION['data'] = 'new value';
+session_write_close(); // write()はfalseを返す
+
+// メンテナンスモード終了
+$readOnlyHook->setReadOnlyMode(false);
+```
+
+### 5.8 フックの登録
 
 ```php
 $handler = new RedisSessionHandler($connection);
@@ -617,7 +771,7 @@ $handler->addWriteHook(new AuditLogWriteHook($logger));
 **処理:**
 1. エラーログを記録（CRITICAL レベル）
 2. 再接続を試みる（最大3回）
-3. 失敗した場合、`RuntimeException`をスロー
+3. 失敗した場合、`ConnectionException`をスロー
 
 **ログ例:**
 ```

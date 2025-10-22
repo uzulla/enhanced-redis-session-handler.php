@@ -107,6 +107,17 @@ class RedisSessionHandler implements
 }
 ```
 
+**設計上の注意点：**
+
+このライブラリでは、`RedisSessionHandler`は`SessionHandlerInterface`を直接実装します。PHPには`SessionHandler`という抽象クラスも存在しますが、以下の理由から使用しません：
+
+- **完全な制御**: インターフェースを直接実装することで、すべてのメソッドの動作を完全に制御できます
+- **フック機構の実装**: read/writeメソッドの前後にフック処理を挿入するため、デフォルト実装に依存しない方が適切です
+- **明示的な実装**: すべてのメソッドを明示的に実装することで、コードの意図が明確になります
+- **柔軟性**: 将来的な拡張や変更に対して柔軟に対応できます
+
+`SessionHandler`クラスは、ファイルベースのセッションハンドラをラップするための便利なクラスですが、Redis/ValKeyのような外部ストレージを使用する場合は、インターフェースを直接実装する方が適切です。
+
 #### 3.1.3 依存関係
 - RedisConnection: Redis接続管理
 - SessionIdGeneratorInterface: セッションID生成
