@@ -1,0 +1,28 @@
+# Composer dependencies
+/vendor/
+
+# PHPUnit cache
+.phpunit.result.cache
+
+# Composer lock (include in development)
+# composer.lock
+
+# Docker volumes and data
+/docker/data/
+/docker/volumes/
+*.log
+
+# IDE settings
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS files
+Thumbs.db
+
+# Environment files
+.env
+.env.local
