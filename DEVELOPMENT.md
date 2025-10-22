@@ -1,124 +1,85 @@
-# 開発環境のセットアップ
+# Development Environment Setup
 
-このドキュメントでは、enhanced-redis-session-handler.phpの開発環境をセットアップする方法を説明します。
+This document describes how to set up the development environment for enhanced-redis-session-handler.php.
 
-## 必要な環境
+## Requirements
 
 ### PHP
-- **バージョン**: 7.4以上
-- **必須拡張機能**:
+- **Version**: 7.4 or higher
+- **Required Extensions**:
   - ext-redis
-  - ext-dom
-  - ext-xml
-  - ext-curl
-  - ext-mbstring
 
 ### Composer
-- **バージョン**: 2.0以上
+- **Version**: 2.0 or higher
 
-## セットアップ手順
+## Setup
 
-### 1. PHPのインストール
-
-#### Ubuntu/Debian
-```bash
-sudo apt-get update
-sudo apt-get install -y php php-redis php-xml php-curl php-mbstring
-```
-
-#### macOS (Homebrew)
-```bash
-brew install php
-brew install php-redis
-```
-
-### 2. Composerのインストール
-
-```bash
-curl -sS https://getcomposer.org/installer | php
-sudo mv composer.phar /usr/local/bin/composer
-sudo chmod +x /usr/local/bin/composer
-```
-
-### 3. 依存パッケージのインストール
-
-プロジェクトディレクトリで以下のコマンドを実行します：
+Install dependencies:
 
 ```bash
 composer install
 ```
 
-これにより、以下のツールがインストールされます：
-- PHPUnit 9.5以上（テストフレームワーク）
-- PHPStan 1.0以上（静的解析ツール）
-- PHP CS Fixer 3.0以上（コードスタイルチェッカー）
+This will install the following development tools:
+- PHPUnit 9.5+ (testing framework)
+- PHPStan 1.0+ with strict rules (static analysis tool)
+- PHP CS Fixer 3.0+ (code style checker)
 
-## 開発ツールの使用方法
+## Development Tools
 
-### テストの実行
-
-```bash
-# 全テストの実行
-vendor/bin/phpunit
-
-# カバレッジレポート付きでテストを実行
-vendor/bin/phpunit --coverage-html coverage/html
-```
-
-### 静的解析の実行
+### Running Tests
 
 ```bash
-# PHPStanによる静的解析
-vendor/bin/phpstan analyse
+# Run all tests
+composer test
+
+# Run tests with text coverage report
+composer coverage
+
+# Generate HTML coverage report
+composer coverage-report
 ```
 
-### コードスタイルのチェックと修正
+### Static Analysis
 
 ```bash
-# コードスタイルのチェック
-vendor/bin/php-cs-fixer fix --dry-run --diff
+# Run PHPStan analysis
+composer phpstan
 
-# コードスタイルの自動修正
-vendor/bin/php-cs-fixer fix
+# Run code style check
+composer cs-check
+
+# Fix code style issues automatically
+composer cs-fix
 ```
 
-## 設定ファイル
+### Combined Checks
+
+```bash
+# Run all linting checks (PHPStan + code style)
+composer lint
+
+# Run all checks (linting + tests)
+composer check
+```
+
+## Configuration Files
 
 ### phpunit.xml
-PHPUnitの設定ファイル。テストディレクトリ、カバレッジ設定などが定義されています。
+PHPUnit configuration file. Defines test directories and coverage settings.
 
 ### phpstan.neon
-PHPStanの設定ファイル。解析レベル（level 6）とパス設定が定義されています。
+PHPStan configuration file. Set to maximum analysis level with strict rules enabled.
 
 ### .php-cs-fixer.php
-PHP CS Fixerの設定ファイル。PSR-12準拠のコーディング規約が定義されています。
+PHP CS Fixer configuration file. Enforces PSR-12 coding standards.
 
-## トラブルシューティング
+## Continuous Integration
 
-### ext-redisが見つからない場合
+The following checks are automatically run via GitHub Actions on every pull request:
 
-```bash
-# Ubuntu/Debian
-sudo apt-get install php-redis
+1. **Static Analysis**: `composer phpstan`
+2. **Code Style**: `composer cs-check`
+3. **Tests**: `composer test`
 
-# macOS
-brew install php-redis
-```
-
-### composer installが失敗する場合
-
-必要なPHP拡張機能がインストールされているか確認してください：
-
-```bash
-php -m | grep -E "redis|dom|xml|curl|mbstring"
-```
-
-## 継続的インテグレーション
-
-プロジェクトでは以下のチェックを実行することを推奨します：
-
-1. **テスト**: `vendor/bin/phpunit`
-2. **静的解析**: `vendor/bin/phpstan analyse`
-3. **コードスタイル**: `vendor/bin/php-cs-fixer fix --dry-run`
-
-これらのチェックは、プルリクエストを作成する前に必ず実行してください。
+Please ensure all checks pass before submitting a pull request.
