@@ -1,0 +1,60 @@
+{
+    "name": "uzulla/enhanced-redis-session-handler",
+    "description": "An extensible session handler library for PHP that implements session management using Redis/ValKey as backend storage",
+    "type": "library",
+    "keywords": ["session", "redis", "valkey", "session-handler", "php"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "uzulla / Junichi Ishida",
+            "email": "zishida@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.4",
+        "ext-redis": "*"
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.64",
+        "phpstan/phpstan": "^1.0",
+        "phpstan/phpstan-strict-rules": "^1.6",
+        "phpunit/phpunit": "^9.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "Uzulla\\EnhancedRedisSessionHandler\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Uzulla\\EnhancedRedisSessionHandler\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "optimize-autoloader": true
+    },
+    "scripts": {
+        "test": "phpunit",
+        "lint": [
+            "@phpstan",
+            "@cs-check"
+        ],
+        "lint-dryrun": [
+            "@phpstan",
+            "@cs-check"
+        ],
+        "check": [
+            "@phpstan",
+            "@cs-check",
+            "@test"
+        ],
+        "phpstan": "phpstan analyse -c phpstan.neon --memory-limit=-1",
+        "cs-check": "php-cs-fixer fix --dry-run --diff",
+        "cs-fix": "php-cs-fixer fix",
+        "coverage": "phpunit --coverage-text",
+        "coverage-report": "phpunit --coverage-html coverage/html"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

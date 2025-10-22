@@ -68,7 +68,7 @@ composer require uzulla/enhanced-redis-session-handler
 
 ## 開発環境のセットアップ
 
-開発環境のセットアップ方法については、`DEVELOPMENT.md`を参照してください（今後作成予定）。
+開発環境のセットアップ方法については、[DEVELOPMENT.md](DEVELOPMENT.md)を参照してください。
 
 ## ライセンス
 

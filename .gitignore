@@ -4,6 +4,15 @@
 # PHPUnit cache
 .phpunit.result.cache
 
+# PHP CS Fixer cache
+.php-cs-fixer.cache
+
+# PHPStan cache
+.phpstan.cache
+
+# Coverage reports
+/coverage/
+
 # Composer lock (include in development)
 # composer.lock
 
