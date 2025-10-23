@@ -65,6 +65,16 @@ class WriteHookIntegrationTest extends TestCase
         }
     }
 
+    /**
+     * @return array<array<string, mixed>>
+     */
+    private function getLogRecords(): array
+    {
+        /** @var array<array<string, mixed>> $records */
+        $records = $this->getLogRecords();
+        return $records;
+    }
+
     public function testLoggingHookIntegration(): void
     {
         $loggingHook = new LoggingHook($this->logger);
@@ -79,7 +89,7 @@ class WriteHookIntegrationTest extends TestCase
         self::assertTrue($result);
         self::assertTrue($this->logHandler->hasDebugRecords());
 
-        $records = $this->logHandler->getRecords();
+        $records = $this->getLogRecords();
         $hasBeforeWrite = false;
         $hasAfterWrite = false;
 
