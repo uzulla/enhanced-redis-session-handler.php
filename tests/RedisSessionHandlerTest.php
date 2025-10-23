@@ -22,8 +22,8 @@ class RedisSessionHandlerTest extends TestCase
         $logger->pushHandler(new NullHandler());
 
         $config = new RedisConnectionConfig(
-            host: 'localhost',
-            port: 6379
+            'localhost',
+            6379
         );
 
         $this->connection = new RedisConnection($config, $logger);

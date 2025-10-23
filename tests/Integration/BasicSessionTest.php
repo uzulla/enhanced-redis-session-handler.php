@@ -27,9 +27,12 @@ class BasicSessionTest extends TestCase
         $logger->pushHandler(new StreamHandler('php://stderr', Logger::DEBUG));
 
         $config = new RedisConnectionConfig(
-            host: $redisHost !== false ? $redisHost : 'localhost',
-            port: $redisPort !== false ? (int)$redisPort : 6379,
-            prefix: 'test:session:'
+            $redisHost !== false ? $redisHost : 'localhost',
+            $redisPort !== false ? (int)$redisPort : 6379,
+            2.5,
+            null,
+            0,
+            'test:session:'
         );
 
         $this->connection = new RedisConnection($config, $logger);

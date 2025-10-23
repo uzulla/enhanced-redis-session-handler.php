@@ -27,9 +27,12 @@ class RedisConnectionTest extends TestCase
         $logger->pushHandler(new NullHandler());
 
         $config = new RedisConnectionConfig(
-            host: '127.0.0.1',
-            port: 6380,
-            prefix: 'test:'
+            '127.0.0.1',
+            6380,
+            2.5,
+            null,
+            0,
+            'test:'
         );
         $connection = new RedisConnection($config, $logger);
         self::assertInstanceOf(RedisConnection::class, $connection);
