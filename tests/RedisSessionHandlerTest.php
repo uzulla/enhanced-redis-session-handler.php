@@ -29,7 +29,7 @@ class RedisSessionHandlerTest extends TestCase
         );
 
         $this->connection = new RedisConnection($redis, $config, $logger);
-        
+
         $options = new RedisSessionHandlerOptions(null, null, $logger);
         $this->handler = new RedisSessionHandler($this->connection, $options);
     }
