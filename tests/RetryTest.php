@@ -100,6 +100,7 @@ class RetryTest extends TestCase
         }
 
         $records = $testHandler->getRecords();
+        /** @phpstan-ignore-next-line */
         $warningRecords = array_filter($records, function ($record): bool {
             /** @phpstan-ignore-next-line */
             if (is_object($record) && property_exists($record, 'level')) {
@@ -155,6 +156,7 @@ class RetryTest extends TestCase
         self::assertTrue($result);
 
         $records = $testHandler->getRecords();
+        /** @phpstan-ignore-next-line */
         $infoRecords = array_filter($records, function ($record): bool {
             /** @phpstan-ignore-next-line */
             if (is_object($record) && property_exists($record, 'level')) {

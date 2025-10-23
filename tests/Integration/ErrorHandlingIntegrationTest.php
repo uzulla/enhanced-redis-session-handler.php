@@ -53,6 +53,7 @@ class ErrorHandlingIntegrationTest extends TestCase
         self::assertFalse($result);
 
         $records = $testHandler->getRecords();
+        /** @phpstan-ignore-next-line */
         $errorRecords = array_filter($records, function ($record): bool {
             /** @phpstan-ignore-next-line */
             if (is_object($record) && property_exists($record, 'level')) {
@@ -135,6 +136,7 @@ class ErrorHandlingIntegrationTest extends TestCase
         self::assertFalse($result);
 
         $records = $testHandler->getRecords();
+        /** @phpstan-ignore-next-line */
         $errorRecords = array_filter($records, function ($record): bool {
             /** @phpstan-ignore-next-line */
             if (is_object($record) && property_exists($record, 'level')) {
@@ -181,6 +183,7 @@ class ErrorHandlingIntegrationTest extends TestCase
 
         $records = $testHandler->getRecords();
 
+        /** @phpstan-ignore-next-line */
         $warningRecords = array_filter($records, function ($record): bool {
             /** @phpstan-ignore-next-line */
             if (is_object($record) && property_exists($record, 'level')) {
@@ -200,6 +203,7 @@ class ErrorHandlingIntegrationTest extends TestCase
 
         self::assertCount(3, $warningRecords);
 
+        /** @phpstan-ignore-next-line */
         $criticalRecords = array_filter($records, function ($record): bool {
             /** @phpstan-ignore-next-line */
             if (is_object($record) && property_exists($record, 'level')) {
