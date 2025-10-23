@@ -22,4 +22,12 @@ interface WriteHookInterface
      * @param bool $success Whether the write operation was successful
      */
     public function afterWrite(string $sessionId, bool $success): void;
+
+    /**
+     * Called when an error occurs during the write operation.
+     *
+     * @param string $sessionId The session ID
+     * @param \Throwable $exception The exception that occurred
+     */
+    public function onWriteError(string $sessionId, \Throwable $exception): void;
 }
