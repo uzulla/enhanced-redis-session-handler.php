@@ -1,9 +1,9 @@
 includes:
     - vendor/phpstan/phpstan-strict-rules/rules.neon
-    - phpstan-baseline.neon
 
 parameters:
     level: max
     paths:
         - src
         - tests
+    reportUnmatchedIgnoredErrors: false
