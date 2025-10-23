@@ -46,7 +46,11 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
         $this->writeHooks[] = $hook;
     }
 
-    public function open(string $path, string $name): bool
+    /**
+     * @param mixed $path
+     * @param mixed $name
+     */
+    public function open($path, $name): bool
     {
         try {
             return $this->connection->connect();
@@ -61,8 +65,15 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
         return true;
     }
 
-    public function read(string $id): string|false
+    /**
+     * @param mixed $id
+     * @return string|false
+     */
+    #[\ReturnTypeWillChange]
+    public function read($id)
     {
+        assert(is_string($id));
+
         foreach ($this->readHooks as $hook) {
             $hook->beforeRead($id);
         }
@@ -80,8 +91,15 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
         return $data;
     }
 
-    public function write(string $id, string $data): bool
+    /**
+     * @param mixed $id
+     * @param mixed $data
+     */
+    public function write($id, $data): bool
     {
+        assert(is_string($id));
+        assert(is_string($data));
+
         foreach ($this->writeHooks as $hook) {
             $data = $hook->beforeWrite($id, $data);
         }
@@ -96,23 +114,41 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
         return $success;
     }
 
-    public function destroy(string $id): bool
+    /**
+     * @param mixed $id
+     */
+    public function destroy($id): bool
     {
+        assert(is_string($id));
         return $this->connection->delete($id);
     }
 
-    public function gc(int $max_lifetime): int|false
+    /**
+     * @param mixed $max_lifetime
+     * @return int|false
+     */
+    #[\ReturnTypeWillChange]
+    public function gc($max_lifetime)
     {
         return 0;
     }
 
-    public function validateId(string $id): bool
+    /**
+     * @param mixed $id
+     */
+    public function validateId($id): bool
     {
+        assert(is_string($id));
         return $this->connection->exists($id);
     }
 
-    public function updateTimestamp(string $id, string $data): bool
+    /**
+     * @param mixed $id
+     * @param mixed $data
+     */
+    public function updateTimestamp($id, $data): bool
     {
+        assert(is_string($id));
         $ttl = $this->getTTL();
         return $this->connection->expire($id, $ttl);
     }

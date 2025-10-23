@@ -120,7 +120,10 @@ class RedisConnection
         $this->connected = false;
     }
 
-    public function get(string $key): string|false
+    /**
+     * @return string|false
+     */
+    public function get(string $key)
     {
         $this->connect();
 
