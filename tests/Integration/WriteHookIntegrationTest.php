@@ -71,6 +71,7 @@ class WriteHookIntegrationTest extends TestCase
     private function getLogRecords(): array
     {
         $records = [];
+        /** @phpstan-ignore-next-line */
         foreach ($this->logHandler->getRecords() as $record) {
             $records[] = (array) $record;
         }
