@@ -16,8 +16,9 @@ class RedisConnectionTest extends TestCase
         $logger = new Logger('test');
         $logger->pushHandler(new NullHandler());
 
+        $redis = new \Redis();
         $config = new RedisConnectionConfig();
-        $connection = new RedisConnection($config, $logger);
+        $connection = new RedisConnection($redis, $config, $logger);
         self::assertInstanceOf(RedisConnection::class, $connection);
     }
 
@@ -26,6 +27,7 @@ class RedisConnectionTest extends TestCase
         $logger = new Logger('test');
         $logger->pushHandler(new NullHandler());
 
+        $redis = new \Redis();
         $config = new RedisConnectionConfig(
             '127.0.0.1',
             6380,
@@ -34,7 +36,7 @@ class RedisConnectionTest extends TestCase
             0,
             'test:'
         );
-        $connection = new RedisConnection($config, $logger);
+        $connection = new RedisConnection($redis, $config, $logger);
         self::assertInstanceOf(RedisConnection::class, $connection);
     }
 
@@ -43,8 +45,9 @@ class RedisConnectionTest extends TestCase
         $logger = new Logger('test');
         $logger->pushHandler(new NullHandler());
 
+        $redis = new \Redis();
         $config = new RedisConnectionConfig();
-        $connection = new RedisConnection($config, $logger);
+        $connection = new RedisConnection($redis, $config, $logger);
         self::assertFalse($connection->isConnected());
     }
 }

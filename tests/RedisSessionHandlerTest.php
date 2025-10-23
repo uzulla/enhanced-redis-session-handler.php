@@ -21,12 +21,13 @@ class RedisSessionHandlerTest extends TestCase
         $logger = new Logger('test');
         $logger->pushHandler(new NullHandler());
 
+        $redis = new \Redis();
         $config = new RedisConnectionConfig(
             'localhost',
             6379
         );
 
-        $this->connection = new RedisConnection($config, $logger);
+        $this->connection = new RedisConnection($redis, $config, $logger);
         $this->handler = new RedisSessionHandler($this->connection, ['logger' => $logger]);
     }
 

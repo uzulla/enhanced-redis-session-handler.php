@@ -35,7 +35,8 @@ class BasicSessionTest extends TestCase
             'test:session:'
         );
 
-        $this->connection = new RedisConnection($config, $logger);
+        $redis = new \Redis();
+        $this->connection = new RedisConnection($redis, $config, $logger);
         $this->handler = new RedisSessionHandler($this->connection, ['logger' => $logger]);
 
         try {

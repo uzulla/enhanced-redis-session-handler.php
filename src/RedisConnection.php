@@ -18,11 +18,11 @@ class RedisConnection
     private LoggerInterface $logger;
     private bool $connected = false;
 
-    public function __construct(RedisConnectionConfig $config, LoggerInterface $logger)
+    public function __construct(Redis $redis, RedisConnectionConfig $config, LoggerInterface $logger)
     {
+        $this->redis = $redis;
         $this->config = $config;
         $this->logger = $logger;
-        $this->redis = new Redis();
     }
 
     public function connect(): bool
