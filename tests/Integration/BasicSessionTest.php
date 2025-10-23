@@ -17,8 +17,8 @@ class BasicSessionTest extends TestCase
             self::markTestSkipped('Redis extension is not loaded');
         }
 
-        $redisHost = getenv('REDIS_HOST');
-        $redisPort = getenv('REDIS_PORT');
+        $redisHost = getenv('SESSION_REDIS_HOST');
+        $redisPort = getenv('SESSION_REDIS_PORT');
 
         $this->connection = new RedisConnection([
             'host' => $redisHost !== false ? $redisHost : 'localhost',

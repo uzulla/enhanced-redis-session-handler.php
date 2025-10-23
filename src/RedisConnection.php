@@ -1,36 +1,36 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Uzulla\EnhancedRedisSessionHandler;
 
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use Redis;
 use RedisException;
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Exception\ConnectionException;
 use Uzulla\EnhancedRedisSessionHandler\Exception\OperationException;
 
 class RedisConnection
 {
     private Redis $redis;
-    /** @var array<string, mixed> */
-    private array $config;
+    private RedisConnectionConfig $config;
+    private LoggerInterface $logger;
     private bool $connected = false;
 
     /**
-     * @param array<string, mixed> $config
+     * @param array<string, mixed>|RedisConnectionConfig $config
      */
-    public function __construct(array $config)
+    public function __construct($config, ?LoggerInterface $logger = null)
     {
-        $this->config = array_merge([
-            'host' => 'localhost',
-            'port' => 6379,
-            'timeout' => 2.5,
-            'password' => null,
-            'database' => 0,
-            'prefix' => 'session:',
-            'persistent' => false,
-            'retry_interval' => 100,
-            'read_timeout' => 2.5,
-        ], $config);
+        if ($config instanceof RedisConnectionConfig) {
+            $this->config = $config;
+        } else {
+            $this->config = RedisConnectionConfig::fromArray($config);
+        }
 
+        $this->logger = $logger ?? new NullLogger();
         $this->redis = new Redis();
     }
 
@@ -41,21 +41,11 @@ class RedisConnection
         }
 
         try {
-            $isPersistent = $this->config['persistent'];
-            assert(is_bool($isPersistent));
-
-            $host = $this->config['host'];
-            assert(is_string($host));
-
-            $port = $this->config['port'];
-            assert(is_int($port));
-
-            $timeout = $this->config['timeout'];
-            assert(is_float($timeout) || is_int($timeout));
-            $timeout = (float)$timeout;
-
-            $retryInterval = $this->config['retry_interval'];
-            assert(is_int($retryInterval));
+            $isPersistent = $this->config->isPersistent();
+            $host = $this->config->getHost();
+            $port = $this->config->getPort();
+            $timeout = $this->config->getTimeout();
+            $retryInterval = $this->config->getRetryInterval();
 
             if ($isPersistent) {
                 $result = $this->redis->pconnect($host, $port, $timeout, null, $retryInterval);
@@ -67,61 +57,50 @@ class RedisConnection
                 throw new ConnectionException('Failed to connect to Redis');
             }
 
-            $password = $this->config['password'];
+            $password = $this->config->getPassword();
             if ($password !== null) {
-                assert(is_string($password));
                 if (!$this->redis->auth($password)) {
                     throw new ConnectionException('Redis authentication failed');
                 }
             }
 
-            $database = $this->config['database'];
-            assert(is_int($database));
+            $database = $this->config->getDatabase();
             if ($database !== 0) {
                 if (!$this->redis->select($database)) {
                     throw new ConnectionException('Failed to select Redis database');
                 }
             }
 
-            $readTimeout = $this->config['read_timeout'];
-            assert(is_float($readTimeout) || is_int($readTimeout));
-            $this->redis->setOption(Redis::OPT_READ_TIMEOUT, (float)$readTimeout);
-
-            $prefix = $this->config['prefix'];
-            assert(is_string($prefix));
-            $this->redis->setOption(Redis::OPT_PREFIX, $prefix);
+            $this->redis->setOption(Redis::OPT_READ_TIMEOUT, $this->config->getReadTimeout());
+            $this->redis->setOption(Redis::OPT_PREFIX, $this->config->getPrefix());
 
             $this->connected = true;
             return true;
         } catch (RedisException $e) {
-            $host = $this->config['host'];
-            assert(is_string($host));
-            $port = $this->config['port'];
-            assert(is_int($port));
-
-            error_log(sprintf(
-                '[CRITICAL] Redis connection failed: %s (host: %s, port: %d)',
-                $e->getMessage(),
-                $host,
-                $port
-            ));
+            $this->logger->critical('Redis connection failed', [
+                'error' => $e->getMessage(),
+                'host' => $this->config->getHost(),
+                'port' => $this->config->getPort(),
+            ]);
             throw new ConnectionException('Failed to connect to Redis: ' . $e->getMessage(), 0, $e);
         }
     }
 
     public function disconnect(): void
     {
-        $persistent = $this->config['persistent'];
-        assert(is_bool($persistent));
-
-        if ($this->connected && !$persistent) {
+        if ($this->connected && !$this->config->isPersistent()) {
             $this->redis->close();
         }
         $this->connected = false;
     }
 
     /**
-     * @return string|false
+     * Get a value from Redis by key.
+     * 
+     * Returns string|false instead of throwing exceptions because SessionHandlerInterface::read()
+     * requires a string|false return type. This method is designed to be compatible with that interface.
+     * 
+     * @return string|false Returns the value as string if found, false if not found or on error
      */
     public function get(string $key)
     {
@@ -134,11 +113,10 @@ class RedisConnection
             }
             return false;
         } catch (RedisException $e) {
-            error_log(sprintf(
-                '[ERROR] Redis GET operation failed: %s (key: %s)',
-                $e->getMessage(),
-                $key
-            ));
+            $this->logger->error('Redis GET operation failed', [
+                'error' => $e->getMessage(),
+                'key' => $key,
+            ]);
             return false;
         }
     }
@@ -151,11 +129,10 @@ class RedisConnection
             $result = $this->redis->setex($key, $ttl, $value);
             return $result !== false;
         } catch (RedisException $e) {
-            error_log(sprintf(
-                '[ERROR] Redis SET operation failed: %s (key: %s)',
-                $e->getMessage(),
-                $key
-            ));
+            $this->logger->error('Redis SET operation failed', [
+                'error' => $e->getMessage(),
+                'key' => $key,
+            ]);
             return false;
         }
     }
@@ -168,11 +145,10 @@ class RedisConnection
             $this->redis->del($key);
             return true;
         } catch (RedisException $e) {
-            error_log(sprintf(
-                '[ERROR] Redis DELETE operation failed: %s (key: %s)',
-                $e->getMessage(),
-                $key
-            ));
+            $this->logger->error('Redis DELETE operation failed', [
+                'error' => $e->getMessage(),
+                'key' => $key,
+            ]);
             return false;
         }
     }
@@ -191,11 +167,10 @@ class RedisConnection
             }
             return false;
         } catch (RedisException $e) {
-            error_log(sprintf(
-                '[ERROR] Redis EXISTS operation failed: %s (key: %s)',
-                $e->getMessage(),
-                $key
-            ));
+            $this->logger->error('Redis EXISTS operation failed', [
+                'error' => $e->getMessage(),
+                'key' => $key,
+            ]);
             return false;
         }
     }
@@ -208,11 +183,10 @@ class RedisConnection
             $result = $this->redis->expire($key, $ttl);
             return $result === true;
         } catch (RedisException $e) {
-            error_log(sprintf(
-                '[ERROR] Redis EXPIRE operation failed: %s (key: %s)',
-                $e->getMessage(),
-                $key
-            ));
+            $this->logger->error('Redis EXPIRE operation failed', [
+                'error' => $e->getMessage(),
+                'key' => $key,
+            ]);
             return false;
         }
     }
@@ -224,8 +198,7 @@ class RedisConnection
     {
         $this->connect();
 
-        $prefix = $this->config['prefix'];
-        assert(is_string($prefix));
+        $prefix = $this->config->getPrefix();
         $fullPattern = $prefix . $pattern;
 
         $keys = [];
@@ -240,11 +213,10 @@ class RedisConnection
 
             return $keys;
         } catch (RedisException $e) {
-            error_log(sprintf(
-                '[ERROR] Redis SCAN operation failed: %s (pattern: %s)',
-                $e->getMessage(),
-                $pattern
-            ));
+            $this->logger->error('Redis SCAN operation failed', [
+                'error' => $e->getMessage(),
+                'pattern' => $pattern,
+            ]);
             return [];
         }
     }

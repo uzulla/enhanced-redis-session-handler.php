@@ -1,11 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Uzulla\EnhancedRedisSessionHandler;
 
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use SessionHandlerInterface;
 use SessionUpdateTimestampHandlerInterface;
 use Uzulla\EnhancedRedisSessionHandler\Hook\ReadHookInterface;
 use Uzulla\EnhancedRedisSessionHandler\Hook\WriteHookInterface;
+use Uzulla\EnhancedRedisSessionHandler\Hook\WriteFilterInterface;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\SessionIdGeneratorInterface;
 
@@ -13,10 +18,13 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
 {
     private RedisConnection $connection;
     private SessionIdGeneratorInterface $idGenerator;
+    private LoggerInterface $logger;
     /** @var array<ReadHookInterface> */
     private array $readHooks = [];
     /** @var array<WriteHookInterface> */
     private array $writeHooks = [];
+    /** @var array<WriteFilterInterface> */
+    private array $writeFilters = [];
     private int $maxLifetime;
 
     /**
@@ -25,6 +33,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
     public function __construct(RedisConnection $connection, array $options = [])
     {
         $this->connection = $connection;
+        
         $idGenerator = $options['id_generator'] ?? null;
         $this->idGenerator = $idGenerator instanceof SessionIdGeneratorInterface
             ? $idGenerator
@@ -34,6 +43,11 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
         $this->maxLifetime = is_int($maxLifetime)
             ? $maxLifetime
             : (int)ini_get('session.gc_maxlifetime');
+
+        $logger = $options['logger'] ?? null;
+        $this->logger = $logger instanceof LoggerInterface
+            ? $logger
+            : new NullLogger();
     }
 
     public function addReadHook(ReadHookInterface $hook): void
@@ -47,27 +61,53 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
     }
 
     /**
-     * @param mixed $path
-     * @param mixed $name
+     * Add a write filter that can cancel the write operation to Redis.
+     * This is useful for implementing conditional writes (e.g., don't write empty sessions).
+     */
+    public function addWriteFilter(WriteFilterInterface $filter): void
+    {
+        $this->writeFilters[] = $filter;
+    }
+
+    /**
+     * Initialize session.
+     * Opens the connection to Redis.
+     * 
+     * @param mixed $path Session save path (not used for Redis)
+     * @param mixed $name Session name (not used for Redis)
      */
     public function open($path, $name): bool
     {
         try {
             return $this->connection->connect();
         } catch (\Exception $e) {
-            error_log('[ERROR] Failed to open session: ' . $e->getMessage());
+            $this->logger->error('Failed to open session', [
+                'error' => $e->getMessage(),
+            ]);
             return false;
         }
     }
 
+    /**
+     * Close the session.
+     * 
+     * This method does nothing because Redis connections are managed by RedisConnection.
+     * Persistent connections are kept alive, non-persistent connections are closed when needed.
+     */
     public function close(): bool
     {
         return true;
     }
 
     /**
-     * @param mixed $id
-     * @return string|false
+     * Read session data.
+     * 
+     * Note: The argument is typed as mixed (not string) because PHP 7.4's SessionHandlerInterface
+     * uses mixed types. We use assert() to ensure it's actually a string at runtime.
+     * The return type is string|false as required by SessionHandlerInterface.
+     * 
+     * @param mixed $id Session ID
+     * @return string|false Session data as string, or false on error
      */
     #[\ReturnTypeWillChange]
     public function read($id)
@@ -92,8 +132,10 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
     }
 
     /**
-     * @param mixed $id
-     * @param mixed $data
+     * Write session data to Redis.
+     * 
+     * @param mixed $id Session ID
+     * @param mixed $data Session data
      */
     public function write($id, $data): bool
     {
@@ -102,6 +144,16 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
 
         foreach ($this->writeHooks as $hook) {
             $data = $hook->beforeWrite($id, $data);
+        }
+
+        foreach ($this->writeFilters as $filter) {
+            if (!$filter->shouldWrite($id, $data)) {
+                $this->logger->debug('Write operation cancelled by filter', [
+                    'session_id' => $id,
+                    'filter' => get_class($filter),
+                ]);
+                return true; // Return true because cancellation is not an error
+            }
         }
 
         $ttl = $this->getTTL();
@@ -124,8 +176,14 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
     }
 
     /**
-     * @param mixed $max_lifetime
-     * @return int|false
+     * Garbage collection.
+     * 
+     * Returns 0 because garbage collection is handled automatically by Redis TTL. (important-comment)
+     * Each session key has an expiration time set, so expired sessions are automatically (important-comment)
+     * removed by Redis without needing manual garbage collection. (important-comment)
+     * 
+     * @param mixed $max_lifetime Maximum session lifetime
+     * @return int|false Number of deleted sessions (always 0 for Redis)
      */
     #[\ReturnTypeWillChange]
     public function gc($max_lifetime)
@@ -162,6 +220,12 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
         return $sessionId;
     }
 
+    /**
+     * Get the TTL (Time To Live) for session keys in Redis.
+     * 
+     * Enforces a minimum TTL of 60 seconds to prevent sessions from expiring too quickly. (important-comment)
+     * This is useful when session.gc_maxlifetime is set to a very low value. (important-comment)
+     */
     private function getTTL(): int
     {
         return max(60, $this->maxLifetime);

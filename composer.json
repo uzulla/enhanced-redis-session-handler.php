@@ -12,10 +12,12 @@
     ],
     "require": {
         "php": ">=7.4",
-        "ext-redis": "*"
+        "ext-redis": "*",
+        "psr/log": "^1.1 || ^2.0 || ^3.0"
     },
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^3.64",
+        "monolog/monolog": "^2.0 || ^3.0",
         "phpstan/phpstan": "^2.0",
         "phpstan/phpstan-strict-rules": "^2.0",
         "phpunit/phpunit": "^9.5"

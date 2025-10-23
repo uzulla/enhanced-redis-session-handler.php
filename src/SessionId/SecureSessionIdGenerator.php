@@ -1,6 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Uzulla\EnhancedRedisSessionHandler\SessionId;
+
+use Uzulla\EnhancedRedisSessionHandler\Exception\ConfigurationException;
 
 class SecureSessionIdGenerator implements SessionIdGeneratorInterface
 {
@@ -9,7 +13,7 @@ class SecureSessionIdGenerator implements SessionIdGeneratorInterface
     public function __construct(int $length = 32)
     {
         if ($length < 1) {
-            $length = 32;
+            throw new ConfigurationException('Session ID length must be at least 1');
         }
         $this->length = $length;
     }
