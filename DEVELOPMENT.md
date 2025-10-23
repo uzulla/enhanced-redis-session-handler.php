@@ -12,9 +12,54 @@ This document describes how to set up the development environment for enhanced-r
 ### Composer
 - **Version**: 2.0 or higher
 
-## Setup
+## Setup Options
 
-Install dependencies:
+You can set up the development environment in two ways:
+
+### Option 1: Docker Environment (Recommended)
+
+The easiest way to get started is using Docker. This provides a complete development environment with PHP 7.4, Apache, and ValKey.
+
+```bash
+# Start the environment
+docker compose up -d
+
+# Run health check to verify everything is working
+./docker/healthcheck.sh
+
+# Access the environment
+docker compose exec app bash
+```
+
+The Docker environment includes:
+- PHP 7.4.33 with Apache
+- ext-redis extension
+- Composer 2.x
+- ValKey (Redis-compatible) storage
+
+Access points:
+- Web server: http://localhost:8080
+- ValKey: localhost:6379
+
+Useful commands:
+```bash
+# Run tests in Docker
+docker compose exec app composer test
+
+# Run static analysis
+docker compose exec app composer phpstan
+
+# View logs
+docker compose logs -f app
+docker compose logs -f storage
+
+# Stop the environment
+docker compose down
+```
+
+### Option 2: Local Installation
+
+Install dependencies locally:
 
 ```bash
 composer install
