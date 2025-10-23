@@ -210,6 +210,8 @@ class ReadHookTest extends TestCase
                 throw new \RuntimeException('Test error');
             }
 
+            // PHPStan: onReadError()は常に非nullを返すが、ReadHookInterfaceの実装として?stringが必要
+            /** @phpstan-ignore-next-line */
             public function onReadError(string $sessionId, \Throwable $e): ?string
             {
                 $this->testState->errorCalled = true;
@@ -274,6 +276,8 @@ class ReadHookTest extends TestCase
                 throw new \RuntimeException('Test error');
             }
 
+            // PHPStan: onReadError()は常に非nullを返すが、ReadHookInterfaceの実装として?stringが必要
+            /** @phpstan-ignore-next-line */
             public function onReadError(string $sessionId, \Throwable $e): ?string
             {
                 return 'fallback-from-hook1';
@@ -290,6 +294,8 @@ class ReadHookTest extends TestCase
                 return $data;
             }
 
+            // PHPStan: onReadError()は常に非nullを返すが、ReadHookInterfaceの実装として?stringが必要
+            /** @phpstan-ignore-next-line */
             public function onReadError(string $sessionId, \Throwable $e): ?string
             {
                 return 'fallback-from-hook2';
