@@ -101,6 +101,7 @@ class RetryTest extends TestCase
 
         $records = $testHandler->getRecords();
         $warningRecords = array_filter($records, function ($record) {
+            /** @phpstan-ignore-next-line */
             if (is_object($record) && property_exists($record, 'level')) {
                 $levelName = $record->level->getName();
                 $message = $record->message;
@@ -152,6 +153,7 @@ class RetryTest extends TestCase
 
         $records = $testHandler->getRecords();
         $infoRecords = array_filter($records, function ($record) {
+            /** @phpstan-ignore-next-line */
             if (is_object($record) && property_exists($record, 'level')) {
                 $levelName = $record->level->getName();
                 $message = $record->message;
