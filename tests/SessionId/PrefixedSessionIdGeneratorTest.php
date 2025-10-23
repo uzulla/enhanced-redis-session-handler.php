@@ -1,0 +1,154 @@
+<?php
+
+namespace Uzulla\EnhancedRedisSessionHandler\Tests\SessionId;
+
+use PHPUnit\Framework\TestCase;
+use Uzulla\EnhancedRedisSessionHandler\SessionId\PrefixedSessionIdGenerator;
+use Uzulla\EnhancedRedisSessionHandler\SessionId\SessionIdGeneratorInterface;
+
+class PrefixedSessionIdGeneratorTest extends TestCase
+{
+    public function testImplementsInterface(): void
+    {
+        $generator = new PrefixedSessionIdGenerator();
+        self::assertInstanceOf(SessionIdGeneratorInterface::class, $generator);
+    }
+
+    public function testGeneratesNonEmptyString(): void
+    {
+        $generator = new PrefixedSessionIdGenerator();
+        $sessionId = $generator->generate();
+
+        self::assertNotEmpty($sessionId);
+    }
+
+    public function testGeneratesStringWithDefaultPrefix(): void
+    {
+        $generator = new PrefixedSessionIdGenerator();
+        $sessionId = $generator->generate();
+
+        self::assertStringStartsWith('app_', $sessionId);
+        self::assertMatchesRegularExpression('/^app_[0-9a-f]+$/', $sessionId);
+    }
+
+    public function testGeneratesStringWithCustomPrefix(): void
+    {
+        $generator = new PrefixedSessionIdGenerator('myapp');
+        $sessionId = $generator->generate();
+
+        self::assertStringStartsWith('myapp_', $sessionId);
+        self::assertMatchesRegularExpression('/^myapp_[0-9a-f]+$/', $sessionId);
+    }
+
+    public function testGeneratesHexStringInRandomPart(): void
+    {
+        $generator = new PrefixedSessionIdGenerator('test');
+        $sessionId = $generator->generate();
+
+        $parts = explode('_', $sessionId);
+        $randomPart = $parts[1];
+
+        self::assertMatchesRegularExpression('/^[0-9a-f]+$/', $randomPart);
+    }
+
+    public function testDefaultRandomPartLength(): void
+    {
+        $generator = new PrefixedSessionIdGenerator('test');
+        $sessionId = $generator->generate();
+
+        $parts = explode('_', $sessionId);
+        $randomPart = $parts[1];
+
+        self::assertSame(32, strlen($randomPart));
+    }
+
+    public function testCustomRandomPartLength(): void
+    {
+        $generator = new PrefixedSessionIdGenerator('test', 64);
+        $sessionId = $generator->generate();
+
+        $parts = explode('_', $sessionId);
+        $randomPart = $parts[1];
+
+        self::assertSame(64, strlen($randomPart));
+    }
+
+    public function testGeneratesUniqueIds(): void
+    {
+        $generator = new PrefixedSessionIdGenerator('test');
+        $sessionId1 = $generator->generate();
+        $sessionId2 = $generator->generate();
+
+        self::assertNotEquals($sessionId1, $sessionId2);
+    }
+
+    public function testThrowsExceptionForEmptyPrefix(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Prefix cannot be empty');
+
+        new PrefixedSessionIdGenerator('');
+    }
+
+    public function testThrowsExceptionForTooShortRandomLength(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Random part length must be at least 16 characters');
+
+        new PrefixedSessionIdGenerator('test', 14);
+    }
+
+    public function testThrowsExceptionForOddRandomLength(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Random part length must be an even number');
+
+        new PrefixedSessionIdGenerator('test', 33);
+    }
+
+    public function testAcceptsMinimumRandomLength(): void
+    {
+        $generator = new PrefixedSessionIdGenerator('test', 16);
+        $sessionId = $generator->generate();
+
+        $parts = explode('_', $sessionId);
+        $randomPart = $parts[1];
+
+        self::assertSame(16, strlen($randomPart));
+    }
+
+    public function testAcceptsLargeRandomLength(): void
+    {
+        $generator = new PrefixedSessionIdGenerator('test', 128);
+        $sessionId = $generator->generate();
+
+        $parts = explode('_', $sessionId);
+        $randomPart = $parts[1];
+
+        self::assertSame(128, strlen($randomPart));
+    }
+
+    public function testPrefixCanBeExtracted(): void
+    {
+        $generator = new PrefixedSessionIdGenerator('myapp');
+        $sessionId = $generator->generate();
+
+        $parts = explode('_', $sessionId);
+        $extractedPrefix = $parts[0];
+
+        self::assertSame('myapp', $extractedPrefix);
+    }
+
+    public function testDifferentPrefixesProduceDifferentSessionIds(): void
+    {
+        $generator1 = new PrefixedSessionIdGenerator('app1');
+        $generator2 = new PrefixedSessionIdGenerator('app2');
+
+        $sessionId1 = $generator1->generate();
+        $sessionId2 = $generator2->generate();
+
+        self::assertStringStartsWith('app1_', $sessionId1);
+        self::assertStringStartsWith('app2_', $sessionId2);
+        self::assertNotEquals($sessionId1, $sessionId2);
+    }
+}
