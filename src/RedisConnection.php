@@ -179,7 +179,14 @@ class RedisConnection
         $this->connect();
 
         try {
-            return $this->redis->exists($key) > 0;
+            $result = $this->redis->exists($key);
+            if (is_int($result)) {
+                return $result > 0;
+            }
+            if (is_bool($result)) {
+                return $result;
+            }
+            return false;
         } catch (RedisException $e) {
             error_log(sprintf(
                 '[ERROR] Redis EXISTS operation failed: %s (key: %s)',
