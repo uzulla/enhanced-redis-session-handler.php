@@ -109,8 +109,9 @@ class RetryTest extends TestCase
                 /** @phpstan-ignore-next-line */
                 $message = $record->message;
             } else {
-                /** @var array{level_name?: string, message?: string} $record */
+                /** @phpstan-ignore-next-line */
                 $levelName = $record['level_name'] ?? null;
+                /** @phpstan-ignore-next-line */
                 $message = $record['message'] ?? null;
             }
             return $levelName === 'WARNING' &&
@@ -165,8 +166,9 @@ class RetryTest extends TestCase
                 /** @phpstan-ignore-next-line */
                 $message = $record->message;
             } else {
-                /** @var array{level_name?: string, message?: string} $record */
+                /** @phpstan-ignore-next-line */
                 $levelName = $record['level_name'] ?? null;
+                /** @phpstan-ignore-next-line */
                 $message = $record['message'] ?? null;
             }
             return $levelName === 'INFO' &&

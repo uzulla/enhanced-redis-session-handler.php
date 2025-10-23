@@ -62,8 +62,9 @@ class ErrorHandlingIntegrationTest extends TestCase
                 /** @phpstan-ignore-next-line */
                 $message = $record->message;
             } else {
-                /** @var array{level_name?: string, message?: string} $record */
+                /** @phpstan-ignore-next-line */
                 $levelName = $record['level_name'] ?? null;
+                /** @phpstan-ignore-next-line */
                 $message = $record['message'] ?? null;
             }
             return $levelName === 'ERROR' &&
@@ -143,7 +144,7 @@ class ErrorHandlingIntegrationTest extends TestCase
                 /** @phpstan-ignore-next-line */
                 $levelName = $record->level->getName();
             } else {
-                /** @var array{level_name?: string} $record */
+                /** @phpstan-ignore-next-line */
                 $levelName = $record['level_name'] ?? null;
             }
             return $levelName === 'ERROR' || $levelName === 'WARNING' || $levelName === 'CRITICAL';
@@ -192,8 +193,9 @@ class ErrorHandlingIntegrationTest extends TestCase
                 /** @phpstan-ignore-next-line */
                 $message = $record->message;
             } else {
-                /** @var array{level_name?: string, message?: string} $record */
+                /** @phpstan-ignore-next-line */
                 $levelName = $record['level_name'] ?? null;
+                /** @phpstan-ignore-next-line */
                 $message = $record['message'] ?? null;
             }
             return $levelName === 'WARNING' &&
@@ -212,8 +214,9 @@ class ErrorHandlingIntegrationTest extends TestCase
                 /** @phpstan-ignore-next-line */
                 $message = $record->message;
             } else {
-                /** @var array{level_name?: string, message?: string} $record */
+                /** @phpstan-ignore-next-line */
                 $levelName = $record['level_name'] ?? null;
+                /** @phpstan-ignore-next-line */
                 $message = $record['message'] ?? null;
             }
             return $levelName === 'CRITICAL' &&
