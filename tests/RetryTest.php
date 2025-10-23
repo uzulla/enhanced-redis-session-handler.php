@@ -99,9 +99,11 @@ class RetryTest extends TestCase
         } catch (ConnectionException $e) {
         }
 
+        /** @var array<array<string, mixed>> $records */
         $records = $testHandler->getRecords();
         $warningRecords = array_filter($records, function ($record) {
-            return $record['level_name'] === 'WARNING' &&
+            return isset($record['level_name']) &&
+                   $record['level_name'] === 'WARNING' &&
                    isset($record['message']) &&
                    is_string($record['message']) &&
                    strpos($record['message'], 'Redis connection attempt failed') !== false;
@@ -144,9 +146,11 @@ class RetryTest extends TestCase
 
         self::assertTrue($result);
 
+        /** @var array<array<string, mixed>> $records */
         $records = $testHandler->getRecords();
         $infoRecords = array_filter($records, function ($record) {
-            return $record['level_name'] === 'INFO' &&
+            return isset($record['level_name']) &&
+                   $record['level_name'] === 'INFO' &&
                    isset($record['message']) &&
                    is_string($record['message']) &&
                    strpos($record['message'], 'Redis connection succeeded after retry') !== false;

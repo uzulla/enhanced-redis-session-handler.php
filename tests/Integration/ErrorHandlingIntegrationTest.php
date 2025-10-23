@@ -52,9 +52,11 @@ class ErrorHandlingIntegrationTest extends TestCase
         $result = $handler->open('', 'PHPSESSID');
         self::assertFalse($result);
 
+        /** @var array<array<string, mixed>> $records */
         $records = $testHandler->getRecords();
         $errorRecords = array_filter($records, function ($record) {
-            return $record['level_name'] === 'ERROR' &&
+            return isset($record['level_name']) &&
+                   $record['level_name'] === 'ERROR' &&
                    isset($record['message']) &&
                    is_string($record['message']) &&
                    strpos($record['message'], 'Failed to open session') !== false;
@@ -124,9 +126,11 @@ class ErrorHandlingIntegrationTest extends TestCase
 
         self::assertFalse($result);
 
+        /** @var array<array<string, mixed>> $records */
         $records = $testHandler->getRecords();
         $errorRecords = array_filter($records, function ($record) {
-            return ($record['level_name'] === 'ERROR' || $record['level_name'] === 'WARNING' || $record['level_name'] === 'CRITICAL');
+            return isset($record['level_name']) &&
+                   ($record['level_name'] === 'ERROR' || $record['level_name'] === 'WARNING' || $record['level_name'] === 'CRITICAL');
         });
 
         self::assertGreaterThan(0, count($errorRecords));
@@ -161,10 +165,12 @@ class ErrorHandlingIntegrationTest extends TestCase
             self::assertStringContainsString('Failed to connect to Redis after 3 attempts', $e->getMessage());
         }
 
+        /** @var array<array<string, mixed>> $records */
         $records = $testHandler->getRecords();
 
         $warningRecords = array_filter($records, function ($record) {
-            return $record['level_name'] === 'WARNING' &&
+            return isset($record['level_name']) &&
+                   $record['level_name'] === 'WARNING' &&
                    isset($record['message']) &&
                    is_string($record['message']) &&
                    strpos($record['message'], 'Redis connection attempt failed') !== false;
@@ -173,7 +179,8 @@ class ErrorHandlingIntegrationTest extends TestCase
         self::assertCount(3, $warningRecords);
 
         $criticalRecords = array_filter($records, function ($record) {
-            return $record['level_name'] === 'CRITICAL' &&
+            return isset($record['level_name']) &&
+                   $record['level_name'] === 'CRITICAL' &&
                    isset($record['message']) &&
                    is_string($record['message']) &&
                    strpos($record['message'], 'Redis connection failed after all retries') !== false;
