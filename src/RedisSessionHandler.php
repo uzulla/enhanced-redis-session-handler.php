@@ -33,7 +33,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
     public function __construct(RedisConnection $connection, array $options = [])
     {
         $this->connection = $connection;
-        
+
         $idGenerator = $options['id_generator'] ?? null;
         $this->idGenerator = $idGenerator instanceof SessionIdGeneratorInterface
             ? $idGenerator
@@ -72,7 +72,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
     /**
      * Initialize session.
      * Opens the connection to Redis.
-     * 
+     *
      * @param mixed $path Session save path (not used for Redis)
      * @param mixed $name Session name (not used for Redis)
      */
@@ -90,7 +90,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
 
     /**
      * Close the session.
-     * 
+     *
      * This method does nothing because Redis connections are managed by RedisConnection.
      * Persistent connections are kept alive, non-persistent connections are closed when needed.
      */
@@ -101,11 +101,11 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
 
     /**
      * Read session data.
-     * 
+     *
      * Note: The argument is typed as mixed (not string) because PHP 7.4's SessionHandlerInterface
      * uses mixed types. We use assert() to ensure it's actually a string at runtime.
      * The return type is string|false as required by SessionHandlerInterface.
-     * 
+     *
      * @param mixed $id Session ID
      * @return string|false Session data as string, or false on error
      */
@@ -133,7 +133,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
 
     /**
      * Write session data to Redis.
-     * 
+     *
      * @param mixed $id Session ID
      * @param mixed $data Session data
      */
@@ -177,11 +177,11 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
 
     /**
      * Garbage collection.
-     * 
+     *
      * Returns 0 because garbage collection is handled automatically by Redis TTL. (important-comment)
      * Each session key has an expiration time set, so expired sessions are automatically (important-comment)
      * removed by Redis without needing manual garbage collection. (important-comment)
-     * 
+     *
      * @param mixed $max_lifetime Maximum session lifetime
      * @return int|false Number of deleted sessions (always 0 for Redis)
      */
@@ -222,7 +222,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
 
     /**
      * Get the TTL (Time To Live) for session keys in Redis.
-     * 
+     *
      * Enforces a minimum TTL of 60 seconds to prevent sessions from expiring too quickly. (important-comment)
      * This is useful when session.gc_maxlifetime is set to a very low value. (important-comment)
      */

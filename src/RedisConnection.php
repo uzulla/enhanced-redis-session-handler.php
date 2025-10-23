@@ -96,10 +96,10 @@ class RedisConnection
 
     /**
      * Get a value from Redis by key.
-     * 
+     *
      * Returns string|false instead of throwing exceptions because SessionHandlerInterface::read()
      * requires a string|false return type. This method is designed to be compatible with that interface.
-     * 
+     *
      * @return string|false Returns the value as string if found, false if not found or on error
      */
     public function get(string $key)

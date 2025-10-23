@@ -22,43 +22,43 @@ class RedisConnectionConfig
     public static function fromArray(array $config): self
     {
         $instance = new self();
-        
+
         $host = $config['host'] ?? 'localhost';
         assert(is_string($host));
         $instance->host = $host;
-        
+
         $port = $config['port'] ?? 6379;
         assert(is_int($port));
         $instance->port = $port;
-        
+
         $timeout = $config['timeout'] ?? 2.5;
         assert(is_float($timeout) || is_int($timeout));
         $instance->timeout = (float)$timeout;
-        
+
         $password = $config['password'] ?? null;
         assert($password === null || is_string($password));
         $instance->password = $password;
-        
+
         $database = $config['database'] ?? 0;
         assert(is_int($database));
         $instance->database = $database;
-        
+
         $prefix = $config['prefix'] ?? 'session:';
         assert(is_string($prefix));
         $instance->prefix = $prefix;
-        
+
         $persistent = $config['persistent'] ?? false;
         assert(is_bool($persistent));
         $instance->persistent = $persistent;
-        
+
         $retryInterval = $config['retry_interval'] ?? 100;
         assert(is_int($retryInterval));
         $instance->retryInterval = $retryInterval;
-        
+
         $readTimeout = $config['read_timeout'] ?? 2.5;
         assert(is_float($readTimeout) || is_int($readTimeout));
         $instance->readTimeout = (float)$readTimeout;
-        
+
         return $instance;
     }
 
