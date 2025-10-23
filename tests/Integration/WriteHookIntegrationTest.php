@@ -66,12 +66,14 @@ class WriteHookIntegrationTest extends TestCase
     }
 
     /**
-     * @return array<array<string, mixed>>
+     * @return list<array>
      */
     private function getLogRecords(): array
     {
-        /** @var array<array<string, mixed>> $records */
-        $records = $this->logHandler->getRecords();
+        $records = [];
+        foreach ($this->logHandler->getRecords() as $record) {
+            $records[] = (array) $record;
+        }
         return $records;
     }
 
