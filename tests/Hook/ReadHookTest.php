@@ -63,15 +63,15 @@ class ReadHookTest extends TestCase
 
         $this->handler->addReadHook($hook);
 
-        if (extension_loaded('redis')) {
-            $this->connection->connect();
-            $this->handler->read('test-session-id');
-
-            self::assertTrue($testState->called);
-            self::assertSame('test-session-id', $testState->sessionId);
-        } else {
+        if (!extension_loaded('redis')) {
             self::fail('Redis extension is required for this test');
         }
+
+        $this->connection->connect();
+        $this->handler->read('test-session-id');
+
+        self::assertTrue($testState->called);
+        self::assertSame('test-session-id', $testState->sessionId);
     }
 
     public function testAfterReadHookCanModifyData(): void
@@ -94,19 +94,19 @@ class ReadHookTest extends TestCase
 
         $this->handler->addReadHook($hook);
 
-        if (extension_loaded('redis')) {
-            $this->connection->connect();
-            $testData = 'test-data';
-            $this->connection->set('test-session-id', $testData, 3600);
-
-            $result = $this->handler->read('test-session-id');
-
-            self::assertSame('modified:' . $testData, $result);
-
-            $this->connection->delete('test-session-id');
-        } else {
+        if (!extension_loaded('redis')) {
             self::fail('Redis extension is required for this test');
         }
+
+        $this->connection->connect();
+        $testData = 'test-data';
+        $this->connection->set('test-session-id', $testData, 3600);
+
+        $result = $this->handler->read('test-session-id');
+
+        self::assertSame('modified:' . $testData, $result);
+
+        $this->connection->delete('test-session-id');
     }
 
     public function testMultipleReadHooksAreCalledInOrder(): void
@@ -179,20 +179,20 @@ class ReadHookTest extends TestCase
         $this->handler->addReadHook($hook1);
         $this->handler->addReadHook($hook2);
 
-        if (extension_loaded('redis')) {
-            $this->connection->connect();
-            $testData = 'data';
-            $this->connection->set('test-session-id', $testData, 3600);
-
-            $result = $this->handler->read('test-session-id');
-
-            self::assertSame(['hook1-before', 'hook2-before', 'hook1-after', 'hook2-after'], $testState->order);
-            self::assertSame($testData . ':hook1:hook2', $result);
-
-            $this->connection->delete('test-session-id');
-        } else {
+        if (!extension_loaded('redis')) {
             self::fail('Redis extension is required for this test');
         }
+
+        $this->connection->connect();
+        $testData = 'data';
+        $this->connection->set('test-session-id', $testData, 3600);
+
+        $result = $this->handler->read('test-session-id');
+
+        self::assertSame(['hook1-before', 'hook2-before', 'hook1-after', 'hook2-after'], $testState->order);
+        self::assertSame($testData . ':hook1:hook2', $result);
+
+        $this->connection->delete('test-session-id');
     }
 
     public function testOnReadErrorHookIsCalledOnException(): void
@@ -228,20 +228,20 @@ class ReadHookTest extends TestCase
 
         $this->handler->addReadHook($hook);
 
-        if (extension_loaded('redis')) {
-            $this->connection->connect();
-            $this->connection->set('test-session-id', 'test-data', 3600);
-
-            $result = $this->handler->read('test-session-id');
-
-            self::assertTrue($testState->errorCalled);
-            self::assertInstanceOf(\RuntimeException::class, $testState->caughtException);
-            self::assertSame('fallback-data', $result);
-
-            $this->connection->delete('test-session-id');
-        } else {
+        if (!extension_loaded('redis')) {
             self::fail('Redis extension is required for this test');
         }
+
+        $this->connection->connect();
+        $this->connection->set('test-session-id', 'test-data', 3600);
+
+        $result = $this->handler->read('test-session-id');
+
+        self::assertTrue($testState->errorCalled);
+        self::assertInstanceOf(\RuntimeException::class, $testState->caughtException);
+        self::assertSame('fallback-data', $result);
+
+        $this->connection->delete('test-session-id');
     }
 
     public function testOnReadErrorReturnsEmptyStringWhenNoFallback(): void
@@ -264,18 +264,18 @@ class ReadHookTest extends TestCase
 
         $this->handler->addReadHook($hook);
 
-        if (extension_loaded('redis')) {
-            $this->connection->connect();
-            $this->connection->set('test-session-id', 'test-data', 3600);
-
-            $result = $this->handler->read('test-session-id');
-
-            self::assertSame('', $result);
-
-            $this->connection->delete('test-session-id');
-        } else {
+        if (!extension_loaded('redis')) {
             self::fail('Redis extension is required for this test');
         }
+
+        $this->connection->connect();
+        $this->connection->set('test-session-id', 'test-data', 3600);
+
+        $result = $this->handler->read('test-session-id');
+
+        self::assertSame('', $result);
+
+        $this->connection->delete('test-session-id');
     }
 
     public function testFirstHookWithFallbackDataIsUsed(): void
@@ -315,17 +315,17 @@ class ReadHookTest extends TestCase
         $this->handler->addReadHook($hook1);
         $this->handler->addReadHook($hook2);
 
-        if (extension_loaded('redis')) {
-            $this->connection->connect();
-            $this->connection->set('test-session-id', 'test-data', 3600);
-
-            $result = $this->handler->read('test-session-id');
-
-            self::assertSame('fallback-from-hook1', $result);
-
-            $this->connection->delete('test-session-id');
-        } else {
+        if (!extension_loaded('redis')) {
             self::fail('Redis extension is required for this test');
         }
+
+        $this->connection->connect();
+        $this->connection->set('test-session-id', 'test-data', 3600);
+
+        $result = $this->handler->read('test-session-id');
+
+        self::assertSame('fallback-from-hook1', $result);
+
+        $this->connection->delete('test-session-id');
     }
 }
