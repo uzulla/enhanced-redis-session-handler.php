@@ -42,11 +42,7 @@ class BasicSessionTest extends TestCase
         $options = new RedisSessionHandlerOptions(null, null, $logger);
         $this->handler = new RedisSessionHandler($this->connection, $options);
 
-        try {
-            $this->connection->connect();
-        } catch (\Exception $e) {
-            self::markTestSkipped('Redis server is not available: ' . $e->getMessage());
-        }
+        $this->connection->connect();
     }
 
     protected function tearDown(): void

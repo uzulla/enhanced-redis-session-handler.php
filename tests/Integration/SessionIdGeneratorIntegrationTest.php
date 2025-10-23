@@ -41,11 +41,7 @@ class SessionIdGeneratorIntegrationTest extends TestCase
         $redis = new \Redis();
         $this->connection = new RedisConnection($redis, $config, $logger);
 
-        try {
-            $this->connection->connect();
-        } catch (\Exception $e) {
-            self::markTestSkipped('Redis server is not available: ' . $e->getMessage());
-        }
+        $this->connection->connect();
     }
 
     protected function tearDown(): void
