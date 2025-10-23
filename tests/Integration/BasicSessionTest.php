@@ -69,7 +69,7 @@ class BasicSessionTest extends TestCase
     public function testWriteAndReadSession(): void
     {
         $sessionId = 'test_session_' . uniqid();
-        $sessionData = 'test_data_' . time();
+        $sessionData = serialize(['test_key' => 'test_data_' . time()]);
 
         $this->handler->open('/tmp', 'PHPSESSID');
         $writeResult = $this->handler->write($sessionId, $sessionData);
@@ -82,7 +82,7 @@ class BasicSessionTest extends TestCase
     public function testDestroySession(): void
     {
         $sessionId = 'test_session_' . uniqid();
-        $sessionData = 'test_data';
+        $sessionData = serialize(['test_key' => 'test_data']);
 
         $this->handler->open('/tmp', 'PHPSESSID');
         $this->handler->write($sessionId, $sessionData);
@@ -97,7 +97,7 @@ class BasicSessionTest extends TestCase
     public function testValidateId(): void
     {
         $sessionId = 'test_session_' . uniqid();
-        $sessionData = 'test_data';
+        $sessionData = serialize(['test_key' => 'test_data']);
 
         $this->handler->open('/tmp', 'PHPSESSID');
         $this->handler->write($sessionId, $sessionData);
@@ -109,7 +109,7 @@ class BasicSessionTest extends TestCase
     public function testUpdateTimestamp(): void
     {
         $sessionId = 'test_session_' . uniqid();
-        $sessionData = 'test_data';
+        $sessionData = serialize(['test_key' => 'test_data']);
 
         $this->handler->open('/tmp', 'PHPSESSID');
         $this->handler->write($sessionId, $sessionData);
