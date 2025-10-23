@@ -2,7 +2,10 @@
 
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Integration;
 
+use Monolog\Handler\StreamHandler;
+use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
 
@@ -14,24 +17,28 @@ class BasicSessionTest extends TestCase
     protected function setUp(): void
     {
         if (!extension_loaded('redis')) {
-            self::markTestSkipped('Redis extension is not loaded');
+            self::fail('Redis extension is required for integration tests');
         }
 
         $redisHost = getenv('SESSION_REDIS_HOST');
         $redisPort = getenv('SESSION_REDIS_PORT');
 
-        $this->connection = new RedisConnection([
-            'host' => $redisHost !== false ? $redisHost : 'localhost',
-            'port' => $redisPort !== false ? (int)$redisPort : 6379,
-            'prefix' => 'test:session:',
-        ]);
+        $logger = new Logger('test');
+        $logger->pushHandler(new StreamHandler('php://stderr', Logger::DEBUG));
 
-        $this->handler = new RedisSessionHandler($this->connection);
+        $config = new RedisConnectionConfig(
+            host: $redisHost !== false ? $redisHost : 'localhost',
+            port: $redisPort !== false ? (int)$redisPort : 6379,
+            prefix: 'test:session:'
+        );
+
+        $this->connection = new RedisConnection($config, $logger);
+        $this->handler = new RedisSessionHandler($this->connection, ['logger' => $logger]);
 
         try {
             $this->connection->connect();
         } catch (\Exception $e) {
-            self::markTestSkipped('Cannot connect to Redis: ' . $e->getMessage());
+            self::fail('Cannot connect to Redis: ' . $e->getMessage());
         }
     }
 

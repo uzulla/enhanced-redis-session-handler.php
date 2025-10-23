@@ -2,7 +2,10 @@
 
 namespace Uzulla\EnhancedRedisSessionHandler\Tests;
 
+use Monolog\Handler\NullHandler;
+use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
@@ -15,11 +18,16 @@ class RedisSessionHandlerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->connection = new RedisConnection([
-            'host' => 'localhost',
-            'port' => 6379,
-        ]);
-        $this->handler = new RedisSessionHandler($this->connection);
+        $logger = new Logger('test');
+        $logger->pushHandler(new NullHandler());
+
+        $config = new RedisConnectionConfig(
+            host: 'localhost',
+            port: 6379
+        );
+
+        $this->connection = new RedisConnection($config, $logger);
+        $this->handler = new RedisSessionHandler($this->connection, ['logger' => $logger]);
     }
 
     public function testConstructorWithDefaultOptions(): void
@@ -49,13 +57,13 @@ class RedisSessionHandlerTest extends TestCase
     public function testCreateSidGeneratesUniqueId(): void
     {
         if (!extension_loaded('redis')) {
-            self::markTestSkipped('Redis extension is not loaded');
+            self::fail('Redis extension is required for this test');
         }
 
         try {
             $this->connection->connect();
         } catch (\Exception $e) {
-            self::markTestSkipped('Cannot connect to Redis: ' . $e->getMessage());
+            self::fail('Cannot connect to Redis: ' . $e->getMessage());
         }
 
         $sid1 = $this->handler->create_sid();

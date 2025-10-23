@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Uzulla\EnhancedRedisSessionHandler;
 
 use Psr\Log\LoggerInterface;
-use Psr\Log\NullLogger;
 use Redis;
 use RedisException;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
@@ -19,18 +18,10 @@ class RedisConnection
     private LoggerInterface $logger;
     private bool $connected = false;
 
-    /**
-     * @param array<string, mixed>|RedisConnectionConfig $config
-     */
-    public function __construct($config, ?LoggerInterface $logger = null)
+    public function __construct(RedisConnectionConfig $config, LoggerInterface $logger)
     {
-        if ($config instanceof RedisConnectionConfig) {
-            $this->config = $config;
-        } else {
-            $this->config = RedisConnectionConfig::fromArray($config);
-        }
-
-        $this->logger = $logger ?? new NullLogger();
+        $this->config = $config;
+        $this->logger = $logger;
         $this->redis = new Redis();
     }
 
