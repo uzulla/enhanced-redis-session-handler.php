@@ -54,8 +54,13 @@ class ErrorHandlingIntegrationTest extends TestCase
 
         $records = $testHandler->getRecords();
         $errorRecords = array_filter($records, function ($record) {
-            $levelName = is_array($record) ? ($record['level_name'] ?? null) : (method_exists($record, 'level') ? $record->level->getName() : null);
-            $message = is_array($record) ? ($record['message'] ?? null) : (isset($record->message) ? $record->message : null);
+            if (is_object($record) && property_exists($record, 'level')) {
+                $levelName = $record->level->getName();
+                $message = $record->message;
+            } else {
+                $levelName = $record['level_name'] ?? null;
+                $message = $record['message'] ?? null;
+            }
             return $levelName === 'ERROR' &&
                    is_string($message) &&
                    strpos($message, 'Failed to open session') !== false;
@@ -127,7 +132,11 @@ class ErrorHandlingIntegrationTest extends TestCase
 
         $records = $testHandler->getRecords();
         $errorRecords = array_filter($records, function ($record) {
-            $levelName = is_array($record) ? ($record['level_name'] ?? null) : (method_exists($record, 'level') ? $record->level->getName() : null);
+            if (is_object($record) && property_exists($record, 'level')) {
+                $levelName = $record->level->getName();
+            } else {
+                $levelName = $record['level_name'] ?? null;
+            }
             return $levelName === 'ERROR' || $levelName === 'WARNING' || $levelName === 'CRITICAL';
         });
 
@@ -166,8 +175,13 @@ class ErrorHandlingIntegrationTest extends TestCase
         $records = $testHandler->getRecords();
 
         $warningRecords = array_filter($records, function ($record) {
-            $levelName = is_array($record) ? ($record['level_name'] ?? null) : (method_exists($record, 'level') ? $record->level->getName() : null);
-            $message = is_array($record) ? ($record['message'] ?? null) : (isset($record->message) ? $record->message : null);
+            if (is_object($record) && property_exists($record, 'level')) {
+                $levelName = $record->level->getName();
+                $message = $record->message;
+            } else {
+                $levelName = $record['level_name'] ?? null;
+                $message = $record['message'] ?? null;
+            }
             return $levelName === 'WARNING' &&
                    is_string($message) &&
                    strpos($message, 'Redis connection attempt failed') !== false;
@@ -176,8 +190,13 @@ class ErrorHandlingIntegrationTest extends TestCase
         self::assertCount(3, $warningRecords);
 
         $criticalRecords = array_filter($records, function ($record) {
-            $levelName = is_array($record) ? ($record['level_name'] ?? null) : (method_exists($record, 'level') ? $record->level->getName() : null);
-            $message = is_array($record) ? ($record['message'] ?? null) : (isset($record->message) ? $record->message : null);
+            if (is_object($record) && property_exists($record, 'level')) {
+                $levelName = $record->level->getName();
+                $message = $record->message;
+            } else {
+                $levelName = $record['level_name'] ?? null;
+                $message = $record['message'] ?? null;
+            }
             return $levelName === 'CRITICAL' &&
                    is_string($message) &&
                    strpos($message, 'Redis connection failed after all retries') !== false;
