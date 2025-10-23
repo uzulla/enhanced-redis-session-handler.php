@@ -48,6 +48,16 @@ class RedisSessionHandlerTest extends TestCase
 
     public function testCreateSidGeneratesUniqueId(): void
     {
+        if (!extension_loaded('redis')) {
+            self::markTestSkipped('Redis extension is not loaded');
+        }
+
+        try {
+            $this->connection->connect();
+        } catch (\Exception $e) {
+            self::markTestSkipped('Cannot connect to Redis: ' . $e->getMessage());
+        }
+
         $sid1 = $this->handler->create_sid();
         $sid2 = $this->handler->create_sid();
 
