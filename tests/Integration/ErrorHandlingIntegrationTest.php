@@ -56,8 +56,9 @@ class ErrorHandlingIntegrationTest extends TestCase
         $errorRecords = array_filter($records, function ($record): bool {
             /** @phpstan-ignore-next-line */
             if (is_object($record) && property_exists($record, 'level')) {
-                /** @var object{level: object{getName(): string}, message: string} $record */
+                /** @phpstan-ignore-next-line */
                 $levelName = $record->level->getName();
+                /** @phpstan-ignore-next-line */
                 $message = $record->message;
             } else {
                 /** @var array{level_name?: string, message?: string} $record */
@@ -137,7 +138,7 @@ class ErrorHandlingIntegrationTest extends TestCase
         $errorRecords = array_filter($records, function ($record): bool {
             /** @phpstan-ignore-next-line */
             if (is_object($record) && property_exists($record, 'level')) {
-                /** @var object{level: object{getName(): string}} $record */
+                /** @phpstan-ignore-next-line */
                 $levelName = $record->level->getName();
             } else {
                 /** @var array{level_name?: string} $record */
@@ -183,8 +184,9 @@ class ErrorHandlingIntegrationTest extends TestCase
         $warningRecords = array_filter($records, function ($record): bool {
             /** @phpstan-ignore-next-line */
             if (is_object($record) && property_exists($record, 'level')) {
-                /** @var object{level: object{getName(): string}, message: string} $record */
+                /** @phpstan-ignore-next-line */
                 $levelName = $record->level->getName();
+                /** @phpstan-ignore-next-line */
                 $message = $record->message;
             } else {
                 /** @var array{level_name?: string, message?: string} $record */
@@ -201,8 +203,9 @@ class ErrorHandlingIntegrationTest extends TestCase
         $criticalRecords = array_filter($records, function ($record): bool {
             /** @phpstan-ignore-next-line */
             if (is_object($record) && property_exists($record, 'level')) {
-                /** @var object{level: object{getName(): string}, message: string} $record */
+                /** @phpstan-ignore-next-line */
                 $levelName = $record->level->getName();
+                /** @phpstan-ignore-next-line */
                 $message = $record->message;
             } else {
                 /** @var array{level_name?: string, message?: string} $record */
