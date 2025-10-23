@@ -42,19 +42,17 @@ class ReadHookIntegrationTest extends TestCase
 
     protected function tearDown(): void
     {
-        if (extension_loaded('redis')) {
-            $this->primaryConnection->connect();
-            $this->fallbackConnection->connect();
+        $this->primaryConnection->connect();
+        $this->fallbackConnection->connect();
 
-            $primaryKeys = $this->primaryConnection->keys('*');
-            foreach ($primaryKeys as $key) {
-                $this->primaryConnection->delete($key);
-            }
+        $primaryKeys = $this->primaryConnection->keys('*');
+        foreach ($primaryKeys as $key) {
+            $this->primaryConnection->delete($key);
+        }
 
-            $fallbackKeys = $this->fallbackConnection->keys('*');
-            foreach ($fallbackKeys as $key) {
-                $this->fallbackConnection->delete($key);
-            }
+        $fallbackKeys = $this->fallbackConnection->keys('*');
+        foreach ($fallbackKeys as $key) {
+            $this->fallbackConnection->delete($key);
         }
     }
 

@@ -19,6 +19,10 @@ class ReadHookTest extends TestCase
 
     protected function setUp(): void
     {
+        if (!extension_loaded('redis')) {
+            self::fail('Redis extension is required for this test');
+        }
+
         $this->logger = new Logger('test');
         $this->logger->pushHandler(new NullHandler());
 
@@ -63,10 +67,6 @@ class ReadHookTest extends TestCase
 
         $this->handler->addReadHook($hook);
 
-        if (!extension_loaded('redis')) {
-            self::fail('Redis extension is required for this test');
-        }
-
         $this->connection->connect();
         $this->handler->read('test-session-id');
 
@@ -93,10 +93,6 @@ class ReadHookTest extends TestCase
         };
 
         $this->handler->addReadHook($hook);
-
-        if (!extension_loaded('redis')) {
-            self::fail('Redis extension is required for this test');
-        }
 
         $this->connection->connect();
         $testData = 'test-data';
@@ -179,10 +175,6 @@ class ReadHookTest extends TestCase
         $this->handler->addReadHook($hook1);
         $this->handler->addReadHook($hook2);
 
-        if (!extension_loaded('redis')) {
-            self::fail('Redis extension is required for this test');
-        }
-
         $this->connection->connect();
         $testData = 'data';
         $this->connection->set('test-session-id', $testData, 3600);
@@ -228,10 +220,6 @@ class ReadHookTest extends TestCase
 
         $this->handler->addReadHook($hook);
 
-        if (!extension_loaded('redis')) {
-            self::fail('Redis extension is required for this test');
-        }
-
         $this->connection->connect();
         $this->connection->set('test-session-id', 'test-data', 3600);
 
@@ -263,10 +251,6 @@ class ReadHookTest extends TestCase
         };
 
         $this->handler->addReadHook($hook);
-
-        if (!extension_loaded('redis')) {
-            self::fail('Redis extension is required for this test');
-        }
 
         $this->connection->connect();
         $this->connection->set('test-session-id', 'test-data', 3600);
@@ -314,10 +298,6 @@ class ReadHookTest extends TestCase
 
         $this->handler->addReadHook($hook1);
         $this->handler->addReadHook($hook2);
-
-        if (!extension_loaded('redis')) {
-            self::fail('Redis extension is required for this test');
-        }
 
         $this->connection->connect();
         $this->connection->set('test-session-id', 'test-data', 3600);
