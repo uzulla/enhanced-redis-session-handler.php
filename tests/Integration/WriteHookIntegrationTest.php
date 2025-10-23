@@ -71,7 +71,7 @@ class WriteHookIntegrationTest extends TestCase
     private function getLogRecords(): array
     {
         /** @var array<array<string, mixed>> $records */
-        $records = $this->getLogRecords();
+        $records = $this->logHandler->getRecords();
         return $records;
     }
 
