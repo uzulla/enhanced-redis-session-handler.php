@@ -38,7 +38,7 @@ class BasicSessionTest extends TestCase
         try {
             $this->connection->connect();
         } catch (\Exception $e) {
-            self::fail('Cannot connect to Redis: ' . $e->getMessage());
+            self::markTestSkipped('Redis server is not available: ' . $e->getMessage());
         }
     }
 

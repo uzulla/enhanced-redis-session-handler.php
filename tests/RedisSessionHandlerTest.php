@@ -63,7 +63,7 @@ class RedisSessionHandlerTest extends TestCase
         try {
             $this->connection->connect();
         } catch (\Exception $e) {
-            self::fail('Cannot connect to Redis: ' . $e->getMessage());
+            self::markTestSkipped('Redis server is not available: ' . $e->getMessage());
         }
 
         $sid1 = $this->handler->create_sid();
