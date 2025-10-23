@@ -55,6 +55,8 @@ class ErrorHandlingIntegrationTest extends TestCase
         $records = $testHandler->getRecords();
         $errorRecords = array_filter($records, function ($record) {
             return $record['level_name'] === 'ERROR' &&
+                   isset($record['message']) &&
+                   is_string($record['message']) &&
                    strpos($record['message'], 'Failed to open session') !== false;
         });
 
@@ -163,6 +165,8 @@ class ErrorHandlingIntegrationTest extends TestCase
 
         $warningRecords = array_filter($records, function ($record) {
             return $record['level_name'] === 'WARNING' &&
+                   isset($record['message']) &&
+                   is_string($record['message']) &&
                    strpos($record['message'], 'Redis connection attempt failed') !== false;
         });
 
@@ -170,6 +174,8 @@ class ErrorHandlingIntegrationTest extends TestCase
 
         $criticalRecords = array_filter($records, function ($record) {
             return $record['level_name'] === 'CRITICAL' &&
+                   isset($record['message']) &&
+                   is_string($record['message']) &&
                    strpos($record['message'], 'Redis connection failed after all retries') !== false;
         });
 
