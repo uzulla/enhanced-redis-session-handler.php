@@ -104,17 +104,37 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
             $hook->beforeRead($id);
         }
 
-        $data = $this->connection->get($id);
+        try {
+            $data = $this->connection->get($id);
 
-        if ($data === false) {
+            if ($data === false) {
+                return '';
+            }
+
+            foreach ($this->readHooks as $hook) {
+                $data = $hook->afterRead($id, $data);
+            }
+
+            return $data;
+        } catch (\Throwable $e) {
+            $this->logger->error('Error during session read', [
+                'session_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            foreach ($this->readHooks as $hook) {
+                $fallbackData = $hook->onReadError($id, $e);
+                if ($fallbackData !== null) {
+                    $this->logger->info('Using fallback data from hook', [
+                        'session_id' => $id,
+                        'hook' => get_class($hook),
+                    ]);
+                    return $fallbackData;
+                }
+            }
+
             return '';
         }
-
-        foreach ($this->readHooks as $hook) {
-            $data = $hook->afterRead($id, $data);
-        }
-
-        return $data;
     }
 
     /**

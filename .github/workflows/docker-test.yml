@@ -32,15 +32,26 @@ jobs:
       run: |
         docker compose exec -T app php -m | grep redis
     
-    - name: Check ValKey connection
+    - name: Check ValKey connection (primary)
       run: |
         docker compose exec -T app php -r "
         \$redis = new Redis();
         if (!\$redis->connect('storage', 6379)) {
-            echo 'Failed to connect to ValKey';
+            echo 'Failed to connect to primary ValKey';
             exit(1);
         }
-        echo 'Successfully connected to ValKey: ' . \$redis->ping();
+        echo 'Successfully connected to primary ValKey: ' . \$redis->ping();
+        "
+    
+    - name: Check ValKey connection (fallback)
+      run: |
+        docker compose exec -T app php -r "
+        \$redis = new Redis();
+        if (!\$redis->connect('storage-fallback', 6379)) {
+            echo 'Failed to connect to fallback ValKey';
+            exit(1);
+        }
+        echo 'Successfully connected to fallback ValKey: ' . \$redis->ping();
         "
     
     - name: Test Redis operations
