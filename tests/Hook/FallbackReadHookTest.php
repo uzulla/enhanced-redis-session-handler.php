@@ -44,7 +44,7 @@ class FallbackReadHookTest extends TestCase
     public function testOnReadErrorReturnsDataFromFirstSuccessfulFallback(): void
     {
         if (!extension_loaded('redis')) {
-            self::markTestSkipped('Redis extension not loaded');
+            self::fail('Redis extension is required for this test');
         }
 
         $redis1 = new \Redis();
@@ -70,7 +70,7 @@ class FallbackReadHookTest extends TestCase
     public function testOnReadErrorReturnsNullWhenAllFallbacksFail(): void
     {
         if (!extension_loaded('redis')) {
-            self::markTestSkipped('Redis extension not loaded');
+            self::fail('Redis extension is required for this test');
         }
 
         $redis1 = new \Redis();
@@ -92,7 +92,7 @@ class FallbackReadHookTest extends TestCase
     public function testOnReadErrorSkipsFailedFallbacksAndContinues(): void
     {
         if (!extension_loaded('redis')) {
-            self::markTestSkipped('Redis extension not loaded');
+            self::fail('Redis extension is required for this test');
         }
 
         $redis1 = new \Redis();

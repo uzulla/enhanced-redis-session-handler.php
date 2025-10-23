@@ -70,7 +70,7 @@ class ReadHookTest extends TestCase
             self::assertTrue($testState->called);
             self::assertSame('test-session-id', $testState->sessionId);
         } else {
-            self::markTestSkipped('Redis extension not loaded');
+            self::fail('Redis extension is required for this test');
         }
     }
 
@@ -105,7 +105,7 @@ class ReadHookTest extends TestCase
 
             $this->connection->delete('test-session-id');
         } else {
-            self::markTestSkipped('Redis extension not loaded');
+            self::fail('Redis extension is required for this test');
         }
     }
 
@@ -191,7 +191,7 @@ class ReadHookTest extends TestCase
 
             $this->connection->delete('test-session-id');
         } else {
-            self::markTestSkipped('Redis extension not loaded');
+            self::fail('Redis extension is required for this test');
         }
     }
 
@@ -240,7 +240,7 @@ class ReadHookTest extends TestCase
 
             $this->connection->delete('test-session-id');
         } else {
-            self::markTestSkipped('Redis extension not loaded');
+            self::fail('Redis extension is required for this test');
         }
     }
 
@@ -274,7 +274,7 @@ class ReadHookTest extends TestCase
 
             $this->connection->delete('test-session-id');
         } else {
-            self::markTestSkipped('Redis extension not loaded');
+            self::fail('Redis extension is required for this test');
         }
     }
 
@@ -325,7 +325,7 @@ class ReadHookTest extends TestCase
 
             $this->connection->delete('test-session-id');
         } else {
-            self::markTestSkipped('Redis extension not loaded');
+            self::fail('Redis extension is required for this test');
         }
     }
 }

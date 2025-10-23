@@ -7,7 +7,7 @@ use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
-use Uzulla\EnhancedRedisSessionHandler\Hook\CacheWarmupHook;
+use Uzulla\EnhancedRedisSessionHandler\Hook\ReadTimestampHook;
 use Uzulla\EnhancedRedisSessionHandler\Hook\FallbackReadHook;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
@@ -22,7 +22,7 @@ class ReadHookIntegrationTest extends TestCase
     protected function setUp(): void
     {
         if (!extension_loaded('redis')) {
-            self::markTestSkipped('Redis extension not loaded');
+            self::fail('Redis extension is required for this test');
         }
 
         $this->logger = new Logger('test');
@@ -79,25 +79,28 @@ class ReadHookIntegrationTest extends TestCase
         self::assertSame('fallback-session-data', $data);
     }
 
-    public function testCacheWarmupHookIntegration(): void
+    public function testReadTimestampHookIntegration(): void
     {
         $this->primaryConnection->connect();
 
-        $warmupHook = new CacheWarmupHook(
+        $timestampHook = new ReadTimestampHook(
             $this->primaryConnection,
-            ['user:{session_id}:profile', 'user:{session_id}:settings'],
-            $this->logger
+            $this->logger,
+            'read_at:',
+            3600
         );
-        $this->handler->addReadHook($warmupHook);
+        $this->handler->addReadHook($timestampHook);
 
         $this->primaryConnection->set('test-session', 'session-data', 3600);
-        $this->primaryConnection->set('user:test-session:profile', 'profile-data', 3600);
-        $this->primaryConnection->set('user:test-session:settings', 'settings-data', 3600);
 
         $this->handler->open('', '');
         $data = $this->handler->read('test-session');
 
         self::assertSame('session-data', $data);
+
+        $timestampKey = 'read_at:test-session';
+        $timestamp = $this->primaryConnection->get($timestampKey);
+        self::assertNotFalse($timestamp);
     }
 
     public function testMultipleHooksWorkTogether(): void
@@ -106,17 +109,17 @@ class ReadHookIntegrationTest extends TestCase
         $this->fallbackConnection->connect();
 
         $fallbackHook = new FallbackReadHook([$this->fallbackConnection], $this->logger);
-        $warmupHook = new CacheWarmupHook(
+        $timestampHook = new ReadTimestampHook(
             $this->primaryConnection,
-            ['user:{session_id}:profile'],
-            $this->logger
+            $this->logger,
+            'read_at:',
+            3600
         );
 
         $this->handler->addReadHook($fallbackHook);
-        $this->handler->addReadHook($warmupHook);
+        $this->handler->addReadHook($timestampHook);
 
         $this->primaryConnection->set('test-session', 'primary-data', 3600);
-        $this->primaryConnection->set('user:test-session:profile', 'profile-data', 3600);
 
         $this->handler->open('', '');
         $data = $this->handler->read('test-session');

@@ -42,7 +42,7 @@ class FallbackReadHook implements ReadHookInterface
     {
         $this->logger->warning('Primary Redis read failed, attempting fallback', [
             'session_id' => $sessionId,
-            'error' => $e->getMessage(),
+            'exception' => $e,
         ]);
 
         foreach ($this->fallbackConnections as $index => $connection) {
@@ -59,12 +59,12 @@ class FallbackReadHook implements ReadHookInterface
                 $this->logger->warning('Fallback Redis read failed', [
                     'session_id' => $sessionId,
                     'fallback_index' => $index,
-                    'error' => $fallbackError->getMessage(),
+                    'exception' => $fallbackError,
                 ]);
             }
         }
 
-        $this->logger->error('All fallback Redis connections failed', [
+        $this->logger->debug('All fallback Redis connections failed or returned no data', [
             'session_id' => $sessionId,
         ]);
 

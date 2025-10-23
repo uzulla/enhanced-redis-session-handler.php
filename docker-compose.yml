@@ -12,8 +12,11 @@ services:
     environment:
       - REDIS_HOST=storage
       - REDIS_PORT=6379
+      - REDIS_FALLBACK_HOST=storage-fallback
+      - REDIS_FALLBACK_PORT=6379
     depends_on:
       - storage
+      - storage-fallback
     networks:
       - app-network
 
@@ -28,8 +31,21 @@ services:
       - app-network
     command: valkey-server --appendonly yes
 
+  storage-fallback:
+    image: valkey/valkey:latest
+    container_name: enhanced-redis-session-handler-storage-fallback
+    ports:
+      - "6380:6379"
+    volumes:
+      - valkey-fallback-data:/data
+    networks:
+      - app-network
+    command: valkey-server --appendonly yes
+
 volumes:
   valkey-data:
+    driver: local
+  valkey-fallback-data:
     driver: local
 
 networks:
