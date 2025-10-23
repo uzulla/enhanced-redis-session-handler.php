@@ -70,6 +70,23 @@ composer require uzulla/enhanced-redis-session-handler
 
 開発環境のセットアップ方法については、[DEVELOPMENT.md](DEVELOPMENT.md)を参照してください。
 
+### Docker環境（推奨）
+
+Dockerを使用すると、PHP 7.4、Apache、ValKeyを含む完全な開発環境を簡単に構築できます：
+
+```bash
+# 環境を起動
+docker compose up -d
+
+# ヘルスチェックを実行
+./docker/healthcheck.sh
+
+# コンテナに入る
+docker compose exec app bash
+```
+
+詳細は[DEVELOPMENT.md](DEVELOPMENT.md)を参照してください。
+
 ## ライセンス
 
 MIT License

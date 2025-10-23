@@ -1,0 +1,88 @@
+name: Docker Environment Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  docker-test:
+    name: Docker Environment Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build Docker images
+      run: docker compose build
+    
+    - name: Start Docker environment
+      run: docker compose up -d
+    
+    - name: Wait for services to be ready
+      run: sleep 10
+    
+    - name: Check PHP version
+      run: |
+        docker compose exec -T app php -v
+        docker compose exec -T app php -v | grep "PHP 7.4"
+    
+    - name: Check ext-redis is installed
+      run: |
+        docker compose exec -T app php -m | grep redis
+    
+    - name: Check ValKey connection
+      run: |
+        docker compose exec -T app php -r "
+        \$redis = new Redis();
+        if (!\$redis->connect('storage', 6379)) {
+            echo 'Failed to connect to ValKey';
+            exit(1);
+        }
+        echo 'Successfully connected to ValKey: ' . \$redis->ping();
+        "
+    
+    - name: Test Redis operations
+      run: |
+        docker compose exec -T app php -r "
+        \$redis = new Redis();
+        \$redis->connect('storage', 6379);
+        
+        // Test SET operation
+        \$redis->set('test_key', 'test_value');
+        
+        // Test GET operation
+        \$value = \$redis->get('test_key');
+        if (\$value !== 'test_value') {
+            echo 'GET operation failed';
+            exit(1);
+        }
+        
+        // Test DEL operation
+        \$redis->del('test_key');
+        
+        // Verify deletion
+        \$value = \$redis->get('test_key');
+        if (\$value !== false) {
+            echo 'DEL operation failed';
+            exit(1);
+        }
+        
+        echo 'All Redis operations successful';
+        "
+    
+    - name: Check Composer is available
+      run: docker compose exec -T app composer --version
+    
+    - name: View Docker logs on failure
+      if: failure()
+      run: |
+        echo "=== App Container Logs ==="
+        docker compose logs app
+        echo "=== Storage Container Logs ==="
+        docker compose logs storage
+    
+    - name: Stop Docker environment
+      if: always()
+      run: docker compose down -v
