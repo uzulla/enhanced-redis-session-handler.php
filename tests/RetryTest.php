@@ -9,6 +9,23 @@ use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Exception\ConnectionException;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 
+/**
+ * Note: This test file contains multiple @phpstan-ignore-next-line annotations.
+ *
+ * Reason: Monolog's TestHandler::getRecords() returns different types across PHP versions:
+ * - PHP 7.4-8.2 (Monolog 2.x): Returns array<array{level_name: string, message: string, ...}>
+ * - PHP 8.3+ (Monolog 3.x): Returns array<Monolog\LogRecord>
+ *
+ * PHPStan cannot properly infer the correct type across all PHP versions, resulting in:
+ * - "Parameter #1 $array of function array_filter expects array, mixed given" (PHP 8.1)
+ * - "Cannot access offset 'level_name' on mixed" (PHP 8.0)
+ * - "PHPDoc tag @var with type array<...> is not subtype of native type Monolog\LogRecord" (PHP 8.3+)
+ *
+ * The @phpstan-ignore-next-line annotations suppress these warnings while maintaining
+ * runtime compatibility with both Monolog 2.x and 3.x.
+ *
+ * TODO: See issue #31 for tracking the removal of these suppressions once a better solution is found.
+ */
 class RetryTest extends TestCase
 {
     public function testRetryConfigurationIsSet(): void

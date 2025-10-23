@@ -87,7 +87,7 @@ class RedisConnection implements LoggerAwareInterface
                 $this->logger->warning('Redis connection attempt failed', [
                     'attempt' => $attempt,
                     'max_retries' => $maxRetries,
-                    'error' => $e->getMessage(),
+                    'exception' => $e,
                     'host' => $this->config->getHost(),
                     'port' => $this->config->getPort(),
                 ]);
@@ -108,6 +108,7 @@ class RedisConnection implements LoggerAwareInterface
         $this->logger->critical('Redis connection failed after all retries', [
             'attempts' => $maxRetries,
             'error' => $errorMessage,
+            'exception' => $lastException ?? null,
             'host' => $this->config->getHost(),
             'port' => $this->config->getPort(),
         ]);
