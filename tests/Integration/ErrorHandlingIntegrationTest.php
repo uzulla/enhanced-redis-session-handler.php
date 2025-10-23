@@ -84,9 +84,8 @@ class ErrorHandlingIntegrationTest extends TestCase
                 /** @phpstan-ignore-next-line */
                 $message = $record['message'] ?? null;
             }
-            /** @phpstan-ignore-next-line */
             return $levelName === 'ERROR' &&
-                   is_string($message) &&
+                   is_string($message) && /** @phpstan-ignore-line */
                    strpos($message, 'Failed to open session') !== false;
         });
 
@@ -216,9 +215,8 @@ class ErrorHandlingIntegrationTest extends TestCase
                 /** @phpstan-ignore-next-line */
                 $message = $record['message'] ?? null;
             }
-            /** @phpstan-ignore-next-line */
             return $levelName === 'WARNING' &&
-                   is_string($message) &&
+                   is_string($message) && /** @phpstan-ignore-line */
                    strpos($message, 'Redis connection attempt failed') !== false;
         });
 
@@ -238,9 +236,8 @@ class ErrorHandlingIntegrationTest extends TestCase
                 /** @phpstan-ignore-next-line */
                 $message = $record['message'] ?? null;
             }
-            /** @phpstan-ignore-next-line */
             return $levelName === 'CRITICAL' &&
-                   is_string($message) &&
+                   is_string($message) && /** @phpstan-ignore-line */
                    strpos($message, 'Redis connection failed after all retries') !== false;
         });
 

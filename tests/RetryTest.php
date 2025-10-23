@@ -131,9 +131,8 @@ class RetryTest extends TestCase
                 /** @phpstan-ignore-next-line */
                 $message = $record['message'] ?? null;
             }
-            /** @phpstan-ignore-next-line */
             return $levelName === 'WARNING' &&
-                   is_string($message) &&
+                   is_string($message) && /** @phpstan-ignore-line */
                    strpos($message, 'Redis connection attempt failed') !== false;
         });
 
@@ -189,9 +188,8 @@ class RetryTest extends TestCase
                 /** @phpstan-ignore-next-line */
                 $message = $record['message'] ?? null;
             }
-            /** @phpstan-ignore-next-line */
             return $levelName === 'INFO' &&
-                   is_string($message) &&
+                   is_string($message) && /** @phpstan-ignore-line */
                    strpos($message, 'Redis connection succeeded after retry') !== false;
         });
 
