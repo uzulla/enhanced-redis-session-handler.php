@@ -99,14 +99,13 @@ class RetryTest extends TestCase
         } catch (ConnectionException $e) {
         }
 
-        /** @var array<array<string, mixed>> $records */
         $records = $testHandler->getRecords();
         $warningRecords = array_filter($records, function ($record) {
-            return isset($record['level_name']) &&
-                   $record['level_name'] === 'WARNING' &&
-                   isset($record['message']) &&
-                   is_string($record['message']) &&
-                   strpos($record['message'], 'Redis connection attempt failed') !== false;
+            $levelName = is_array($record) ? ($record['level_name'] ?? null) : (method_exists($record, 'level') ? $record->level->getName() : null);
+            $message = is_array($record) ? ($record['message'] ?? null) : (isset($record->message) ? $record->message : null);
+            return $levelName === 'WARNING' &&
+                   is_string($message) &&
+                   strpos($message, 'Redis connection attempt failed') !== false;
         });
 
         self::assertCount(2, $warningRecords);
@@ -146,14 +145,13 @@ class RetryTest extends TestCase
 
         self::assertTrue($result);
 
-        /** @var array<array<string, mixed>> $records */
         $records = $testHandler->getRecords();
         $infoRecords = array_filter($records, function ($record) {
-            return isset($record['level_name']) &&
-                   $record['level_name'] === 'INFO' &&
-                   isset($record['message']) &&
-                   is_string($record['message']) &&
-                   strpos($record['message'], 'Redis connection succeeded after retry') !== false;
+            $levelName = is_array($record) ? ($record['level_name'] ?? null) : (method_exists($record, 'level') ? $record->level->getName() : null);
+            $message = is_array($record) ? ($record['message'] ?? null) : (isset($record->message) ? $record->message : null);
+            return $levelName === 'INFO' &&
+                   is_string($message) &&
+                   strpos($message, 'Redis connection succeeded after retry') !== false;
         });
 
         self::assertCount(1, $infoRecords);
