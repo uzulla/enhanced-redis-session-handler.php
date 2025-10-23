@@ -1,12 +1,9 @@
 includes:
     - vendor/phpstan/phpstan-strict-rules/rules.neon
+    - phpstan-baseline.neon
 
 parameters:
     level: max
     paths:
         - src
         - tests
-    ignoreErrors:
-        - '#Offset .* on non-empty-array in isset\(\) always exists and is not nullable#'
-        - '#Call to static method PHPUnit\\Framework\\Assert::assertIsArray\(\) with array<mixed> will always evaluate to true#'
-        - '#Right side of && is always true#'
