@@ -6,7 +6,20 @@ namespace Uzulla\EnhancedRedisSessionHandler\Hook;
 
 interface WriteHookInterface
 {
-    public function beforeWrite(string $sessionId, string $data): string;
+    /**
+     * Called before writing session data to Redis.
+     *
+     * @param string $sessionId The session ID
+     * @param array<string, mixed> $data The unserialized session data
+     * @return array<string, mixed> The modified session data
+     */
+    public function beforeWrite(string $sessionId, array $data): array;
 
+    /**
+     * Called after writing session data to Redis.
+     *
+     * @param string $sessionId The session ID
+     * @param bool $success Whether the write operation was successful
+     */
     public function afterWrite(string $sessionId, bool $success): void;
 }

@@ -6,6 +6,7 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
 
@@ -37,7 +38,9 @@ class BasicSessionTest extends TestCase
 
         $redis = new \Redis();
         $this->connection = new RedisConnection($redis, $config, $logger);
-        $this->handler = new RedisSessionHandler($this->connection, ['logger' => $logger]);
+        
+        $options = new RedisSessionHandlerOptions(null, null, $logger);
+        $this->handler = new RedisSessionHandler($this->connection, $options);
 
         try {
             $this->connection->connect();

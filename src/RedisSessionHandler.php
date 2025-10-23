@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace Uzulla\EnhancedRedisSessionHandler;
 
 use Psr\Log\LoggerInterface;
-use Psr\Log\NullLogger;
 use SessionHandlerInterface;
 use SessionUpdateTimestampHandlerInterface;
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\Hook\ReadHookInterface;
 use Uzulla\EnhancedRedisSessionHandler\Hook\WriteHookInterface;
 use Uzulla\EnhancedRedisSessionHandler\Hook\WriteFilterInterface;
-use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\SessionIdGeneratorInterface;
 
 class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimestampHandlerInterface
@@ -27,27 +26,14 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
     private array $writeFilters = [];
     private int $maxLifetime;
 
-    /**
-     * @param array<string, mixed> $options
-     */
-    public function __construct(RedisConnection $connection, array $options = [])
+    public function __construct(RedisConnection $connection, ?RedisSessionHandlerOptions $options = null)
     {
         $this->connection = $connection;
+        $options = $options ?? new RedisSessionHandlerOptions();
 
-        $idGenerator = $options['id_generator'] ?? null;
-        $this->idGenerator = $idGenerator instanceof SessionIdGeneratorInterface
-            ? $idGenerator
-            : new DefaultSessionIdGenerator();
-
-        $maxLifetime = $options['max_lifetime'] ?? null;
-        $this->maxLifetime = is_int($maxLifetime)
-            ? $maxLifetime
-            : (int)ini_get('session.gc_maxlifetime');
-
-        $logger = $options['logger'] ?? null;
-        $this->logger = $logger instanceof LoggerInterface
-            ? $logger
-            : new NullLogger();
+        $this->idGenerator = $options->getIdGenerator();
+        $this->maxLifetime = $options->getMaxLifetime();
+        $this->logger = $options->getLogger();
     }
 
     public function addReadHook(ReadHookInterface $hook): void
@@ -134,20 +120,37 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
     /**
      * Write session data to Redis.
      *
+     * Unserializes the session data before passing to hooks, then serializes it again before storing.
+     * This makes it easier for hooks to inspect and modify the session data.
+     *
      * @param mixed $id Session ID
-     * @param mixed $data Session data
+     * @param mixed $data Serialized session data
      */
     public function write($id, $data): bool
     {
         assert(is_string($id));
         assert(is_string($data));
 
+        /** @var array<string, mixed> $unserializedData */
+        $unserializedData = [];
+        if ($data !== '') {
+            $unserialized = @unserialize($data);
+            if ($unserialized !== false || $data === 'b:0;') {
+                if (is_array($unserialized)) {
+                    /** @var array<string, mixed> $unserialized */
+                    $unserializedData = $unserialized;
+                }
+            }
+        }
+
         foreach ($this->writeHooks as $hook) {
-            $data = $hook->beforeWrite($id, $data);
+            /** @var array<string, mixed> $unserializedData */
+            $unserializedData = $hook->beforeWrite($id, $unserializedData);
         }
 
         foreach ($this->writeFilters as $filter) {
-            if (!$filter->shouldWrite($id, $data)) {
+            /** @var array<string, mixed> $unserializedData */
+            if (!$filter->shouldWrite($id, $unserializedData)) {
                 $this->logger->debug('Write operation cancelled by filter', [
                     'session_id' => $id,
                     'filter' => get_class($filter),
@@ -156,8 +159,10 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
             }
         }
 
+        $serializedData = serialize($unserializedData);
+
         $ttl = $this->getTTL();
-        $success = $this->connection->set($id, $data, $ttl);
+        $success = $this->connection->set($id, $serializedData, $ttl);
 
         foreach ($this->writeHooks as $hook) {
             $hook->afterWrite($id, $success);

@@ -16,8 +16,8 @@ interface WriteFilterInterface
      * Determine whether the session data should be written to Redis.
      *
      * @param string $sessionId The session ID
-     * @param string $data The session data to be written
+     * @param array<string, mixed> $data The unserialized session data
      * @return bool True to allow the write, false to cancel it
      */
-    public function shouldWrite(string $sessionId, string $data): bool;
+    public function shouldWrite(string $sessionId, array $data): bool;
 }

@@ -6,6 +6,7 @@ use Monolog\Handler\NullHandler;
 use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
@@ -28,7 +29,9 @@ class RedisSessionHandlerTest extends TestCase
         );
 
         $this->connection = new RedisConnection($redis, $config, $logger);
-        $this->handler = new RedisSessionHandler($this->connection, ['logger' => $logger]);
+        
+        $options = new RedisSessionHandlerOptions(null, null, $logger);
+        $this->handler = new RedisSessionHandler($this->connection, $options);
     }
 
     public function testConstructorWithDefaultOptions(): void
@@ -39,9 +42,8 @@ class RedisSessionHandlerTest extends TestCase
 
     public function testConstructorWithCustomIdGenerator(): void
     {
-        $handler = new RedisSessionHandler($this->connection, [
-            'id_generator' => new SecureSessionIdGenerator(32),
-        ]);
+        $options = new RedisSessionHandlerOptions(new SecureSessionIdGenerator(32));
+        $handler = new RedisSessionHandler($this->connection, $options);
         self::assertInstanceOf(RedisSessionHandler::class, $handler);
     }
 
