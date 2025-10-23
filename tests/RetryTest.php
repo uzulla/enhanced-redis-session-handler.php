@@ -100,12 +100,14 @@ class RetryTest extends TestCase
         }
 
         $records = $testHandler->getRecords();
-        $warningRecords = array_filter($records, function ($record) {
+        $warningRecords = array_filter($records, function ($record): bool {
             /** @phpstan-ignore-next-line */
             if (is_object($record) && property_exists($record, 'level')) {
+                /** @var object{level: object{getName(): string}, message: string} $record */
                 $levelName = $record->level->getName();
                 $message = $record->message;
             } else {
+                /** @var array{level_name?: string, message?: string} $record */
                 $levelName = $record['level_name'] ?? null;
                 $message = $record['message'] ?? null;
             }
@@ -152,12 +154,14 @@ class RetryTest extends TestCase
         self::assertTrue($result);
 
         $records = $testHandler->getRecords();
-        $infoRecords = array_filter($records, function ($record) {
+        $infoRecords = array_filter($records, function ($record): bool {
             /** @phpstan-ignore-next-line */
             if (is_object($record) && property_exists($record, 'level')) {
+                /** @var object{level: object{getName(): string}, message: string} $record */
                 $levelName = $record->level->getName();
                 $message = $record->message;
             } else {
+                /** @var array{level_name?: string, message?: string} $record */
                 $levelName = $record['level_name'] ?? null;
                 $message = $record['message'] ?? null;
             }

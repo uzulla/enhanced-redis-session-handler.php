@@ -53,12 +53,14 @@ class ErrorHandlingIntegrationTest extends TestCase
         self::assertFalse($result);
 
         $records = $testHandler->getRecords();
-        $errorRecords = array_filter($records, function ($record) {
+        $errorRecords = array_filter($records, function ($record): bool {
             /** @phpstan-ignore-next-line */
             if (is_object($record) && property_exists($record, 'level')) {
+                /** @var object{level: object{getName(): string}, message: string} $record */
                 $levelName = $record->level->getName();
                 $message = $record->message;
             } else {
+                /** @var array{level_name?: string, message?: string} $record */
                 $levelName = $record['level_name'] ?? null;
                 $message = $record['message'] ?? null;
             }
@@ -132,11 +134,13 @@ class ErrorHandlingIntegrationTest extends TestCase
         self::assertFalse($result);
 
         $records = $testHandler->getRecords();
-        $errorRecords = array_filter($records, function ($record) {
+        $errorRecords = array_filter($records, function ($record): bool {
             /** @phpstan-ignore-next-line */
             if (is_object($record) && property_exists($record, 'level')) {
+                /** @var object{level: object{getName(): string}} $record */
                 $levelName = $record->level->getName();
             } else {
+                /** @var array{level_name?: string} $record */
                 $levelName = $record['level_name'] ?? null;
             }
             return $levelName === 'ERROR' || $levelName === 'WARNING' || $levelName === 'CRITICAL';
@@ -176,12 +180,14 @@ class ErrorHandlingIntegrationTest extends TestCase
 
         $records = $testHandler->getRecords();
 
-        $warningRecords = array_filter($records, function ($record) {
+        $warningRecords = array_filter($records, function ($record): bool {
             /** @phpstan-ignore-next-line */
             if (is_object($record) && property_exists($record, 'level')) {
+                /** @var object{level: object{getName(): string}, message: string} $record */
                 $levelName = $record->level->getName();
                 $message = $record->message;
             } else {
+                /** @var array{level_name?: string, message?: string} $record */
                 $levelName = $record['level_name'] ?? null;
                 $message = $record['message'] ?? null;
             }
@@ -192,12 +198,14 @@ class ErrorHandlingIntegrationTest extends TestCase
 
         self::assertCount(3, $warningRecords);
 
-        $criticalRecords = array_filter($records, function ($record) {
+        $criticalRecords = array_filter($records, function ($record): bool {
             /** @phpstan-ignore-next-line */
             if (is_object($record) && property_exists($record, 'level')) {
+                /** @var object{level: object{getName(): string}, message: string} $record */
                 $levelName = $record->level->getName();
                 $message = $record->message;
             } else {
+                /** @var array{level_name?: string, message?: string} $record */
                 $levelName = $record['level_name'] ?? null;
                 $message = $record['message'] ?? null;
             }
