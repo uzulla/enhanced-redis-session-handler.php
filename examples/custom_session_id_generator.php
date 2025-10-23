@@ -18,12 +18,12 @@ $logger = new Logger('session');
 $logger->pushHandler(new StreamHandler('php://stdout', Logger::DEBUG));
 
 $config = new RedisConnectionConfig(
-    host: 'localhost',
-    port: 6379,
-    timeout: 2.5,
-    password: null,
-    database: 0,
-    prefix: 'session:'
+    'localhost',
+    6379,
+    2.5,
+    null,
+    0,
+    'session:'
 );
 
 $redis = new \Redis();
