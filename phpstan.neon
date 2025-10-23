@@ -6,3 +6,8 @@ parameters:
     paths:
         - src
         - tests
+    # TODO: この設定は、PHP 7.4サポートを終了し、全てのサポート対象PHPバージョンで
+    # Monolog\TestHandler::getRecords()の戻り値型が統一された時点で削除可能です。
+    # 現在はPHP 7.4では戻り値がmixedとして扱われ、PHP 8.3+ではarray<Monolog\LogRecord>として
+    # 扱われるため、@phpstan-ignore-next-lineの使用有無が異なり、この設定が必要です。
+    reportUnmatchedIgnoredErrors: false

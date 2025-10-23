@@ -131,44 +131,57 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
         assert(is_string($id));
         assert(is_string($data));
 
-        /** @var array<string, mixed> $unserializedData */
-        $unserializedData = [];
-        if ($data !== '') {
-            $unserialized = @unserialize($data);
-            if ($unserialized !== false || $data === 'b:0;') {
-                if (is_array($unserialized)) {
-                    /** @var array<string, mixed> $unserialized */
-                    $unserializedData = $unserialized;
+        try {
+            /** @var array<string, mixed> $unserializedData */
+            $unserializedData = [];
+            if ($data !== '') {
+                $unserialized = @unserialize($data);
+                if ($unserialized !== false || $data === 'b:0;') {
+                    if (is_array($unserialized)) {
+                        /** @var array<string, mixed> $unserialized */
+                        $unserializedData = $unserialized;
+                    }
                 }
             }
-        }
 
-        foreach ($this->writeHooks as $hook) {
-            /** @var array<string, mixed> $unserializedData */
-            $unserializedData = $hook->beforeWrite($id, $unserializedData);
-        }
-
-        foreach ($this->writeFilters as $filter) {
-            /** @var array<string, mixed> $unserializedData */
-            if (!$filter->shouldWrite($id, $unserializedData)) {
-                $this->logger->debug('Write operation cancelled by filter', [
-                    'session_id' => $id,
-                    'filter' => get_class($filter),
-                ]);
-                return true; // Return true because cancellation is not an error
+            foreach ($this->writeHooks as $hook) {
+                /** @var array<string, mixed> $unserializedData */
+                $unserializedData = $hook->beforeWrite($id, $unserializedData);
             }
+
+            foreach ($this->writeFilters as $filter) {
+                /** @var array<string, mixed> $unserializedData */
+                if (!$filter->shouldWrite($id, $unserializedData)) {
+                    $this->logger->debug('Write operation cancelled by filter', [
+                        'session_id' => $id,
+                        'filter' => get_class($filter),
+                    ]);
+                    return true; // Return true because cancellation is not an error
+                }
+            }
+
+            $serializedData = serialize($unserializedData);
+
+            $ttl = $this->getTTL();
+            $success = $this->connection->set($id, $serializedData, $ttl);
+
+            foreach ($this->writeHooks as $hook) {
+                $hook->afterWrite($id, $success);
+            }
+
+            return $success;
+        } catch (\Throwable $e) {
+            foreach ($this->writeHooks as $hook) {
+                $hook->onWriteError($id, $e);
+            }
+
+            $this->logger->error('Write operation failed', [
+                'session_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
         }
-
-        $serializedData = serialize($unserializedData);
-
-        $ttl = $this->getTTL();
-        $success = $this->connection->set($id, $serializedData, $ttl);
-
-        foreach ($this->writeHooks as $hook) {
-            $hook->afterWrite($id, $success);
-        }
-
-        return $success;
     }
 
     /**
