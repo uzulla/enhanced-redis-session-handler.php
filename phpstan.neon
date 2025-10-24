@@ -11,3 +11,26 @@ parameters:
     # 現在はPHP 7.4では戻り値がmixedとして扱われ、PHP 8.3+ではarray<Monolog\LogRecord>として
     # 扱われるため、@phpstan-ignore-next-lineの使用有無が異なり、この設定が必要です。
     reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        # Monolog 2.x (PHP 7.4-8.2) と Monolog 3.x (PHP 8.3+) の型の違いによる警告を抑制
+        # 
+        # 理由:
+        # - Monolog 2.x: TestHandler::getRecords() は array<array{...}> を返す
+        # - Monolog 3.x: TestHandler::getRecords() は array<Monolog\LogRecord> を返す
+        # 
+        # LogRecordオブジェクトを配列として扱うため、(array)キャストを使用しています。
+        # PHP 8.2のPHPStanは、Monolog 2.xの型を正確に推論し、既に配列であるため
+        # キャストが不要と判定しますが、PHP 8.3+ではLogRecordオブジェクトのため
+        # キャストが必要です。
+        # 
+        # この警告は実行時の動作に影響を与えません:
+        # - PHP 8.2以下: 配列を配列にキャストしても問題なし（冗長だが無害）
+        # - PHP 8.3以上: LogRecordオブジェクトを配列にキャストして正しく動作
+        # 
+        # TODO: PHP 7.4サポート終了後、Monolog 3.xのみをサポートする場合、
+        # LogRecordオブジェクトのプロパティに直接アクセスする方法に書き換え可能
+        -
+            message: '#^Casting to array<string, array<mixed>\|DateTimeImmutable\|int\|string> something that''s already array<string, array<mixed>\|DateTimeImmutable\|int\|string>\.$#'
+            paths:
+                - tests/Hook/WriteHookTest.php
+                - tests/Integration/WriteHookIntegrationTest.php
