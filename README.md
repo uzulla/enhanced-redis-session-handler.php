@@ -33,9 +33,53 @@ enhanced-redis-session-handler.phpは、PHPの標準セッションハンドラ�
 composer require uzulla/enhanced-redis-session-handler
 ```
 
+## クイックスタート
+
+### 基本的な使い方
+
+```php
+<?php
+
+use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+
+// デフォルト設定でハンドラを作成
+$handler = SessionHandlerFactory::createDefault()->build();
+
+// セッションハンドラとして登録
+session_set_save_handler($handler, true);
+session_start();
+```
+
+### カスタム設定
+
+```php
+<?php
+
+use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+
+$handler = SessionHandlerFactory::createDefault()
+    ->withHost('redis.example.com')
+    ->withPort(6380)
+    ->withPassword('secret')
+    ->withDatabase(2)
+    ->withPrefix('myapp:session:')
+    ->withMaxLifetime(7200)
+    ->build();
+
+session_set_save_handler($handler, true);
+session_start();
+```
+
+詳細な使用方法については、[doc/factory-usage.md](doc/factory-usage.md)を参照してください。
+
 ## ドキュメント
 
 詳細なドキュメントは`doc/`ディレクトリに用意されています：
+
+- **[doc/factory-usage.md](doc/factory-usage.md)**: SessionHandlerFactory使用ガイド
+  - ファクトリーパターンによる簡単なインスタンス作成
+  - ビルダーパターンを使用した設定のカスタマイズ
+  - 実用的な使用例とベストプラクティス
 
 - **[doc/architecture.md](doc/architecture.md)**: システムアーキテクチャ設計書
   - プロジェクト概要と主要な特徴
