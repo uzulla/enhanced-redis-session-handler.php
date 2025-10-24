@@ -59,18 +59,18 @@ try {
 
     echo "1. Setting up primary Redis connection...\n";
     $primaryConfig = new RedisConnectionConfig(
-        host: 'localhost',
-        port: 6379,
-        database: 0,
-        prefix: 'session:primary:'
+        'localhost',
+        6379,
+        0,
+        'session:primary:'
     );
 
     echo "2. Setting up secondary Redis connection...\n";
     $secondaryConfig = new RedisConnectionConfig(
-        host: 'localhost',
-        port: 6379,
-        database: 1, // 異なるデータベース / Different database
-        prefix: 'session:secondary:'
+        'localhost',
+        6379,
+        1, // 異なるデータベース / Different database
+        'session:secondary:'
     );
 
     $secondaryRedis = new \Redis();
@@ -82,17 +82,17 @@ try {
 
     echo "3. Creating session configuration with double write hook...\n";
     $sessionConfig = new SessionConfig(
-        connectionConfig: $primaryConfig,
-        idGenerator: new DefaultSessionIdGenerator(),
-        maxLifetime: 1440,
-        logger: $logger
+        $primaryConfig,
+        new DefaultSessionIdGenerator(),
+        1440,
+        $logger
     );
 
     $doubleWriteHook = new DoubleWriteHook(
-        secondaryConnection: $secondaryConnection,
-        ttl: 1440,
-        failOnSecondaryError: false, // セカンダリ書き込み失敗時にエラーを投げない
-        logger: $logger
+        $secondaryConnection,
+        1440,
+        false, // セカンダリ書き込み失敗時にエラーを投げない
+        $logger
     );
 
     $sessionConfig->addWriteHook($doubleWriteHook);
@@ -165,18 +165,18 @@ try {
     $logger->pushHandler(new StreamHandler('php://stdout', Logger::INFO));
 
     $primaryConfig = new RedisConnectionConfig(
-        host: 'localhost',
-        port: 6379,
-        database: 0,
-        prefix: 'session:primary:'
+        'localhost',
+        6379,
+        0,
+        'session:primary:'
     );
 
     $secondaryConfig = new RedisConnectionConfig(
-        host: 'localhost',
-        port: 9999, // 存在しないポート / Non-existent port
-        database: 0,
-        prefix: 'session:secondary:',
-        timeout: 0.5 // 短いタイムアウト / Short timeout
+        'localhost',
+        9999, // 存在しないポート / Non-existent port
+        0,
+        'session:secondary:',
+        0.5 // 短いタイムアウト / Short timeout
     );
 
     $secondaryRedis = new \Redis();
@@ -187,17 +187,17 @@ try {
     );
 
     $sessionConfig = new SessionConfig(
-        connectionConfig: $primaryConfig,
-        idGenerator: new DefaultSessionIdGenerator(),
-        maxLifetime: 1440,
-        logger: $logger
+        $primaryConfig,
+        new DefaultSessionIdGenerator(),
+        1440,
+        $logger
     );
 
     $doubleWriteHook = new DoubleWriteHook(
-        secondaryConnection: $secondaryConnection,
-        ttl: 1440,
-        failOnSecondaryError: false,
-        logger: $logger
+        $secondaryConnection,
+        1440,
+        false,
+        $logger
     );
 
     $sessionConfig->addWriteHook($doubleWriteHook);

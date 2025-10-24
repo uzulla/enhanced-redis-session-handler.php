@@ -65,25 +65,25 @@ try {
     echo "2. Creating session configuration with logging...\n";
 
     $connectionConfig = new RedisConnectionConfig(
-        host: 'localhost',
-        port: 6379,
-        database: 0,
-        prefix: 'session:logged:'
+        'localhost',
+        6379,
+        0,
+        'session:logged:'
     );
 
     $sessionConfig = new SessionConfig(
-        connectionConfig: $connectionConfig,
-        idGenerator: new DefaultSessionIdGenerator(),
-        maxLifetime: 1440,
-        logger: $logger
+        $connectionConfig,
+        new DefaultSessionIdGenerator(),
+        1440,
+        $logger
     );
 
     $loggingHook = new LoggingHook(
-        logger: $logger,
-        beforeWriteLevel: LogLevel::INFO,
-        afterWriteLevel: LogLevel::INFO,
-        errorLevel: LogLevel::ERROR,
-        logData: false // セキュリティのため、デフォルトではデータをログに記録しない
+        $logger,
+        LogLevel::INFO,
+        LogLevel::INFO,
+        LogLevel::ERROR,
+        false // セキュリティのため、デフォルトではデータをログに記録しない
     );
 
     $sessionConfig->addWriteHook($loggingHook);
@@ -153,25 +153,25 @@ try {
     echo "2. Creating session configuration...\n";
 
     $connectionConfig = new RedisConnectionConfig(
-        host: 'localhost',
-        port: 6379,
-        database: 0,
-        prefix: 'session:file-logged:'
+        'localhost',
+        6379,
+        0,
+        'session:file-logged:'
     );
 
     $sessionConfig = new SessionConfig(
-        connectionConfig: $connectionConfig,
-        idGenerator: new DefaultSessionIdGenerator(),
-        maxLifetime: 1440,
-        logger: $logger
+        $connectionConfig,
+        new DefaultSessionIdGenerator(),
+        1440,
+        $logger
     );
 
     $loggingHook = new LoggingHook(
-        logger: $logger,
-        beforeWriteLevel: LogLevel::DEBUG,
-        afterWriteLevel: LogLevel::DEBUG,
-        errorLevel: LogLevel::ERROR,
-        logData: false
+        $logger,
+        LogLevel::DEBUG,
+        LogLevel::DEBUG,
+        LogLevel::ERROR,
+        false
     );
 
     $sessionConfig->addWriteHook($loggingHook);
@@ -224,25 +224,25 @@ try {
     echo "2. Creating session configuration with detailed logging...\n";
 
     $connectionConfig = new RedisConnectionConfig(
-        host: 'localhost',
-        port: 6379,
-        database: 0,
-        prefix: 'session:detailed:'
+        'localhost',
+        6379,
+        0,
+        'session:detailed:'
     );
 
     $sessionConfig = new SessionConfig(
-        connectionConfig: $connectionConfig,
-        idGenerator: new DefaultSessionIdGenerator(),
-        maxLifetime: 1440,
-        logger: $logger
+        $connectionConfig,
+        new DefaultSessionIdGenerator(),
+        1440,
+        $logger
     );
 
     $loggingHook = new LoggingHook(
-        logger: $logger,
-        beforeWriteLevel: LogLevel::DEBUG,
-        afterWriteLevel: LogLevel::DEBUG,
-        errorLevel: LogLevel::ERROR,
-        logData: true // ⚠️ 本番環境では使用しないこと / DO NOT use in production
+        $logger,
+        LogLevel::DEBUG,
+        LogLevel::DEBUG,
+        LogLevel::ERROR,
+        true // ⚠️ 本番環境では使用しないこと / DO NOT use in production
     );
 
     $sessionConfig->addWriteHook($loggingHook);
@@ -310,25 +310,25 @@ try {
     echo "2. Creating session configuration...\n";
 
     $connectionConfig = new RedisConnectionConfig(
-        host: 'localhost',
-        port: 6379,
-        database: 0,
-        prefix: 'session:multi:'
+        'localhost',
+        6379,
+        0,
+        'session:multi:'
     );
 
     $sessionConfig = new SessionConfig(
-        connectionConfig: $connectionConfig,
-        idGenerator: new DefaultSessionIdGenerator(),
-        maxLifetime: 1440,
-        logger: $logger
+        $connectionConfig,
+        new DefaultSessionIdGenerator(),
+        1440,
+        $logger
     );
 
     $loggingHook = new LoggingHook(
-        logger: $logger,
-        beforeWriteLevel: LogLevel::DEBUG,
-        afterWriteLevel: LogLevel::INFO,
-        errorLevel: LogLevel::ERROR,
-        logData: false
+        $logger,
+        LogLevel::DEBUG,
+        LogLevel::INFO,
+        LogLevel::ERROR,
+        false
     );
 
     $sessionConfig->addWriteHook($loggingHook);

@@ -31,21 +31,21 @@ echo "=== Enhanced Redis Session Handler - Basic Usage Example ===\n\n";
 try {
     echo "1. Creating Redis connection configuration...\n";
     $connectionConfig = new RedisConnectionConfig(
-        host: 'localhost',
-        port: 6379,
-        timeout: 2.5,
-        password: null,
-        database: 0,
-        prefix: 'session:',
-        persistent: false
+        'localhost',
+        6379,
+        2.5,
+        null,
+        0,
+        'session:',
+        false
     );
 
     echo "2. Creating session configuration...\n";
     $sessionConfig = new SessionConfig(
-        connectionConfig: $connectionConfig,
-        idGenerator: new DefaultSessionIdGenerator(),
-        maxLifetime: 1440, // 24分 / 24 minutes
-        logger: new NullLogger()
+        $connectionConfig,
+        new DefaultSessionIdGenerator(),
+        1440, // 24分 / 24 minutes
+        new NullLogger()
     );
 
     echo "3. Building session handler...\n";

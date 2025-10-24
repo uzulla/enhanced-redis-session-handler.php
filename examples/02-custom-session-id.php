@@ -39,16 +39,16 @@ try {
     echo "Creating session handler with prefixed session ID generator...\n";
 
     $connectionConfig = new RedisConnectionConfig(
-        host: 'localhost',
-        port: 6379,
-        prefix: 'session:prefixed:'
+        'localhost',
+        6379,
+        'session:prefixed:'
     );
 
     $sessionConfig = new SessionConfig(
-        connectionConfig: $connectionConfig,
-        idGenerator: new PrefixedSessionIdGenerator('myapp', 32),
-        maxLifetime: 1440,
-        logger: new NullLogger()
+        $connectionConfig,
+        new PrefixedSessionIdGenerator('myapp', 32),
+        1440,
+        new NullLogger()
     );
 
     $factory = new SessionHandlerFactory($sessionConfig);
@@ -84,16 +84,16 @@ try {
     echo "Creating session handler with timestamp-prefixed session ID generator...\n";
 
     $connectionConfig = new RedisConnectionConfig(
-        host: 'localhost',
-        port: 6379,
-        prefix: 'session:timestamped:'
+        'localhost',
+        6379,
+        'session:timestamped:'
     );
 
     $sessionConfig = new SessionConfig(
-        connectionConfig: $connectionConfig,
-        idGenerator: new TimestampPrefixedSessionIdGenerator(32),
-        maxLifetime: 1440,
-        logger: new NullLogger()
+        $connectionConfig,
+        new TimestampPrefixedSessionIdGenerator(32),
+        1440,
+        new NullLogger()
     );
 
     $factory = new SessionHandlerFactory($sessionConfig);
@@ -136,16 +136,16 @@ try {
 
     echo "Application 1: Admin Panel\n";
     $adminConfig = new RedisConnectionConfig(
-        host: 'localhost',
-        port: 6379,
-        prefix: 'session:admin:'
+        'localhost',
+        6379,
+        'session:admin:'
     );
 
     $adminSessionConfig = new SessionConfig(
-        connectionConfig: $adminConfig,
-        idGenerator: new PrefixedSessionIdGenerator('admin', 32),
-        maxLifetime: 1440,
-        logger: new NullLogger()
+        $adminConfig,
+        new PrefixedSessionIdGenerator('admin', 32),
+        1440,
+        new NullLogger()
     );
 
     $adminFactory = new SessionHandlerFactory($adminSessionConfig);
@@ -164,16 +164,16 @@ try {
 
     echo "Application 2: API\n";
     $apiConfig = new RedisConnectionConfig(
-        host: 'localhost',
-        port: 6379,
-        prefix: 'session:api:'
+        'localhost',
+        6379,
+        'session:api:'
     );
 
     $apiSessionConfig = new SessionConfig(
-        connectionConfig: $apiConfig,
-        idGenerator: new PrefixedSessionIdGenerator('api', 32),
-        maxLifetime: 1440,
-        logger: new NullLogger()
+        $apiConfig,
+        new PrefixedSessionIdGenerator('api', 32),
+        1440,
+        new NullLogger()
     );
 
     $apiFactory = new SessionHandlerFactory($apiSessionConfig);
