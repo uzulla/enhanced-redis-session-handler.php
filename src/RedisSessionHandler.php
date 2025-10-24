@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler;
 
+use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use SessionHandlerInterface;
 use SessionUpdateTimestampHandlerInterface;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
@@ -13,7 +15,7 @@ use Uzulla\EnhancedRedisSessionHandler\Hook\WriteHookInterface;
 use Uzulla\EnhancedRedisSessionHandler\Hook\WriteFilterInterface;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\SessionIdGeneratorInterface;
 
-class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimestampHandlerInterface
+class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimestampHandlerInterface, LoggerAwareInterface
 {
     private RedisConnection $connection;
     private SessionIdGeneratorInterface $idGenerator;
@@ -53,6 +55,17 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
     public function addWriteFilter(WriteFilterInterface $filter): void
     {
         $this->writeFilters[] = $filter;
+    }
+
+    /**
+     * Sets a logger instance on the object.
+     *
+     * @param LoggerInterface $logger
+     * @return void
+     */
+    public function setLogger(LoggerInterface $logger): void
+    {
+        $this->logger = $logger;
     }
 
     /**

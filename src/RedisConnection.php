@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler;
 
+use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerInterface;
 use Redis;
 use RedisException;
@@ -11,7 +12,7 @@ use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Exception\ConnectionException;
 use Uzulla\EnhancedRedisSessionHandler\Exception\OperationException;
 
-class RedisConnection
+class RedisConnection implements LoggerAwareInterface
 {
     private Redis $redis;
     private RedisConnectionConfig $config;
@@ -31,50 +32,92 @@ class RedisConnection
             return true;
         }
 
-        try {
-            $isPersistent = $this->config->isPersistent();
-            $host = $this->config->getHost();
-            $port = $this->config->getPort();
-            $timeout = $this->config->getTimeout();
-            $retryInterval = $this->config->getRetryInterval();
+        $maxRetries = $this->config->getMaxRetries();
+        $retryInterval = $this->config->getRetryInterval();
+        $lastException = null;
 
-            if ($isPersistent) {
-                $result = $this->redis->pconnect($host, $port, $timeout, null, $retryInterval);
-            } else {
-                $result = $this->redis->connect($host, $port, $timeout, null, $retryInterval);
-            }
+        for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+            try {
+                $isPersistent = $this->config->isPersistent();
+                $host = $this->config->getHost();
+                $port = $this->config->getPort();
+                $timeout = $this->config->getTimeout();
 
-            if (!$result) {
-                throw new ConnectionException('Failed to connect to Redis');
-            }
+                if ($isPersistent) {
+                    $result = $this->redis->pconnect($host, $port, $timeout, null, $retryInterval);
+                } else {
+                    $result = $this->redis->connect($host, $port, $timeout, null, $retryInterval);
+                }
 
-            $password = $this->config->getPassword();
-            if ($password !== null) {
-                if (!$this->redis->auth($password)) {
-                    throw new ConnectionException('Redis authentication failed');
+                if (!$result) {
+                    throw new ConnectionException('Failed to connect to Redis');
+                }
+
+                $password = $this->config->getPassword();
+                if ($password !== null) {
+                    if (!$this->redis->auth($password)) {
+                        throw new ConnectionException('Redis authentication failed');
+                    }
+                }
+
+                $database = $this->config->getDatabase();
+                if ($database !== 0) {
+                    if (!$this->redis->select($database)) {
+                        throw new ConnectionException('Failed to select Redis database');
+                    }
+                }
+
+                $this->redis->setOption(Redis::OPT_READ_TIMEOUT, $this->config->getReadTimeout());
+                $this->redis->setOption(Redis::OPT_PREFIX, $this->config->getPrefix());
+
+                $this->connected = true;
+
+                if ($attempt > 1) {
+                    $this->logger->info('Redis connection succeeded after retry', [
+                        'attempt' => $attempt,
+                        'host' => $host,
+                        'port' => $port,
+                    ]);
+                }
+
+                return true;
+            } catch (RedisException | ConnectionException $e) {
+                $lastException = $e;
+
+                $this->logger->warning('Redis connection attempt failed', [
+                    'attempt' => $attempt,
+                    'max_retries' => $maxRetries,
+                    'exception' => $e,
+                    'host' => $this->config->getHost(),
+                    'port' => $this->config->getPort(),
+                ]);
+
+                if ($attempt < $maxRetries) {
+                    $sleepMs = $retryInterval * $attempt;
+                    $this->logger->debug('Retrying Redis connection', [
+                        'next_attempt' => $attempt + 1,
+                        'sleep_ms' => $sleepMs,
+                    ]);
+                    usleep($sleepMs * 1000);
                 }
             }
-
-            $database = $this->config->getDatabase();
-            if ($database !== 0) {
-                if (!$this->redis->select($database)) {
-                    throw new ConnectionException('Failed to select Redis database');
-                }
-            }
-
-            $this->redis->setOption(Redis::OPT_READ_TIMEOUT, $this->config->getReadTimeout());
-            $this->redis->setOption(Redis::OPT_PREFIX, $this->config->getPrefix());
-
-            $this->connected = true;
-            return true;
-        } catch (RedisException $e) {
-            $this->logger->critical('Redis connection failed', [
-                'error' => $e->getMessage(),
-                'host' => $this->config->getHost(),
-                'port' => $this->config->getPort(),
-            ]);
-            throw new ConnectionException('Failed to connect to Redis: ' . $e->getMessage(), 0, $e);
         }
+
+        $errorMessage = $lastException !== null ? $lastException->getMessage() : 'Unknown error';
+
+        $this->logger->critical('Redis connection failed after all retries', [
+            'attempts' => $maxRetries,
+            'error' => $errorMessage,
+            'exception' => $lastException ?? null,
+            'host' => $this->config->getHost(),
+            'port' => $this->config->getPort(),
+        ]);
+
+        throw new ConnectionException(
+            'Failed to connect to Redis after ' . $maxRetries . ' attempts: ' . $errorMessage,
+            0,
+            $lastException
+        );
     }
 
     public function disconnect(): void
@@ -223,5 +266,16 @@ class RedisConnection
         } catch (RedisException $e) {
             return false;
         }
+    }
+
+    /**
+     * Sets a logger instance on the object.
+     *
+     * @param LoggerInterface $logger
+     * @return void
+     */
+    public function setLogger(LoggerInterface $logger): void
+    {
+        $this->logger = $logger;
     }
 }
