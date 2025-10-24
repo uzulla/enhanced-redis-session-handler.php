@@ -2,7 +2,7 @@
 
 ## 概要
 
-`SessionHandlerFactory`は、`RedisSessionHandler`のインスタンスを簡単に作成するためのファクトリークラスです。ビルダーパターンを採用しており、流暢なインターフェース（Fluent Interface）で設定を行うことができます。
+`SessionHandlerFactory`は、`RedisSessionHandler`のインスタンスを作成するためのファクトリークラスです。`SessionConfig`を受け取り、設定に基づいてハンドラを生成します。
 
 ## 基本的な使い方
 
@@ -13,188 +13,112 @@
 ```php
 <?php
 
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
+use Psr\Log\NullLogger;
 
-// デフォルト設定でハンドラを作成
-$handler = SessionHandlerFactory::createDefault()->build();
+// 設定を作成
+$config = new SessionConfig(
+    new RedisConnectionConfig(),
+    new DefaultSessionIdGenerator(),
+    (int)ini_get('session.gc_maxlifetime'),
+    new NullLogger()
+);
+
+// ファクトリーでハンドラを作成
+$factory = new SessionHandlerFactory($config);
+$handler = $factory->build();
 
 // セッションハンドラとして登録
 session_set_save_handler($handler, true);
 session_start();
 ```
 
-デフォルト設定：
+デフォルトのRedis接続設定：
 - ホスト: `localhost`
 - ポート: `6379`
 - タイムアウト: `2.5`秒
 - データベース: `0`
 - プレフィックス: `session:`
-- 最大ライフタイム: `ini_get('session.gc_maxlifetime')`の値
 
 ### カスタム設定でのインスタンス作成
 
-ビルダーパターンを使用して、各種設定をカスタマイズできます：
+各種設定をカスタマイズする場合は、`RedisConnectionConfig`と`SessionConfig`のコンストラクタで指定します：
 
 ```php
 <?php
 
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
+use Psr\Log\NullLogger;
 
-$handler = SessionHandlerFactory::createDefault()
-    ->withHost('redis.example.com')
-    ->withPort(6380)
-    ->withPassword('secret')
-    ->withDatabase(2)
-    ->withPrefix('myapp:session:')
-    ->withMaxLifetime(7200)
-    ->build();
+// Redis接続設定を作成
+$connectionConfig = new RedisConnectionConfig(
+    host: 'redis.example.com',
+    port: 6380,
+    timeout: 2.5,
+    password: 'secret',
+    database: 2,
+    prefix: 'myapp:session:',
+    persistent: false,
+    retryInterval: 100,
+    readTimeout: 2.5,
+    maxRetries: 3
+);
+
+// セッション設定を作成
+$config = new SessionConfig(
+    $connectionConfig,
+    new DefaultSessionIdGenerator(),
+    7200,  // 最大ライフタイム（秒）
+    new NullLogger()
+);
+
+// ファクトリーでハンドラを作成
+$factory = new SessionHandlerFactory($config);
+$handler = $factory->build();
 
 session_set_save_handler($handler, true);
 session_start();
 ```
 
-## 利用可能な設定メソッド
+## 設定パラメータ
 
-### Redis接続設定
+### RedisConnectionConfig
 
-#### withHost(string $host)
-Redisサーバーのホスト名またはIPアドレスを設定します。
+Redis接続に関する設定を行います。コンストラクタのパラメータ：
 
-```php
-$factory->withHost('redis.example.com');
-```
+- `host` (string): Redisサーバーのホスト名またはIPアドレス（デフォルト: `'localhost'`）
+- `port` (int): Redisサーバーのポート番号（デフォルト: `6379`）
+- `timeout` (float): 接続タイムアウト時間（秒）（デフォルト: `2.5`）
+- `password` (?string): Redis認証用のパスワード（デフォルト: `null`）
+- `database` (int): 使用するRedisデータベース番号（デフォルト: `0`）
+- `prefix` (string): セッションキーのプレフィックス（デフォルト: `'session:'`）
+- `persistent` (bool): 永続的接続を使用するか（デフォルト: `false`）
+- `retryInterval` (int): リトライ間隔（ミリ秒）（デフォルト: `100`）
+- `readTimeout` (float): 読み取りタイムアウト時間（秒）（デフォルト: `2.5`）
+- `maxRetries` (int): 接続失敗時の最大リトライ回数（デフォルト: `3`）
 
-#### withPort(int $port)
-Redisサーバーのポート番号を設定します。
+### SessionConfig
 
-```php
-$factory->withPort(6380);
-```
+セッションハンドラの設定を行います。コンストラクタのパラメータ：
 
-#### withPassword(?string $password)
-Redis認証用のパスワードを設定します。
-
-```php
-$factory->withPassword('secret');
-```
-
-#### withDatabase(int $database)
-使用するRedisデータベース番号を設定します（0-15）。
-
-```php
-$factory->withDatabase(2);
-```
-
-#### withPrefix(string $prefix)
-セッションキーのプレフィックスを設定します。
-
-```php
-$factory->withPrefix('myapp:session:');
-```
-
-#### withPersistent(bool $persistent)
-永続的接続を使用するかどうかを設定します。
-
-```php
-$factory->withPersistent(true);
-```
-
-#### withTimeout(float $timeout)
-接続タイムアウト時間（秒）を設定します。
-
-```php
-$factory->withTimeout(5.0);
-```
-
-#### withReadTimeout(float $readTimeout)
-読み取りタイムアウト時間（秒）を設定します。
-
-```php
-$factory->withReadTimeout(5.0);
-```
-
-#### withMaxRetries(int $maxRetries)
-接続失敗時の最大リトライ回数を設定します。
-
-```php
-$factory->withMaxRetries(5);
-```
-
-#### withRetryInterval(int $retryInterval)
-リトライ間隔（ミリ秒）を設定します。
-
-```php
-$factory->withRetryInterval(200);
-```
-
-### セッション設定
-
-#### withMaxLifetime(int $maxLifetime)
-セッションの最大ライフタイム（秒）を設定します。
-
-```php
-$factory->withMaxLifetime(3600); // 1時間
-```
-
-#### withIdGenerator(SessionIdGeneratorInterface $generator)
-カスタムセッションIDジェネレータを設定します。
-
-```php
-use Uzulla\EnhancedRedisSessionHandler\SessionId\SecureSessionIdGenerator;
-
-$factory->withIdGenerator(new SecureSessionIdGenerator());
-```
-
-#### withLogger(LoggerInterface $logger)
-PSR-3準拠のロガーを設定します。
-
-```php
-use Monolog\Logger;
-use Monolog\Handler\StreamHandler;
-
-$logger = new Logger('session');
-$logger->pushHandler(new StreamHandler('/var/log/session.log'));
-
-$factory->withLogger($logger);
-```
+- `connectionConfig` (RedisConnectionConfig): Redis接続設定
+- `idGenerator` (SessionIdGeneratorInterface): セッションIDジェネレータ
+- `maxLifetime` (int): セッションの最大ライフタイム（秒）
+- `logger` (LoggerInterface): PSR-3準拠のロガー
 
 ### フック設定
 
-#### withReadHook(ReadHookInterface $hook)
-読み込み時のフックを追加します。
+`SessionConfig`には、フックを追加するためのメソッドがあります：
 
-```php
-use Uzulla\EnhancedRedisSessionHandler\Hook\ReadTimestampHook;
-
-$factory->withReadHook(new ReadTimestampHook());
-```
-
-#### withWriteHook(WriteHookInterface $hook)
-書き込み時のフックを追加します。
-
-```php
-use Uzulla\EnhancedRedisSessionHandler\Hook\LoggingHook;
-
-$logger = new Logger('session');
-$factory->withWriteHook(new LoggingHook($logger));
-```
-
-#### withWriteFilter(WriteFilterInterface $filter)
-書き込みフィルターを追加します。
-
-```php
-use Uzulla\EnhancedRedisSessionHandler\Hook\WriteFilterInterface;
-
-class EmptySessionFilter implements WriteFilterInterface
-{
-    public function shouldWrite(string $sessionId, array $data): bool
-    {
-        return !empty($data);
-    }
-}
-
-$factory->withWriteFilter(new EmptySessionFilter());
-```
+- `addReadHook(ReadHookInterface $hook)`: 読み込み時のフックを追加
+- `addWriteHook(WriteHookInterface $hook)`: 書き込み時のフックを追加
+- `addWriteFilter(WriteFilterInterface $filter)`: 書き込みフィルターを追加
 
 ## 実用例
 
@@ -203,7 +127,10 @@ $factory->withWriteFilter(new EmptySessionFilter());
 ```php
 <?php
 
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\Hook\LoggingHook;
 use Uzulla\EnhancedRedisSessionHandler\Hook\ReadTimestampHook;
 use Monolog\Logger;
@@ -213,20 +140,35 @@ use Monolog\Handler\StreamHandler;
 $logger = new Logger('session');
 $logger->pushHandler(new StreamHandler('/var/log/session.log', Logger::WARNING));
 
+// Redis接続設定
+$connectionConfig = new RedisConnectionConfig(
+    host: getenv('REDIS_HOST') ?: 'localhost',
+    port: (int)(getenv('REDIS_PORT') ?: 6379),
+    timeout: 2.5,
+    password: getenv('REDIS_PASSWORD') ?: null,
+    database: 1,
+    prefix: 'prod:session:',
+    persistent: true,
+    retryInterval: 100,
+    readTimeout: 2.5,
+    maxRetries: 5
+);
+
+// セッション設定
+$config = new SessionConfig(
+    $connectionConfig,
+    new DefaultSessionIdGenerator(),
+    3600,
+    $logger
+);
+
+// フックを追加
+$config->addReadHook(new ReadTimestampHook());
+$config->addWriteHook(new LoggingHook($logger));
+
 // ハンドラの作成
-$handler = SessionHandlerFactory::createDefault()
-    ->withHost(getenv('REDIS_HOST') ?: 'localhost')
-    ->withPort((int)(getenv('REDIS_PORT') ?: 6379))
-    ->withPassword(getenv('REDIS_PASSWORD') ?: null)
-    ->withDatabase(1)
-    ->withPrefix('prod:session:')
-    ->withMaxLifetime(3600)
-    ->withPersistent(true)
-    ->withMaxRetries(5)
-    ->withLogger($logger)
-    ->withReadHook(new ReadTimestampHook())
-    ->withWriteHook(new LoggingHook($logger))
-    ->build();
+$factory = new SessionHandlerFactory($config);
+$handler = $factory->build();
 
 session_set_save_handler($handler, true);
 session_start();
@@ -237,7 +179,10 @@ session_start();
 ```php
 <?php
 
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 
@@ -245,13 +190,31 @@ use Monolog\Handler\StreamHandler;
 $logger = new Logger('session');
 $logger->pushHandler(new StreamHandler('php://stdout', Logger::DEBUG));
 
-$handler = SessionHandlerFactory::createDefault()
-    ->withHost('localhost')
-    ->withPort(6379)
-    ->withPrefix('dev:session:')
-    ->withMaxLifetime(86400) // 24時間
-    ->withLogger($logger)
-    ->build();
+// Redis接続設定
+$connectionConfig = new RedisConnectionConfig(
+    host: 'localhost',
+    port: 6379,
+    timeout: 2.5,
+    password: null,
+    database: 0,
+    prefix: 'dev:session:',
+    persistent: false,
+    retryInterval: 100,
+    readTimeout: 2.5,
+    maxRetries: 3
+);
+
+// セッション設定
+$config = new SessionConfig(
+    $connectionConfig,
+    new DefaultSessionIdGenerator(),
+    86400,  // 24時間
+    $logger
+);
+
+// ハンドラの作成
+$factory = new SessionHandlerFactory($config);
+$handler = $factory->build();
 
 session_set_save_handler($handler, true);
 session_start();
@@ -262,71 +225,97 @@ session_start();
 ```php
 <?php
 
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\Hook\ReadTimestampHook;
 use Uzulla\EnhancedRedisSessionHandler\Hook\FallbackReadHook;
 use Uzulla\EnhancedRedisSessionHandler\Hook\LoggingHook;
 use Uzulla\EnhancedRedisSessionHandler\Hook\DoubleWriteHook;
+use Psr\Log\NullLogger;
 
-$handler = SessionHandlerFactory::createDefault()
-    ->withHost('redis-primary.example.com')
-    ->withReadHook(new ReadTimestampHook())
-    ->withReadHook(new FallbackReadHook($fallbackConnection))
-    ->withWriteHook(new LoggingHook($logger))
-    ->withWriteHook(new DoubleWriteHook($secondaryConnection))
-    ->build();
+// Redis接続設定
+$connectionConfig = new RedisConnectionConfig(
+    host: 'redis-primary.example.com',
+    port: 6379,
+    timeout: 2.5,
+    password: null,
+    database: 0,
+    prefix: 'session:',
+    persistent: false,
+    retryInterval: 100,
+    readTimeout: 2.5,
+    maxRetries: 3
+);
+
+// セッション設定
+$config = new SessionConfig(
+    $connectionConfig,
+    new DefaultSessionIdGenerator(),
+    3600,
+    new NullLogger()
+);
+
+// 複数のフックを追加
+$config->addReadHook(new ReadTimestampHook());
+$config->addReadHook(new FallbackReadHook($fallbackConnection));
+$config->addWriteHook(new LoggingHook($logger));
+$config->addWriteHook(new DoubleWriteHook($secondaryConnection));
+
+// ハンドラの作成
+$factory = new SessionHandlerFactory($config);
+$handler = $factory->build();
 
 session_set_save_handler($handler, true);
 session_start();
 ```
 
-## SessionConfigクラスとの併用
+## 設定の変更
 
-より高度な設定が必要な場合は、`SessionConfig`クラスを直接使用することもできます：
+設定を後から変更する必要がある場合は、`SessionConfig`のセッターメソッドを使用できます：
 
 ```php
 <?php
 
-use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
-use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
+use Uzulla\EnhancedRedisSessionHandler\SessionId\SecureSessionIdGenerator;
+use Psr\Log\NullLogger;
 
-// 接続設定を作成
-$connectionConfig = new RedisConnectionConfig(
+// 初期設定
+$config = new SessionConfig(
+    new RedisConnectionConfig(),
+    new DefaultSessionIdGenerator(),
+    3600,
+    new NullLogger()
+);
+
+// 設定を変更
+$config->setMaxLifetime(7200);
+$config->setIdGenerator(new SecureSessionIdGenerator());
+$config->setLogger($customLogger);
+
+// 新しい接続設定に変更
+$newConnectionConfig = new RedisConnectionConfig(
     host: 'redis.example.com',
-    port: 6380,
-    timeout: 5.0,
-    password: 'secret',
-    database: 2,
-    prefix: 'myapp:',
-    persistent: true
+    port: 6380
 );
+$config->setConnectionConfig($newConnectionConfig);
 
-// セッション設定を作成
-$sessionConfig = new SessionConfig(
-    connectionConfig: $connectionConfig,
-    maxLifetime: 7200
-);
-
-// フックを追加
-$sessionConfig->addReadHook(new ReadTimestampHook());
-$sessionConfig->addWriteHook(new LoggingHook($logger));
-
-// ファクトリーでハンドラを作成
-$handler = SessionHandlerFactory::create($sessionConfig)->build();
-
-session_set_save_handler($handler, true);
-session_start();
+// ハンドラを作成
+$factory = new SessionHandlerFactory($config);
+$handler = $factory->build();
 ```
 
 ## まとめ
 
 `SessionHandlerFactory`を使用することで：
 
-1. **簡潔な記述**: ビルダーパターンにより、設定を流暢に記述できます
-2. **型安全**: すべての設定メソッドは型ヒントを持ち、IDEの補完が効きます
-3. **柔軟性**: デフォルト設定から始めて、必要な部分だけをカスタマイズできます
-4. **保守性**: 設定の変更が容易で、コードの可読性が高まります
+1. **明示的な設定**: すべての設定パラメータがコンストラクタで明示的に指定されます
+2. **型安全**: すべてのパラメータは型ヒントを持ち、IDEの補完が効きます
+3. **シンプル**: 設定は一度作成され、ファクトリーに渡されます
+4. **保守性**: 設定の変更が必要な場合は、セッターメソッドで変更できます
 
 詳細な仕様については、以下のドキュメントも参照してください：
 

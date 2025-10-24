@@ -17,22 +17,19 @@ use Uzulla\EnhancedRedisSessionHandler\SessionId\SessionIdGeneratorInterface;
 
 class SessionConfigTest extends TestCase
 {
-    public function testConstructorWithDefaults(): void
+    private function createDefaultConfig(): SessionConfig
     {
-        $config = new SessionConfig();
-
-        $this->assertInstanceOf(RedisConnectionConfig::class, $config->getConnectionConfig());
-        $this->assertInstanceOf(SessionIdGeneratorInterface::class, $config->getIdGenerator());
-        $this->assertGreaterThan(0, $config->getMaxLifetime());
-        $this->assertInstanceOf(NullLogger::class, $config->getLogger());
-        $this->assertEmpty($config->getReadHooks());
-        $this->assertEmpty($config->getWriteHooks());
-        $this->assertEmpty($config->getWriteFilters());
+        return new SessionConfig(
+            new RedisConnectionConfig(),
+            new DefaultSessionIdGenerator(),
+            3600,
+            new NullLogger()
+        );
     }
 
-    public function testConstructorWithCustomValues(): void
+    public function testConstructor(): void
     {
-        $connectionConfig = new RedisConnectionConfig('redis.example.com', 6380);
+        $connectionConfig = new RedisConnectionConfig();
         $idGenerator = new DefaultSessionIdGenerator();
         $logger = new NullLogger();
         $maxLifetime = 3600;
@@ -43,11 +40,15 @@ class SessionConfigTest extends TestCase
         $this->assertSame($idGenerator, $config->getIdGenerator());
         $this->assertSame($maxLifetime, $config->getMaxLifetime());
         $this->assertSame($logger, $config->getLogger());
+        $this->assertEmpty($config->getReadHooks());
+        $this->assertEmpty($config->getWriteHooks());
+        $this->assertEmpty($config->getWriteFilters());
     }
+
 
     public function testSetConnectionConfig(): void
     {
-        $config = new SessionConfig();
+        $config = $this->createDefaultConfig();
         $newConnectionConfig = new RedisConnectionConfig('redis.example.com', 6380);
 
         $result = $config->setConnectionConfig($newConnectionConfig);
@@ -58,7 +59,7 @@ class SessionConfigTest extends TestCase
 
     public function testSetIdGenerator(): void
     {
-        $config = new SessionConfig();
+        $config = $this->createDefaultConfig();
         $newGenerator = new DefaultSessionIdGenerator();
 
         $result = $config->setIdGenerator($newGenerator);
@@ -69,7 +70,7 @@ class SessionConfigTest extends TestCase
 
     public function testSetMaxLifetime(): void
     {
-        $config = new SessionConfig();
+        $config = $this->createDefaultConfig();
 
         $result = $config->setMaxLifetime(7200);
 
@@ -82,7 +83,7 @@ class SessionConfigTest extends TestCase
         $this->expectException(ConfigurationException::class);
         $this->expectExceptionMessage('maxLifetime must be greater than 0');
 
-        $config = new SessionConfig();
+        $config = $this->createDefaultConfig();
         $config->setMaxLifetime(0);
     }
 
@@ -91,7 +92,7 @@ class SessionConfigTest extends TestCase
         $this->expectException(ConfigurationException::class);
         $this->expectExceptionMessage('maxLifetime must be greater than 0');
 
-        $config = new SessionConfig();
+        $config = $this->createDefaultConfig();
         $config->setMaxLifetime(-1);
     }
 
@@ -100,12 +101,17 @@ class SessionConfigTest extends TestCase
         $this->expectException(ConfigurationException::class);
         $this->expectExceptionMessage('maxLifetime must be greater than 0');
 
-        new SessionConfig(null, null, 0);
+        new SessionConfig(
+            new RedisConnectionConfig(),
+            new DefaultSessionIdGenerator(),
+            0,
+            new NullLogger()
+        );
     }
 
     public function testSetLogger(): void
     {
-        $config = new SessionConfig();
+        $config = $this->createDefaultConfig();
         $logger = new NullLogger();
 
         $result = $config->setLogger($logger);
@@ -116,7 +122,7 @@ class SessionConfigTest extends TestCase
 
     public function testAddReadHook(): void
     {
-        $config = new SessionConfig();
+        $config = $this->createDefaultConfig();
         $hook = $this->createMock(ReadHookInterface::class);
 
         $result = $config->addReadHook($hook);
@@ -128,7 +134,7 @@ class SessionConfigTest extends TestCase
 
     public function testAddMultipleReadHooks(): void
     {
-        $config = new SessionConfig();
+        $config = $this->createDefaultConfig();
         $hook1 = $this->createMock(ReadHookInterface::class);
         $hook2 = $this->createMock(ReadHookInterface::class);
 
@@ -143,7 +149,7 @@ class SessionConfigTest extends TestCase
 
     public function testAddWriteHook(): void
     {
-        $config = new SessionConfig();
+        $config = $this->createDefaultConfig();
         $hook = $this->createMock(WriteHookInterface::class);
 
         $result = $config->addWriteHook($hook);
@@ -155,7 +161,7 @@ class SessionConfigTest extends TestCase
 
     public function testAddMultipleWriteHooks(): void
     {
-        $config = new SessionConfig();
+        $config = $this->createDefaultConfig();
         $hook1 = $this->createMock(WriteHookInterface::class);
         $hook2 = $this->createMock(WriteHookInterface::class);
 
@@ -170,7 +176,7 @@ class SessionConfigTest extends TestCase
 
     public function testAddWriteFilter(): void
     {
-        $config = new SessionConfig();
+        $config = $this->createDefaultConfig();
         $filter = $this->createMock(WriteFilterInterface::class);
 
         $result = $config->addWriteFilter($filter);
@@ -182,7 +188,7 @@ class SessionConfigTest extends TestCase
 
     public function testAddMultipleWriteFilters(): void
     {
-        $config = new SessionConfig();
+        $config = $this->createDefaultConfig();
         $filter1 = $this->createMock(WriteFilterInterface::class);
         $filter2 = $this->createMock(WriteFilterInterface::class);
 
@@ -197,7 +203,7 @@ class SessionConfigTest extends TestCase
 
     public function testFluentInterface(): void
     {
-        $config = new SessionConfig();
+        $config = $this->createDefaultConfig();
         $connectionConfig = new RedisConnectionConfig();
         $idGenerator = new DefaultSessionIdGenerator();
         $logger = new NullLogger();

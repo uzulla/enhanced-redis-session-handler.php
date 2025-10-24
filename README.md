@@ -40,10 +40,23 @@ composer require uzulla/enhanced-redis-session-handler
 ```php
 <?php
 
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
+use Psr\Log\NullLogger;
 
-// デフォルト設定でハンドラを作成
-$handler = SessionHandlerFactory::createDefault()->build();
+// 設定を作成
+$config = new SessionConfig(
+    new RedisConnectionConfig(),
+    new DefaultSessionIdGenerator(),
+    (int)ini_get('session.gc_maxlifetime'),
+    new NullLogger()
+);
+
+// ファクトリーでハンドラを作成
+$factory = new SessionHandlerFactory($config);
+$handler = $factory->build();
 
 // セッションハンドラとして登録
 session_set_save_handler($handler, true);
@@ -55,16 +68,37 @@ session_start();
 ```php
 <?php
 
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
+use Psr\Log\NullLogger;
 
-$handler = SessionHandlerFactory::createDefault()
-    ->withHost('redis.example.com')
-    ->withPort(6380)
-    ->withPassword('secret')
-    ->withDatabase(2)
-    ->withPrefix('myapp:session:')
-    ->withMaxLifetime(7200)
-    ->build();
+// Redis接続設定を作成
+$connectionConfig = new RedisConnectionConfig(
+    host: 'redis.example.com',
+    port: 6380,
+    timeout: 2.5,
+    password: 'secret',
+    database: 2,
+    prefix: 'myapp:session:',
+    persistent: false,
+    retryInterval: 100,
+    readTimeout: 2.5,
+    maxRetries: 3
+);
+
+// セッション設定を作成
+$config = new SessionConfig(
+    $connectionConfig,
+    new DefaultSessionIdGenerator(),
+    7200,
+    new NullLogger()
+);
+
+// ファクトリーでハンドラを作成
+$factory = new SessionHandlerFactory($config);
+$handler = $factory->build();
 
 session_set_save_handler($handler, true);
 session_start();

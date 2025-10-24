@@ -27,15 +27,15 @@ class SessionConfig
     private array $writeFilters = [];
 
     public function __construct(
-        ?RedisConnectionConfig $connectionConfig = null,
-        ?SessionIdGeneratorInterface $idGenerator = null,
-        ?int $maxLifetime = null,
-        ?LoggerInterface $logger = null
+        RedisConnectionConfig $connectionConfig,
+        SessionIdGeneratorInterface $idGenerator,
+        int $maxLifetime,
+        LoggerInterface $logger
     ) {
-        $this->connectionConfig = $connectionConfig ?? new RedisConnectionConfig();
-        $this->idGenerator = $idGenerator ?? new DefaultSessionIdGenerator();
-        $this->maxLifetime = $maxLifetime ?? (int)ini_get('session.gc_maxlifetime');
-        $this->logger = $logger ?? new NullLogger();
+        $this->connectionConfig = $connectionConfig;
+        $this->idGenerator = $idGenerator;
+        $this->maxLifetime = $maxLifetime;
+        $this->logger = $logger;
 
         $this->validate();
     }
