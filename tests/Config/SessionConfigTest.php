@@ -36,13 +36,13 @@ class SessionConfigTest extends TestCase
 
         $config = new SessionConfig($connectionConfig, $idGenerator, $maxLifetime, $logger);
 
-        $this->assertSame($connectionConfig, $config->getConnectionConfig());
-        $this->assertSame($idGenerator, $config->getIdGenerator());
-        $this->assertSame($maxLifetime, $config->getMaxLifetime());
-        $this->assertSame($logger, $config->getLogger());
-        $this->assertEmpty($config->getReadHooks());
-        $this->assertEmpty($config->getWriteHooks());
-        $this->assertEmpty($config->getWriteFilters());
+        self::assertSame($connectionConfig, $config->getConnectionConfig());
+        self::assertSame($idGenerator, $config->getIdGenerator());
+        self::assertSame($maxLifetime, $config->getMaxLifetime());
+        self::assertSame($logger, $config->getLogger());
+        self::assertEmpty($config->getReadHooks());
+        self::assertEmpty($config->getWriteHooks());
+        self::assertEmpty($config->getWriteFilters());
     }
 
 
@@ -53,8 +53,8 @@ class SessionConfigTest extends TestCase
 
         $result = $config->setConnectionConfig($newConnectionConfig);
 
-        $this->assertSame($config, $result);
-        $this->assertSame($newConnectionConfig, $config->getConnectionConfig());
+        self::assertSame($config, $result);
+        self::assertSame($newConnectionConfig, $config->getConnectionConfig());
     }
 
     public function testSetIdGenerator(): void
@@ -64,8 +64,8 @@ class SessionConfigTest extends TestCase
 
         $result = $config->setIdGenerator($newGenerator);
 
-        $this->assertSame($config, $result);
-        $this->assertSame($newGenerator, $config->getIdGenerator());
+        self::assertSame($config, $result);
+        self::assertSame($newGenerator, $config->getIdGenerator());
     }
 
     public function testSetMaxLifetime(): void
@@ -74,8 +74,8 @@ class SessionConfigTest extends TestCase
 
         $result = $config->setMaxLifetime(7200);
 
-        $this->assertSame($config, $result);
-        $this->assertSame(7200, $config->getMaxLifetime());
+        self::assertSame($config, $result);
+        self::assertSame(7200, $config->getMaxLifetime());
     }
 
     public function testSetMaxLifetimeThrowsExceptionForZero(): void
@@ -116,8 +116,8 @@ class SessionConfigTest extends TestCase
 
         $result = $config->setLogger($logger);
 
-        $this->assertSame($config, $result);
-        $this->assertSame($logger, $config->getLogger());
+        self::assertSame($config, $result);
+        self::assertSame($logger, $config->getLogger());
     }
 
     public function testAddReadHook(): void
@@ -127,9 +127,9 @@ class SessionConfigTest extends TestCase
 
         $result = $config->addReadHook($hook);
 
-        $this->assertSame($config, $result);
-        $this->assertCount(1, $config->getReadHooks());
-        $this->assertSame($hook, $config->getReadHooks()[0]);
+        self::assertSame($config, $result);
+        self::assertCount(1, $config->getReadHooks());
+        self::assertSame($hook, $config->getReadHooks()[0]);
     }
 
     public function testAddMultipleReadHooks(): void
@@ -142,9 +142,9 @@ class SessionConfigTest extends TestCase
         $config->addReadHook($hook2);
 
         $hooks = $config->getReadHooks();
-        $this->assertCount(2, $hooks);
-        $this->assertSame($hook1, $hooks[0]);
-        $this->assertSame($hook2, $hooks[1]);
+        self::assertCount(2, $hooks);
+        self::assertSame($hook1, $hooks[0]);
+        self::assertSame($hook2, $hooks[1]);
     }
 
     public function testAddWriteHook(): void
@@ -154,9 +154,9 @@ class SessionConfigTest extends TestCase
 
         $result = $config->addWriteHook($hook);
 
-        $this->assertSame($config, $result);
-        $this->assertCount(1, $config->getWriteHooks());
-        $this->assertSame($hook, $config->getWriteHooks()[0]);
+        self::assertSame($config, $result);
+        self::assertCount(1, $config->getWriteHooks());
+        self::assertSame($hook, $config->getWriteHooks()[0]);
     }
 
     public function testAddMultipleWriteHooks(): void
@@ -169,9 +169,9 @@ class SessionConfigTest extends TestCase
         $config->addWriteHook($hook2);
 
         $hooks = $config->getWriteHooks();
-        $this->assertCount(2, $hooks);
-        $this->assertSame($hook1, $hooks[0]);
-        $this->assertSame($hook2, $hooks[1]);
+        self::assertCount(2, $hooks);
+        self::assertSame($hook1, $hooks[0]);
+        self::assertSame($hook2, $hooks[1]);
     }
 
     public function testAddWriteFilter(): void
@@ -181,9 +181,9 @@ class SessionConfigTest extends TestCase
 
         $result = $config->addWriteFilter($filter);
 
-        $this->assertSame($config, $result);
-        $this->assertCount(1, $config->getWriteFilters());
-        $this->assertSame($filter, $config->getWriteFilters()[0]);
+        self::assertSame($config, $result);
+        self::assertCount(1, $config->getWriteFilters());
+        self::assertSame($filter, $config->getWriteFilters()[0]);
     }
 
     public function testAddMultipleWriteFilters(): void
@@ -196,9 +196,9 @@ class SessionConfigTest extends TestCase
         $config->addWriteFilter($filter2);
 
         $filters = $config->getWriteFilters();
-        $this->assertCount(2, $filters);
-        $this->assertSame($filter1, $filters[0]);
-        $this->assertSame($filter2, $filters[1]);
+        self::assertCount(2, $filters);
+        self::assertSame($filter1, $filters[0]);
+        self::assertSame($filter2, $filters[1]);
     }
 
     public function testFluentInterface(): void
@@ -220,13 +220,13 @@ class SessionConfigTest extends TestCase
             ->addWriteHook($writeHook)
             ->addWriteFilter($writeFilter);
 
-        $this->assertSame($config, $result);
-        $this->assertSame($connectionConfig, $config->getConnectionConfig());
-        $this->assertSame($idGenerator, $config->getIdGenerator());
-        $this->assertSame(3600, $config->getMaxLifetime());
-        $this->assertSame($logger, $config->getLogger());
-        $this->assertCount(1, $config->getReadHooks());
-        $this->assertCount(1, $config->getWriteHooks());
-        $this->assertCount(1, $config->getWriteFilters());
+        self::assertSame($config, $result);
+        self::assertSame($connectionConfig, $config->getConnectionConfig());
+        self::assertSame($idGenerator, $config->getIdGenerator());
+        self::assertSame(3600, $config->getMaxLifetime());
+        self::assertSame($logger, $config->getLogger());
+        self::assertCount(1, $config->getReadHooks());
+        self::assertCount(1, $config->getWriteHooks());
+        self::assertCount(1, $config->getWriteFilters());
     }
 }

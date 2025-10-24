@@ -32,7 +32,7 @@ class SessionHandlerFactoryTest extends TestCase
         $config = $this->createDefaultConfig();
         $factory = new SessionHandlerFactory($config);
 
-        $this->assertSame($config, $factory->getConfig());
+        self::assertSame($config, $factory->getConfig());
     }
 
     public function testGetConfig(): void
@@ -40,7 +40,7 @@ class SessionHandlerFactoryTest extends TestCase
         $config = $this->createDefaultConfig();
         $factory = new SessionHandlerFactory($config);
 
-        $this->assertSame($config, $factory->getConfig());
+        self::assertSame($config, $factory->getConfig());
     }
 
     public function testBuildCreatesRedisSessionHandler(): void
@@ -49,7 +49,7 @@ class SessionHandlerFactoryTest extends TestCase
         $factory = new SessionHandlerFactory($config);
         $handler = $factory->build();
 
-        $this->assertInstanceOf(RedisSessionHandler::class, $handler);
+        self::assertInstanceOf(RedisSessionHandler::class, $handler);
     }
 
     public function testBuildWithCustomConfiguration(): void
@@ -73,8 +73,8 @@ class SessionHandlerFactoryTest extends TestCase
         $factory = new SessionHandlerFactory($config);
         $handler = $factory->build();
 
-        $this->assertInstanceOf(RedisSessionHandler::class, $handler);
-        $this->assertSame($config, $factory->getConfig());
+        self::assertInstanceOf(RedisSessionHandler::class, $handler);
+        self::assertSame($config, $factory->getConfig());
     }
 
     public function testBuildWithHooks(): void
@@ -91,6 +91,6 @@ class SessionHandlerFactoryTest extends TestCase
         $factory = new SessionHandlerFactory($config);
         $handler = $factory->build();
 
-        $this->assertInstanceOf(RedisSessionHandler::class, $handler);
+        self::assertInstanceOf(RedisSessionHandler::class, $handler);
     }
 }
