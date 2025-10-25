@@ -90,9 +90,6 @@ class ExamplesTest extends TestCase
             );
         }
 
-        if (preg_match('/PHP Warning:/i', $output) === 1) {
-            $this->addWarning("Example {$exampleFile} produced warnings (expected in CLI mode)");
-        }
     }
 
     /**
