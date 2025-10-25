@@ -35,7 +35,3 @@ Thumbs.db
 # Environment files
 .env
 .env.local
-
-# Development tools
-composer.phar
-devin-logbook-*.md
