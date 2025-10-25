@@ -50,7 +50,7 @@ class ExamplesTest extends TestCase
         $examplePath = __DIR__ . '/../../examples/' . $exampleFile;
 
         if (!file_exists($examplePath)) {
-            $this->fail("Example file not found: {$examplePath}");
+            self::fail("Example file not found: {$examplePath}");
         }
 
         $command = sprintf(
@@ -83,7 +83,7 @@ class ExamplesTest extends TestCase
         ];
 
         foreach ($errorPatterns as $pattern) {
-            $this->assertDoesNotMatchRegularExpression(
+            self::assertDoesNotMatchRegularExpression(
                 $pattern,
                 $output,
                 "Example {$exampleFile} produced an error"
@@ -98,7 +98,7 @@ class ExamplesTest extends TestCase
      */
     private function assertSuccessMessage(string $output, string $exampleFile): void
     {
-        $this->assertStringContainsString(
+        self::assertStringContainsString(
             'Example completed successfully',
             $output,
             "Example {$exampleFile} did not complete successfully"
@@ -112,13 +112,13 @@ class ExamplesTest extends TestCase
     {
         $result = $this->executeExample('01-basic-usage.php');
 
-        $this->assertSame(0, $result['return_code'], 'Example should exit with code 0');
-        $this->assertNoErrorsOrWarnings($result['output'], '01-basic-usage.php');
-        $this->assertSuccessMessage($result['output'], '01-basic-usage.php');
+        self::assertSame(0, $result['return_code'], 'Example should exit with code 0');
+        self::assertNoErrorsOrWarnings($result['output'], '01-basic-usage.php');
+        self::assertSuccessMessage($result['output'], '01-basic-usage.php');
 
-        $this->assertStringContainsString('Creating Redis connection configuration', $result['output']);
-        $this->assertStringContainsString('Writing data to session', $result['output']);
-        $this->assertStringContainsString('Session saved successfully', $result['output']);
+        self::assertStringContainsString('Creating Redis connection configuration', $result['output']);
+        self::assertStringContainsString('Writing data to session', $result['output']);
+        self::assertStringContainsString('Session saved successfully', $result['output']);
     }
 
     /**
@@ -128,12 +128,12 @@ class ExamplesTest extends TestCase
     {
         $result = $this->executeExample('02-custom-session-id.php');
 
-        $this->assertSame(0, $result['return_code'], 'Example should exit with code 0');
-        $this->assertNoErrorsOrWarnings($result['output'], '02-custom-session-id.php');
-        $this->assertSuccessMessage($result['output'], '02-custom-session-id.php');
+        self::assertSame(0, $result['return_code'], 'Example should exit with code 0');
+        self::assertNoErrorsOrWarnings($result['output'], '02-custom-session-id.php');
+        self::assertSuccessMessage($result['output'], '02-custom-session-id.php');
 
-        $this->assertStringContainsString('Prefixed Session ID Generator', $result['output']);
-        $this->assertStringContainsString('Timestamp Prefixed Session ID Generator', $result['output']);
+        self::assertStringContainsString('Prefixed Session ID Generator', $result['output']);
+        self::assertStringContainsString('Timestamp Prefixed Session ID Generator', $result['output']);
     }
 
     /**
@@ -148,19 +148,19 @@ class ExamplesTest extends TestCase
             $redis->select(1);
             $redis->select(2);
         } catch (\Exception $e) {
-            $this->markTestSkipped('Multiple Redis databases not available: ' . $e->getMessage());
+            self::markTestSkipped('Multiple Redis databases not available: ' . $e->getMessage());
         } finally {
             $redis->close();
         }
 
         $result = $this->executeExample('03-double-write.php');
 
-        $this->assertSame(0, $result['return_code'], 'Example should exit with code 0');
-        $this->assertNoErrorsOrWarnings($result['output'], '03-double-write.php');
-        $this->assertSuccessMessage($result['output'], '03-double-write.php');
+        self::assertSame(0, $result['return_code'], 'Example should exit with code 0');
+        self::assertNoErrorsOrWarnings($result['output'], '03-double-write.php');
+        self::assertSuccessMessage($result['output'], '03-double-write.php');
 
-        $this->assertStringContainsString('Double Write Hook', $result['output']);
-        $this->assertStringContainsString('primary and secondary Redis', $result['output']);
+        self::assertStringContainsString('Double Write Hook', $result['output']);
+        self::assertStringContainsString('primary and secondary Redis', $result['output']);
     }
 
     /**
@@ -175,19 +175,19 @@ class ExamplesTest extends TestCase
             $redis->select(1);
             $redis->select(2);
         } catch (\Exception $e) {
-            $this->markTestSkipped('Multiple Redis databases not available: ' . $e->getMessage());
+            self::markTestSkipped('Multiple Redis databases not available: ' . $e->getMessage());
         } finally {
             $redis->close();
         }
 
         $result = $this->executeExample('04-fallback-read.php');
 
-        $this->assertSame(0, $result['return_code'], 'Example should exit with code 0');
-        $this->assertNoErrorsOrWarnings($result['output'], '04-fallback-read.php');
-        $this->assertSuccessMessage($result['output'], '04-fallback-read.php');
+        self::assertSame(0, $result['return_code'], 'Example should exit with code 0');
+        self::assertNoErrorsOrWarnings($result['output'], '04-fallback-read.php');
+        self::assertSuccessMessage($result['output'], '04-fallback-read.php');
 
-        $this->assertStringContainsString('Fallback Read Hook', $result['output']);
-        $this->assertStringContainsString('high availability', $result['output']);
+        self::assertStringContainsString('Fallback Read Hook', $result['output']);
+        self::assertStringContainsString('high availability', $result['output']);
     }
 
     /**
@@ -197,12 +197,12 @@ class ExamplesTest extends TestCase
     {
         $result = $this->executeExample('05-logging.php');
 
-        $this->assertSame(0, $result['return_code'], 'Example should exit with code 0');
-        $this->assertNoErrorsOrWarnings($result['output'], '05-logging.php');
-        $this->assertSuccessMessage($result['output'], '05-logging.php');
+        self::assertSame(0, $result['return_code'], 'Example should exit with code 0');
+        self::assertNoErrorsOrWarnings($result['output'], '05-logging.php');
+        self::assertSuccessMessage($result['output'], '05-logging.php');
 
-        $this->assertStringContainsString('Logging Example', $result['output']);
-        $this->assertStringContainsString('session', $result['output']);
+        self::assertStringContainsString('Logging Example', $result['output']);
+        self::assertStringContainsString('session', $result['output']);
     }
 
     /**
@@ -220,7 +220,7 @@ class ExamplesTest extends TestCase
 
         foreach ($examples as $example) {
             $result = $this->executeExample($example);
-            $this->assertSame(
+            self::assertSame(
                 0,
                 $result['return_code'],
                 "Example {$example} failed when executed sequentially"
@@ -244,7 +244,7 @@ class ExamplesTest extends TestCase
 
         $redis->close();
 
-        $this->assertLessThanOrEqual(
+        self::assertLessThanOrEqual(
             $keysBefore + 5, // 多少の増加は許容
             $keysAfter,
             'Example should clean up Redis keys after execution'
