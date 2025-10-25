@@ -71,15 +71,9 @@ class ExamplesTest extends TestCase
             self::fail("Failed to execute example: {$exampleFile}");
         }
 
-        if (!isset($pipes[0]) || !is_resource($pipes[0])) {
-            self::fail("Failed to create stdin pipe");
-        }
-        if (!isset($pipes[1]) || !is_resource($pipes[1])) {
-            self::fail("Failed to create stdout pipe");
-        }
-        if (!isset($pipes[2]) || !is_resource($pipes[2])) {
-            self::fail("Failed to create stderr pipe");
-        }
+        assert(isset($pipes[0]) && is_resource($pipes[0]));
+        assert(isset($pipes[1]) && is_resource($pipes[1]));
+        assert(isset($pipes[2]) && is_resource($pipes[2]));
 
         fclose($pipes[0]);
 
