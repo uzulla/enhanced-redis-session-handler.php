@@ -23,9 +23,13 @@ class ExamplesTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         $hostEnv = getenv('SESSION_REDIS_HOST');
-        self::$redisHost = $hostEnv !== false ? $hostEnv : 'localhost';
         $portEnv = getenv('SESSION_REDIS_PORT');
-        self::$redisPort = $portEnv !== false ? (int)$portEnv : 6379;
+        
+        self::assertNotFalse($hostEnv, 'SESSION_REDIS_HOST environment variable must be set');
+        self::assertNotFalse($portEnv, 'SESSION_REDIS_PORT environment variable must be set');
+        
+        self::$redisHost = $hostEnv;
+        self::$redisPort = (int)$portEnv;
 
         $redis = new \Redis();
         try {

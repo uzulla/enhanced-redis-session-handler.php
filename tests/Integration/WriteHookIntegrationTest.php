@@ -28,6 +28,9 @@ class WriteHookIntegrationTest extends TestCase
 
         $redisHost = getenv('SESSION_REDIS_HOST');
         $redisPort = getenv('SESSION_REDIS_PORT');
+        
+        self::assertNotFalse($redisHost, 'SESSION_REDIS_HOST environment variable must be set');
+        self::assertNotFalse($redisPort, 'SESSION_REDIS_PORT environment variable must be set');
 
         $this->logger = new Logger('test');
         $this->logHandler = new TestHandler();
@@ -35,8 +38,8 @@ class WriteHookIntegrationTest extends TestCase
 
         $primaryRedis = new \Redis();
         $primaryConfig = new RedisConnectionConfig(
-            $redisHost !== false ? $redisHost : 'localhost',
-            $redisPort !== false ? (int)$redisPort : 6379,
+            $redisHost,
+            (int)$redisPort,
             2.5,
             null,
             0
@@ -45,8 +48,8 @@ class WriteHookIntegrationTest extends TestCase
 
         $secondaryRedis = new \Redis();
         $secondaryConfig = new RedisConnectionConfig(
-            $redisHost !== false ? $redisHost : 'localhost',
-            $redisPort !== false ? (int)$redisPort : 6379,
+            $redisHost,
+            (int)$redisPort,
             2.5,
             null,
             1

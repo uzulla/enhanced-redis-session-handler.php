@@ -21,14 +21,17 @@ class RedisSessionHandlerTest extends TestCase
     {
         $redisHost = getenv('SESSION_REDIS_HOST');
         $redisPort = getenv('SESSION_REDIS_PORT');
+        
+        self::assertNotFalse($redisHost, 'SESSION_REDIS_HOST environment variable must be set');
+        self::assertNotFalse($redisPort, 'SESSION_REDIS_PORT environment variable must be set');
 
         $logger = new Logger('test');
         $logger->pushHandler(new NullHandler());
 
         $redis = new \Redis();
         $config = new RedisConnectionConfig(
-            $redisHost !== false ? $redisHost : 'localhost',
-            $redisPort !== false ? (int)$redisPort : 6379
+            $redisHost,
+            (int)$redisPort
         );
 
         $this->connection = new RedisConnection($redis, $config, $logger);
