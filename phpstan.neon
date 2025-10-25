@@ -34,3 +34,9 @@ parameters:
             paths:
                 - tests/Hook/WriteHookTest.php
                 - tests/Integration/WriteHookIntegrationTest.php
+        # PHPUnit assertions in test classes are called dynamically through $this
+        # This is expected behavior in PHPUnit tests
+        -
+            message: '#^Dynamic call to static method PHPUnit\\Framework\\Assert::#'
+            paths:
+                - tests/E2E/ExamplesTest.php

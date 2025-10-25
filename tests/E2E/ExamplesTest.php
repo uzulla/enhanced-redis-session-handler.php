@@ -22,13 +22,15 @@ class ExamplesTest extends TestCase
 
     public static function setUpBeforeClass(): void
     {
-        self::$redisHost = getenv('SESSION_REDIS_HOST') ?: 'localhost';
-        self::$redisPort = (int)(getenv('SESSION_REDIS_PORT') ?: 6379);
+        $hostEnv = getenv('SESSION_REDIS_HOST');
+        self::$redisHost = $hostEnv !== false ? $hostEnv : 'localhost';
+        $portEnv = getenv('SESSION_REDIS_PORT');
+        self::$redisPort = $portEnv !== false ? (int)$portEnv : 6379;
 
         $redis = new \Redis();
         try {
             $connected = @$redis->connect(self::$redisHost, self::$redisPort, 1.0);
-            if (!$connected) {
+            if ($connected === false) {
                 self::markTestSkipped('Redis is not available at ' . self::$redisHost . ':' . self::$redisPort);
             }
             $redis->close();
@@ -40,6 +42,8 @@ class ExamplesTest extends TestCase
     /**
      * サンプルファイルを実行してエラーや警告がないことを確認
      * Execute example file and verify no errors or warnings
+     *
+     * @return array{output: string, return_code: int}
      */
     private function executeExample(string $exampleFile): array
     {
@@ -86,7 +90,7 @@ class ExamplesTest extends TestCase
             );
         }
 
-        if (preg_match('/PHP Warning:/i', $output)) {
+        if (preg_match('/PHP Warning:/i', $output) === 1) {
             $this->addWarning("Example {$exampleFile} produced warnings (expected in CLI mode)");
         }
     }
