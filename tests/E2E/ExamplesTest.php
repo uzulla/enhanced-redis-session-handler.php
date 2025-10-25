@@ -78,11 +78,16 @@ class ExamplesTest extends TestCase
         /** @phpstan-ignore-next-line offsetAccess.nonOffsetAccessible */
         $stderr_pipe = $pipes[2];
 
+        /** @phpstan-ignore-next-line argument.type */
         fclose($stdin);
 
+        /** @phpstan-ignore-next-line argument.type */
         $stdout = stream_get_contents($stdout_pipe);
+        /** @phpstan-ignore-next-line argument.type */
         $stderr = stream_get_contents($stderr_pipe);
+        /** @phpstan-ignore-next-line argument.type */
         fclose($stdout_pipe);
+        /** @phpstan-ignore-next-line argument.type */
         fclose($stderr_pipe);
 
         $returnCode = proc_close($process);
