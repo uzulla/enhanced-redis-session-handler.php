@@ -31,11 +31,11 @@ class ExamplesTest extends TestCase
         try {
             $connected = @$redis->connect(self::$redisHost, self::$redisPort, 1.0);
             if ($connected === false) {
-                self::markTestSkipped('Redis is not available at ' . self::$redisHost . ':' . self::$redisPort);
+                self::fail('Redis is not available at ' . self::$redisHost . ':' . self::$redisPort);
             }
             $redis->close();
         } catch (\Exception $e) {
-            self::markTestSkipped('Redis is not available: ' . $e->getMessage());
+            self::fail('Redis is not available: ' . $e->getMessage());
         }
     }
 
@@ -181,10 +181,10 @@ class ExamplesTest extends TestCase
             $redis->select(1);
             $redis->select(2);
         } catch (\Exception $e) {
-            self::markTestSkipped('Multiple Redis databases not available: ' . $e->getMessage());
-        } finally {
             $redis->close();
+            self::fail('Multiple Redis databases not available: ' . $e->getMessage());
         }
+        $redis->close();
 
         $result = $this->executeExample('03-double-write.php');
 
@@ -208,10 +208,10 @@ class ExamplesTest extends TestCase
             $redis->select(1);
             $redis->select(2);
         } catch (\Exception $e) {
-            self::markTestSkipped('Multiple Redis databases not available: ' . $e->getMessage());
-        } finally {
             $redis->close();
+            self::fail('Multiple Redis databases not available: ' . $e->getMessage());
         }
+        $redis->close();
 
         $result = $this->executeExample('04-fallback-read.php');
 
