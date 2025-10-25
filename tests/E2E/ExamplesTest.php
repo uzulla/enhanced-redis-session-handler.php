@@ -71,11 +71,11 @@ class ExamplesTest extends TestCase
             self::fail("Failed to execute example: {$exampleFile}");
         }
 
-        /** @phpstan-var resource $stdin */
+        /** @phpstan-ignore-next-line offsetAccess.nonOffsetAccessible */
         $stdin = $pipes[0];
-        /** @phpstan-var resource $stdout_pipe */
+        /** @phpstan-ignore-next-line offsetAccess.nonOffsetAccessible */
         $stdout_pipe = $pipes[1];
-        /** @phpstan-var resource $stderr_pipe */
+        /** @phpstan-ignore-next-line offsetAccess.nonOffsetAccessible */
         $stderr_pipe = $pipes[2];
 
         fclose($stdin);
