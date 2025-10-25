@@ -54,11 +54,13 @@ class ExamplesTest extends TestCase
         }
 
         $descriptorspec = [
-            0 => ['pipe', 'r'],  // stdin
-            1 => ['pipe', 'w'],  // stdout
-            2 => ['pipe', 'w'],  // stderr
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
         ];
 
+        /** @var array<int, resource> $pipes */
+        $pipes = [];
         $process = proc_open(
             ['php', $examplePath],
             $descriptorspec,
