@@ -71,6 +71,9 @@ class ExamplesTest extends TestCase
             self::fail("Failed to execute example: {$exampleFile}");
         }
 
+        // proc_open()は$pipesを参照渡しで受け取り、resource配列を設定するが、
+        // PHPStanはこの動的な型変更を推論できないため、以下の行で型エラーが発生する。
+        // 実行時には正しくresource型が設定されるため、PHPStanの警告を抑制する。
         /** @phpstan-ignore-next-line offsetAccess.nonOffsetAccessible */
         $stdin = $pipes[0];
         /** @phpstan-ignore-next-line offsetAccess.nonOffsetAccessible */
