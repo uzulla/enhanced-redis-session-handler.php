@@ -53,17 +53,33 @@ class ExamplesTest extends TestCase
             self::fail("Example file not found: {$examplePath}");
         }
 
-        $command = sprintf(
-            'php %s 2>&1',
-            escapeshellarg($examplePath)
+        $descriptorspec = [
+            0 => ['pipe', 'r'],  // stdin
+            1 => ['pipe', 'w'],  // stdout
+            2 => ['pipe', 'w'],  // stderr
+        ];
+
+        $process = proc_open(
+            ['php', $examplePath],
+            $descriptorspec,
+            $pipes
         );
 
-        $output = [];
-        $returnCode = 0;
-        exec($command, $output, $returnCode);
+        if (!is_resource($process)) {
+            self::fail("Failed to execute example: {$exampleFile}");
+        }
+
+        fclose($pipes[0]);
+
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+
+        $returnCode = proc_close($process);
 
         return [
-            'output' => implode("\n", $output),
+            'output' => $stdout . $stderr,
             'return_code' => $returnCode,
         ];
     }
@@ -206,26 +222,31 @@ class ExamplesTest extends TestCase
     }
 
     /**
-     * @test
+     * @return array<string, array{string}>
      */
-    public function testAllExamplesCanBeExecutedSequentially(): void
+    public static function exampleFilesProvider(): array
     {
-        $examples = [
-            '01-basic-usage.php',
-            '02-custom-session-id.php',
-            '03-double-write.php',
-            '04-fallback-read.php',
-            '05-logging.php',
+        return [
+            '01-basic-usage' => ['01-basic-usage.php'],
+            '02-custom-session-id' => ['02-custom-session-id.php'],
+            '03-double-write' => ['03-double-write.php'],
+            '04-fallback-read' => ['04-fallback-read.php'],
+            '05-logging' => ['05-logging.php'],
         ];
+    }
 
-        foreach ($examples as $example) {
-            $result = $this->executeExample($example);
-            self::assertSame(
-                0,
-                $result['return_code'],
-                "Example {$example} failed when executed sequentially"
-            );
-        }
+    /**
+     * @test
+     * @dataProvider exampleFilesProvider
+     */
+    public function testExampleCanBeExecuted(string $exampleFile): void
+    {
+        $result = $this->executeExample($exampleFile);
+        self::assertSame(
+            0,
+            $result['return_code'],
+            "Example {$exampleFile} failed to execute"
+        );
     }
 
     /**
