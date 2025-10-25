@@ -41,6 +41,9 @@ try {
     $connectionConfig = new RedisConnectionConfig(
         'localhost',
         6379,
+        2.5,
+        null,
+        0,
         'session:prefixed:'
     );
 
@@ -86,6 +89,9 @@ try {
     $connectionConfig = new RedisConnectionConfig(
         'localhost',
         6379,
+        2.5,
+        null,
+        0,
         'session:timestamped:'
     );
 
@@ -138,6 +144,9 @@ try {
     $adminConfig = new RedisConnectionConfig(
         'localhost',
         6379,
+        2.5,
+        null,
+        0,
         'session:admin:'
     );
 
@@ -166,6 +175,9 @@ try {
     $apiConfig = new RedisConnectionConfig(
         'localhost',
         6379,
+        2.5,
+        null,
+        0,
         'session:api:'
     );
 

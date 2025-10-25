@@ -67,6 +67,8 @@ try {
     $connectionConfig = new RedisConnectionConfig(
         'localhost',
         6379,
+        2.5,
+        null,
         0,
         'session:logged:'
     );
@@ -155,6 +157,8 @@ try {
     $connectionConfig = new RedisConnectionConfig(
         'localhost',
         6379,
+        2.5,
+        null,
         0,
         'session:file-logged:'
     );
@@ -226,6 +230,8 @@ try {
     $connectionConfig = new RedisConnectionConfig(
         'localhost',
         6379,
+        2.5,
+        null,
         0,
         'session:detailed:'
     );
@@ -312,6 +318,8 @@ try {
     $connectionConfig = new RedisConnectionConfig(
         'localhost',
         6379,
+        2.5,
+        null,
         0,
         'session:multi:'
     );

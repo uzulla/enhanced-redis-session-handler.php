@@ -36,8 +36,7 @@ try {
         2.5,
         null,
         0,
-        'session:',
-        false
+        'session:'
     );
 
     echo "2. Creating session configuration...\n";

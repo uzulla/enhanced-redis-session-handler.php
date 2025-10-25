@@ -62,6 +62,8 @@ try {
     $primaryConfig = new RedisConnectionConfig(
         'localhost',
         6379,
+        2.5,
+        null,
         0,
         'session:primary:'
     );
@@ -70,6 +72,8 @@ try {
     $fallback1Config = new RedisConnectionConfig(
         'localhost',
         6379,
+        2.5,
+        null,
         1,
         'session:fallback1:'
     );
@@ -84,6 +88,8 @@ try {
     $fallback2Config = new RedisConnectionConfig(
         'localhost',
         6379,
+        2.5,
+        null,
         2,
         'session:fallback2:'
     );
@@ -246,6 +252,8 @@ try {
     $primaryConfig = new RedisConnectionConfig(
         'localhost',
         6379,
+        2.5,
+        null,
         0,
         'session:primary:'
     );
@@ -253,6 +261,8 @@ try {
     $fallback1Config = new RedisConnectionConfig(
         'localhost',
         6379,
+        2.5,
+        null,
         1,
         'session:fallback1:'
     );
@@ -267,6 +277,8 @@ try {
     $fallback2Config = new RedisConnectionConfig(
         'localhost',
         6379,
+        2.5,
+        null,
         2,
         'session:fallback2:'
     );

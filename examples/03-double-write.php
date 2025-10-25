@@ -61,6 +61,8 @@ try {
     $primaryConfig = new RedisConnectionConfig(
         'localhost',
         6379,
+        2.5,
+        null,
         0,
         'session:primary:'
     );
@@ -69,7 +71,9 @@ try {
     $secondaryConfig = new RedisConnectionConfig(
         'localhost',
         6379,
-        1, // 異なるデータベース / Different database
+        2.5,
+        null,
+        1,
         'session:secondary:'
     );
 
@@ -167,16 +171,19 @@ try {
     $primaryConfig = new RedisConnectionConfig(
         'localhost',
         6379,
+        2.5,
+        null,
         0,
         'session:primary:'
     );
 
     $secondaryConfig = new RedisConnectionConfig(
         'localhost',
-        9999, // 存在しないポート / Non-existent port
+        9999,
+        0.5,
+        null,
         0,
-        'session:secondary:',
-        0.5 // 短いタイムアウト / Short timeout
+        'session:secondary:'
     );
 
     $secondaryRedis = new \Redis();
