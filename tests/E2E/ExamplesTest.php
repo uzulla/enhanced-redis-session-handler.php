@@ -71,16 +71,19 @@ class ExamplesTest extends TestCase
             self::fail("Failed to execute example: {$exampleFile}");
         }
 
-        assert(isset($pipes[0]) && is_resource($pipes[0]));
-        assert(isset($pipes[1]) && is_resource($pipes[1]));
-        assert(isset($pipes[2]) && is_resource($pipes[2]));
+        /** @phpstan-var resource $stdin */
+        $stdin = $pipes[0];
+        /** @phpstan-var resource $stdout_pipe */
+        $stdout_pipe = $pipes[1];
+        /** @phpstan-var resource $stderr_pipe */
+        $stderr_pipe = $pipes[2];
 
-        fclose($pipes[0]);
+        fclose($stdin);
 
-        $stdout = stream_get_contents($pipes[1]);
-        $stderr = stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
+        $stdout = stream_get_contents($stdout_pipe);
+        $stderr = stream_get_contents($stderr_pipe);
+        fclose($stdout_pipe);
+        fclose($stderr_pipe);
 
         $returnCode = proc_close($process);
 
