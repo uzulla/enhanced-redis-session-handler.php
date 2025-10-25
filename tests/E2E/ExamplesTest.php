@@ -24,10 +24,10 @@ class ExamplesTest extends TestCase
     {
         $hostEnv = getenv('SESSION_REDIS_HOST');
         $portEnv = getenv('SESSION_REDIS_PORT');
-        
+
         self::assertNotFalse($hostEnv, 'SESSION_REDIS_HOST environment variable must be set');
         self::assertNotFalse($portEnv, 'SESSION_REDIS_PORT environment variable must be set');
-        
+
         self::$redisHost = $hostEnv;
         self::$redisPort = (int)$portEnv;
 

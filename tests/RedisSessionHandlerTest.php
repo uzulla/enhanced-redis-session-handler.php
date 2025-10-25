@@ -21,7 +21,7 @@ class RedisSessionHandlerTest extends TestCase
     {
         $redisHost = getenv('SESSION_REDIS_HOST');
         $redisPort = getenv('SESSION_REDIS_PORT');
-        
+
         self::assertNotFalse($redisHost, 'SESSION_REDIS_HOST environment variable must be set');
         self::assertNotFalse($redisPort, 'SESSION_REDIS_PORT environment variable must be set');
 
