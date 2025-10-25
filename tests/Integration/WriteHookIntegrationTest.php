@@ -26,16 +26,31 @@ class WriteHookIntegrationTest extends TestCase
             self::markTestSkipped('Redis extension is not available');
         }
 
+        $redisHost = getenv('SESSION_REDIS_HOST');
+        $redisPort = getenv('SESSION_REDIS_PORT');
+
         $this->logger = new Logger('test');
         $this->logHandler = new TestHandler();
         $this->logger->pushHandler($this->logHandler);
 
         $primaryRedis = new \Redis();
-        $primaryConfig = new RedisConnectionConfig('localhost', 6379, 0);
+        $primaryConfig = new RedisConnectionConfig(
+            $redisHost !== false ? $redisHost : 'localhost',
+            $redisPort !== false ? (int)$redisPort : 6379,
+            2.5,
+            null,
+            0
+        );
         $this->primaryConnection = new RedisConnection($primaryRedis, $primaryConfig, $this->logger);
 
         $secondaryRedis = new \Redis();
-        $secondaryConfig = new RedisConnectionConfig('localhost', 6379, 1);
+        $secondaryConfig = new RedisConnectionConfig(
+            $redisHost !== false ? $redisHost : 'localhost',
+            $redisPort !== false ? (int)$redisPort : 6379,
+            2.5,
+            null,
+            1
+        );
         $this->secondaryConnection = new RedisConnection($secondaryRedis, $secondaryConfig, $this->logger);
 
         $options = new RedisSessionHandlerOptions(null, null, $this->logger);

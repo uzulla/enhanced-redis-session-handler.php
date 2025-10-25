@@ -19,13 +19,16 @@ class RedisSessionHandlerTest extends TestCase
 
     protected function setUp(): void
     {
+        $redisHost = getenv('SESSION_REDIS_HOST');
+        $redisPort = getenv('SESSION_REDIS_PORT');
+
         $logger = new Logger('test');
         $logger->pushHandler(new NullHandler());
 
         $redis = new \Redis();
         $config = new RedisConnectionConfig(
-            'localhost',
-            6379
+            $redisHost !== false ? $redisHost : 'localhost',
+            $redisPort !== false ? (int)$redisPort : 6379
         );
 
         $this->connection = new RedisConnection($redis, $config, $logger);
