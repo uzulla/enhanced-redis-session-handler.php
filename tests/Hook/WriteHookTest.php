@@ -2,8 +2,6 @@
 
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Hook;
 
-use Monolog\Handler\TestHandler;
-use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
@@ -11,19 +9,17 @@ use Uzulla\EnhancedRedisSessionHandler\Hook\DoubleWriteHook;
 use Uzulla\EnhancedRedisSessionHandler\Hook\LoggingHook;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
+use Uzulla\EnhancedRedisSessionHandler\Tests\Support\PsrTestLogger;
 
 class WriteHookTest extends TestCase
 {
     private RedisConnection $primaryConnection;
     private RedisConnection $secondaryConnection;
-    private Logger $logger;
-    private TestHandler $logHandler;
+    private PsrTestLogger $logger;
 
     protected function setUp(): void
     {
-        $this->logger = new Logger('test');
-        $this->logHandler = new TestHandler();
-        $this->logger->pushHandler($this->logHandler);
+        $this->logger = new PsrTestLogger();
 
         $primaryRedis = new \Redis();
         $primaryConfig = new RedisConnectionConfig('localhost', 6379);
@@ -34,19 +30,6 @@ class WriteHookTest extends TestCase
         $this->secondaryConnection = new RedisConnection($secondaryRedis, $secondaryConfig, $this->logger);
     }
 
-    /**
-     * @return list<array>
-     */
-    private function getLogRecords(): array
-    {
-        $records = [];
-        /** @phpstan-ignore-next-line */
-        foreach ($this->logHandler->getRecords() as $record) {
-            $records[] = (array) $record;
-        }
-        return $records;
-    }
-
     public function testLoggingHookLogsBeforeWrite(): void
     {
         $hook = new LoggingHook($this->logger);
@@ -55,17 +38,15 @@ class WriteHookTest extends TestCase
         $result = $hook->beforeWrite('test_session_id', $data);
 
         self::assertSame($data, $result);
-        self::assertTrue($this->logHandler->hasDebugRecords());
+        self::assertTrue($this->logger->hasDebugRecords());
 
-        $records = $this->getLogRecords();
+        $records = $this->logger->getRecords();
         $found = false;
         foreach ($records as $record) {
-            $recordArray = $record;
-            if (isset($recordArray['message']) && $recordArray['message'] === 'Session write starting') {
+            if ($record['message'] === 'Session write starting') {
                 $found = true;
-                self::assertArrayHasKey('context', $recordArray);
-                $context = $recordArray['context'];
-                self::assertIsArray($context);
+                self::assertArrayHasKey('context', $record);
+                $context = $record['context'];
                 self::assertArrayHasKey('session_id', $context);
                 self::assertSame('test_session_id', $context['session_id']);
                 self::assertArrayHasKey('data_keys', $context);
@@ -84,17 +65,15 @@ class WriteHookTest extends TestCase
 
         $hook->afterWrite('test_session_id', true);
 
-        self::assertTrue($this->logHandler->hasDebugRecords());
+        self::assertTrue($this->logger->hasDebugRecords());
 
-        $records = $this->getLogRecords();
+        $records = $this->logger->getRecords();
         $found = false;
         foreach ($records as $record) {
-            $recordArray = $record;
-            if (isset($recordArray['message']) && $recordArray['message'] === 'Session write successful') {
+            if ($record['message'] === 'Session write successful') {
                 $found = true;
-                self::assertArrayHasKey('context', $recordArray);
-                $context = $recordArray['context'];
-                self::assertIsArray($context);
+                self::assertArrayHasKey('context', $record);
+                $context = $record['context'];
                 self::assertArrayHasKey('session_id', $context);
                 self::assertSame('test_session_id', $context['session_id']);
                 self::assertArrayHasKey('success', $context);
@@ -111,17 +90,15 @@ class WriteHookTest extends TestCase
 
         $hook->afterWrite('test_session_id', false);
 
-        self::assertTrue($this->logHandler->hasDebugRecords());
+        self::assertTrue($this->logger->hasDebugRecords());
 
-        $records = $this->getLogRecords();
+        $records = $this->logger->getRecords();
         $found = false;
         foreach ($records as $record) {
-            $recordArray = $record;
-            if (isset($recordArray['message']) && $recordArray['message'] === 'Session write failed') {
+            if ($record['message'] === 'Session write failed') {
                 $found = true;
-                self::assertArrayHasKey('context', $recordArray);
-                $context = $recordArray['context'];
-                self::assertIsArray($context);
+                self::assertArrayHasKey('context', $record);
+                $context = $record['context'];
                 self::assertArrayHasKey('session_id', $context);
                 self::assertSame('test_session_id', $context['session_id']);
                 self::assertArrayHasKey('success', $context);
@@ -139,17 +116,15 @@ class WriteHookTest extends TestCase
 
         $hook->onWriteError('test_session_id', $exception);
 
-        self::assertTrue($this->logHandler->hasErrorRecords());
+        self::assertTrue($this->logger->hasErrorRecords());
 
-        $records = $this->getLogRecords();
+        $records = $this->logger->getRecords();
         $found = false;
         foreach ($records as $record) {
-            $recordArray = $record;
-            if (isset($recordArray['message']) && $recordArray['message'] === 'Session write error occurred') {
+            if ($record['message'] === 'Session write error occurred') {
                 $found = true;
-                self::assertArrayHasKey('context', $recordArray);
-                $context = $recordArray['context'];
-                self::assertIsArray($context);
+                self::assertArrayHasKey('context', $record);
+                $context = $record['context'];
                 self::assertArrayHasKey('session_id', $context);
                 self::assertSame('test_session_id', $context['session_id']);
                 self::assertArrayHasKey('exception_class', $context);
@@ -171,15 +146,13 @@ class WriteHookTest extends TestCase
 
         $hook->beforeWrite('test_session_id', $data);
 
-        $records = $this->getLogRecords();
+        $records = $this->logger->getRecords();
         $found = false;
         foreach ($records as $record) {
-            $recordArray = $record;
-            if (isset($recordArray['message']) && $recordArray['message'] === 'Session write starting') {
+            if ($record['message'] === 'Session write starting') {
                 $found = true;
-                self::assertArrayHasKey('context', $recordArray);
-                $context = $recordArray['context'];
-                self::assertIsArray($context);
+                self::assertArrayHasKey('context', $record);
+                $context = $record['context'];
                 self::assertArrayHasKey('data', $context);
                 self::assertSame($data, $context['data']);
                 break;
@@ -206,11 +179,10 @@ class WriteHookTest extends TestCase
         $hook->beforeWrite('test_session_id', $data);
         $hook->afterWrite('test_session_id', false);
 
-        $records = $this->getLogRecords();
+        $records = $this->logger->getRecords();
         $found = false;
         foreach ($records as $record) {
-            $recordArray = $record;
-            if (isset($recordArray['message']) && is_string($recordArray['message']) && strpos($recordArray['message'], 'Primary write failed') !== false) {
+            if (str_contains($record['message'], 'Primary write failed')) {
                 $found = true;
                 break;
             }
@@ -227,11 +199,10 @@ class WriteHookTest extends TestCase
         $hook->beforeWrite('test_session_id', $data);
         $hook->onWriteError('test_session_id', $exception);
 
-        $records = $this->getLogRecords();
+        $records = $this->logger->getRecords();
         $found = false;
         foreach ($records as $record) {
-            $recordArray = $record;
-            if (isset($recordArray['message']) && is_string($recordArray['message']) && strpos($recordArray['message'], 'Primary write error') !== false) {
+            if (str_contains($record['message'], 'Primary write error')) {
                 $found = true;
                 break;
             }
