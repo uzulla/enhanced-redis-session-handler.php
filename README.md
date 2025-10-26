@@ -28,7 +28,7 @@ enhanced-redis-session-handler.phpは、PHPの標準セッションハンドラ�
 - **Redis**: 5.0以上（公式サポート）
 - **ValKey**: 7.2.5以上（テストはValKey 9.0.0で実施）
 
-**備考**: 本ライブラリはGET/SETEX/DEL/EXPIRE/EXISTS/SCANなどの基本コマンドのみを使用します。より古いRedis（2.8.0以上）でも動作する可能性はありますが、サポート対象外です。ValKeyはRedis 7.2.4からフォークされ（初版7.2.5）、現在は独自のバージョニングを採用しています。
+詳細な互換性情報については、[doc/redis-integration.md](doc/redis-integration.md)を参照してください。
 
 ## インストール
 
