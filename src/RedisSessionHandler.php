@@ -121,6 +121,9 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
             $data = $this->connection->get($id);
 
             if ($data === false) {
+                $this->logger->debug('Session not found in Redis', [
+                    'session_id' => $id,
+                ]);
                 return '';
             }
 
