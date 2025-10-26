@@ -22,13 +22,13 @@ The easiest way to get started is using Docker. This provides a complete develop
 
 ```bash
 # Start the environment
-docker compose up -d
+docker compose -f docker/docker-compose.yml up -d
 
 # Run health check to verify everything is working
 ./docker/healthcheck.sh
 
 # Access the environment
-docker compose exec app bash
+docker compose -f docker/docker-compose.yml exec app bash
 ```
 
 The Docker environment includes:
@@ -44,17 +44,17 @@ Access points:
 Useful commands:
 ```bash
 # Run tests in Docker
-docker compose exec app composer test
+docker compose -f docker/docker-compose.yml exec app composer test
 
 # Run static analysis
-docker compose exec app composer phpstan
+docker compose -f docker/docker-compose.yml exec app composer phpstan
 
 # View logs
-docker compose logs -f app
-docker compose logs -f storage
+docker compose -f docker/docker-compose.yml logs -f app
+docker compose -f docker/docker-compose.yml logs -f storage
 
 # Stop the environment
-docker compose down
+docker compose -f docker/docker-compose.yml down
 ```
 
 ### Option 2: Local Installation
