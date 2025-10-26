@@ -38,7 +38,7 @@ class WriteHookIntegrationTest extends TestCase
             self::fail('SESSION_REDIS_PORT environment variable must be set');
         }
 
-        if (!ctype_digit((string)$redisPort)) {
+        if (!ctype_digit($redisPort)) {
             self::fail('SESSION_REDIS_PORT must be a positive integer');
         }
 
