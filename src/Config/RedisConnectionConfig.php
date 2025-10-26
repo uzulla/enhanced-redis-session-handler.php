@@ -29,6 +29,28 @@ class RedisConnectionConfig
         float $readTimeout = 2.5,
         int $maxRetries = 3
     ) {
+        if ($host === '') {
+            throw new \InvalidArgumentException('Host cannot be empty');
+        }
+        if ($port < 1 || $port > 65535) {
+            throw new \InvalidArgumentException('Port must be between 1 and 65535');
+        }
+        if ($timeout < 0) {
+            throw new \InvalidArgumentException('Timeout must be non-negative');
+        }
+        if ($readTimeout < 0) {
+            throw new \InvalidArgumentException('Read timeout must be non-negative');
+        }
+        if ($database < 0) {
+            throw new \InvalidArgumentException('Database must be non-negative');
+        }
+        if ($maxRetries < 0) {
+            throw new \InvalidArgumentException('Max retries must be non-negative');
+        }
+        if ($retryInterval < 0) {
+            throw new \InvalidArgumentException('Retry interval must be non-negative');
+        }
+
         $this->host = $host;
         $this->port = $port;
         $this->timeout = $timeout;
