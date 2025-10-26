@@ -168,12 +168,26 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
             /** @var array<string, mixed> $unserializedData */
             $unserializedData = [];
             if ($data !== '') {
-                $unserialized = @unserialize($data);
-                if ($unserialized !== false || $data === 'b:0;') {
+                set_error_handler(function () {});
+                $unserialized = unserialize($data);
+                restore_error_handler();
+
+                if ($unserialized !== false || $data === serialize(false)) {
                     if (is_array($unserialized)) {
                         /** @var array<string, mixed> $unserialized */
                         $unserializedData = $unserialized;
+                    } else {
+                        // セッションデータが配列でない場合のログ記録
+                        $this->logger->warning('Session data is not an array', [
+                            'session_id' => $id,
+                            'type' => gettype($unserialized),
+                        ]);
                     }
+                } else {
+                    // デシリアライゼーション失敗時のログ記録
+                    $this->logger->warning('Failed to unserialize session data', [
+                        'session_id' => $id,
+                    ]);
                 }
             }
 
