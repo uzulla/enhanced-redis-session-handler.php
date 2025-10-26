@@ -35,6 +35,3 @@ Thumbs.db
 # Environment files
 .env
 .env.local
-
-# Development logbooks
-devin-logbook-*.md
