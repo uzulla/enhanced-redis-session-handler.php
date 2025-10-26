@@ -37,6 +37,9 @@ class DoubleWriteHook implements WriteHookInterface
         bool $failOnSecondaryError = false,
         ?LoggerInterface $logger = null
     ) {
+        if ($ttl <= 0) {
+            throw new \InvalidArgumentException('TTL must be positive');
+        }
         $this->secondaryConnection = $secondaryConnection;
         $this->ttl = $ttl;
         $this->failOnSecondaryError = $failOnSecondaryError;
