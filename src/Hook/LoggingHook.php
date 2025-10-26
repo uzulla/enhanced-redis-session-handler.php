@@ -37,6 +37,22 @@ class LoggingHook implements WriteHookInterface
         string $errorLevel = LogLevel::ERROR,
         bool $logData = false
     ) {
+        $validLevels = [
+            LogLevel::DEBUG, LogLevel::INFO, LogLevel::NOTICE,
+            LogLevel::WARNING, LogLevel::ERROR, LogLevel::CRITICAL,
+            LogLevel::ALERT, LogLevel::EMERGENCY,
+        ];
+
+        if (!in_array($beforeWriteLevel, $validLevels, true)) {
+            throw new \InvalidArgumentException('Invalid log level for beforeWrite');
+        }
+        if (!in_array($afterWriteLevel, $validLevels, true)) {
+            throw new \InvalidArgumentException('Invalid log level for afterWrite');
+        }
+        if (!in_array($errorLevel, $validLevels, true)) {
+            throw new \InvalidArgumentException('Invalid log level for error');
+        }
+
         $this->logger = $logger;
         $this->beforeWriteLevel = $beforeWriteLevel;
         $this->afterWriteLevel = $afterWriteLevel;
