@@ -2,8 +2,6 @@
 
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Integration;
 
-use Monolog\Handler\TestHandler;
-use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
@@ -11,14 +9,14 @@ use Uzulla\EnhancedRedisSessionHandler\Hook\DoubleWriteHook;
 use Uzulla\EnhancedRedisSessionHandler\Hook\LoggingHook;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
+use Uzulla\EnhancedRedisSessionHandler\Tests\Support\PsrTestLogger;
 
 class WriteHookIntegrationTest extends TestCase
 {
     private RedisConnection $primaryConnection;
     private RedisConnection $secondaryConnection;
     private RedisSessionHandler $handler;
-    private Logger $logger;
-    private TestHandler $logHandler;
+    private PsrTestLogger $logger;
 
     protected function setUp(): void
     {
@@ -32,9 +30,7 @@ class WriteHookIntegrationTest extends TestCase
         self::assertNotFalse($redisHost, 'SESSION_REDIS_HOST environment variable must be set');
         self::assertNotFalse($redisPort, 'SESSION_REDIS_PORT environment variable must be set');
 
-        $this->logger = new Logger('test');
-        $this->logHandler = new TestHandler();
-        $this->logger->pushHandler($this->logHandler);
+        $this->logger = new PsrTestLogger();
 
         $primaryRedis = new \Redis();
         $primaryConfig = new RedisConnectionConfig(
@@ -83,19 +79,6 @@ class WriteHookIntegrationTest extends TestCase
         }
     }
 
-    /**
-     * @return list<array>
-     */
-    private function getLogRecords(): array
-    {
-        $records = [];
-        /** @phpstan-ignore-next-line */
-        foreach ($this->logHandler->getRecords() as $record) {
-            $records[] = (array) $record;
-        }
-        return $records;
-    }
-
     public function testLoggingHookIntegration(): void
     {
         $loggingHook = new LoggingHook($this->logger);
@@ -108,20 +91,18 @@ class WriteHookIntegrationTest extends TestCase
         $result = $this->handler->write($sessionId, $sessionData);
 
         self::assertTrue($result);
-        self::assertTrue($this->logHandler->hasDebugRecords());
+        self::assertTrue($this->logger->hasDebugRecords());
 
-        $records = $this->getLogRecords();
+        $records = $this->logger->getRecords();
         $hasBeforeWrite = false;
         $hasAfterWrite = false;
 
         foreach ($records as $record) {
-            if (isset($record['message'])) {
-                if ($record['message'] === 'Session write starting') {
-                    $hasBeforeWrite = true;
-                }
-                if ($record['message'] === 'Session write successful') {
-                    $hasAfterWrite = true;
-                }
+            if ($record['message'] === 'Session write starting') {
+                $hasBeforeWrite = true;
+            }
+            if ($record['message'] === 'Session write successful') {
+                $hasAfterWrite = true;
             }
         }
 
@@ -175,7 +156,7 @@ class WriteHookIntegrationTest extends TestCase
 
         self::assertTrue($result);
 
-        self::assertTrue($this->logHandler->hasDebugRecords());
+        self::assertTrue($this->logger->hasDebugRecords());
 
         $primaryData = $this->primaryConnection->get($sessionId);
         $secondaryData = $this->secondaryConnection->get($sessionId);

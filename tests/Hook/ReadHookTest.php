@@ -2,9 +2,8 @@
 
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Hook;
 
-use Monolog\Handler\NullHandler;
-use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\Hook\ReadHookInterface;
@@ -13,7 +12,6 @@ use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
 
 class ReadHookTest extends TestCase
 {
-    private Logger $logger;
     private RedisConnection $connection;
     private RedisSessionHandler $handler;
 
@@ -23,14 +21,13 @@ class ReadHookTest extends TestCase
             self::fail('Redis extension is required for this test');
         }
 
-        $this->logger = new Logger('test');
-        $this->logger->pushHandler(new NullHandler());
+        $logger = new NullLogger();
 
         $redis = new \Redis();
         $config = new RedisConnectionConfig('localhost', 6379);
-        $this->connection = new RedisConnection($redis, $config, $this->logger);
+        $this->connection = new RedisConnection($redis, $config, $logger);
 
-        $options = new RedisSessionHandlerOptions(null, null, $this->logger);
+        $options = new RedisSessionHandlerOptions(null, null, $logger);
         $this->handler = new RedisSessionHandler($this->connection, $options);
     }
 
@@ -210,8 +207,7 @@ class ReadHookTest extends TestCase
                 throw new \RuntimeException('Test error');
             }
 
-            // PHPStan: onReadError()は常に非nullを返すが、ReadHookInterfaceの実装として?stringが必要
-            /** @phpstan-ignore-next-line */
+            /** @phpstan-ignore-next-line return.unusedType */
             public function onReadError(string $sessionId, \Throwable $e): ?string
             {
                 $this->testState->errorCalled = true;
@@ -276,8 +272,7 @@ class ReadHookTest extends TestCase
                 throw new \RuntimeException('Test error');
             }
 
-            // PHPStan: onReadError()は常に非nullを返すが、ReadHookInterfaceの実装として?stringが必要
-            /** @phpstan-ignore-next-line */
+            /** @phpstan-ignore-next-line return.unusedType */
             public function onReadError(string $sessionId, \Throwable $e): ?string
             {
                 return 'fallback-from-hook1';
@@ -294,8 +289,7 @@ class ReadHookTest extends TestCase
                 return $data;
             }
 
-            // PHPStan: onReadError()は常に非nullを返すが、ReadHookInterfaceの実装として?stringが必要
-            /** @phpstan-ignore-next-line */
+            /** @phpstan-ignore-next-line return.unusedType */
             public function onReadError(string $sessionId, \Throwable $e): ?string
             {
                 return 'fallback-from-hook2';
