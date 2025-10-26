@@ -157,6 +157,10 @@ class RedisConnection implements LoggerAwareInterface
 
     public function set(string $key, string $value, int $ttl): bool
     {
+        if ($ttl <= 0) {
+            throw new \InvalidArgumentException('TTL must be positive');
+        }
+
         $this->connect();
 
         try {
