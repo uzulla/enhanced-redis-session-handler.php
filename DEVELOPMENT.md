@@ -65,9 +65,11 @@ Install dependencies locally:
 composer install
 ```
 
+**Note**: As a library, `composer.lock` is not committed to the repository. This allows consuming applications to resolve their own dependency graph. CI automatically resolves the latest compatible dependencies on each run.
+
 This will install the following development tools:
-- PHPUnit 9.5+ (testing framework)
-- PHPStan 1.0+ with strict rules (static analysis tool)
+- PHPUnit 9.6+ (testing framework)
+- PHPStan 2.0+ with strict rules (static analysis tool)
 - PHP CS Fixer 3.0+ (code style checker)
 
 ## Development Tools
