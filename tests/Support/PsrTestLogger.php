@@ -15,6 +15,47 @@ use Psr\Log\LogLevel;
  * このクラスは削除し、Monolog\Handler\TestHandlerに戻すことができます。
  *
  * MonologのTestHandlerと同様のAPIを提供することで、移行を容易にします。
+ *
+ * ## Monolog TestHandlerへの移行方法（PHPバージョン統一後） (important-comment)
+ *
+ * ### 変更前（PsrTestLogger使用） (important-comment)
+ * ```php (important-comment)
+ * use Uzulla\EnhancedRedisSessionHandler\Tests\Support\PsrTestLogger; (important-comment)
+ * (important-comment)
+ * $logger = new PsrTestLogger(); (important-comment)
+ * $handler = new RedisSessionHandler($connection, $options, $logger); (important-comment)
+ * (important-comment)
+ * // テスト実行 (important-comment)
+ * $handler->write('session-id', 'data'); (important-comment)
+ * (important-comment)
+ * // ログレコード取得 (important-comment)
+ * $records = $logger->getRecords(); (important-comment)
+ * self::assertCount(1, $records); (important-comment)
+ * self::assertSame('INFO', $records[0]['level_name']); (important-comment)
+ * ``` (important-comment)
+ *
+ * ### 変更後（Monolog TestHandler使用） (important-comment)
+ * ```php (important-comment)
+ * use Monolog\Logger; (important-comment)
+ * use Monolog\Handler\TestHandler; (important-comment)
+ * (important-comment)
+ * $testHandler = new TestHandler(); (important-comment)
+ * $logger = new Logger('test'); (important-comment)
+ * $logger->pushHandler($testHandler); (important-comment)
+ * $handler = new RedisSessionHandler($connection, $options, $logger); (important-comment)
+ * (important-comment)
+ * // テスト実行 (important-comment)
+ * $handler->write('session-id', 'data'); (important-comment)
+ * (important-comment)
+ * // ログレコード取得（TestHandlerから取得することに注意） (important-comment)
+ * $records = $testHandler->getRecords(); (important-comment)
+ * self::assertCount(1, $records); (important-comment)
+ * self::assertSame('INFO', $records[0]['level_name']); (important-comment)
+ * ``` (important-comment)
+ *
+ * 注意: Monolog 2.x と 3.x では getRecords() の戻り値の形式が異なります。 (important-comment)
+ * この移行は、サポート対象のPHPバージョンが統一され、Monologのバージョンも (important-comment)
+ * 統一された後に実施してください。 (important-comment)
  */
 class PsrTestLogger implements LoggerInterface
 {
