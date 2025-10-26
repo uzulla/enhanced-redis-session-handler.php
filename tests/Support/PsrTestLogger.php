@@ -44,7 +44,7 @@ class PsrTestLogger implements LoggerInterface
         $levelUpper = strtoupper($level);
         return array_values(array_filter(
             $this->records,
-            fn(array $record): bool => $record['level_name'] === $levelUpper
+            fn (array $record): bool => $record['level_name'] === $levelUpper
         ));
     }
 
@@ -110,7 +110,7 @@ class PsrTestLogger implements LoggerInterface
         } else {
             $levelStr = 'unknown';
         }
-        
+
         /** @var array<string,mixed> $normalizedContext */
         $normalizedContext = $context;
         $this->records[] = [

@@ -120,8 +120,8 @@ class ErrorHandlingIntegrationTest extends TestCase
 
         $records = $logger->getRecords();
         $errorRecords = array_filter($records, function (array $record): bool {
-            return $record['level_name'] === 'ERROR' || 
-                   $record['level_name'] === 'WARNING' || 
+            return $record['level_name'] === 'ERROR' ||
+                   $record['level_name'] === 'WARNING' ||
                    $record['level_name'] === 'CRITICAL';
         });
 
