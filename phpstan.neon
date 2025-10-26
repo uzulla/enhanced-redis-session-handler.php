@@ -6,8 +6,4 @@ parameters:
     paths:
         - src
         - tests
-    excludePaths:
-        # TODO: proc_open関連のPHPStan警告は別PRで対応予定
-        # このファイルを再度有効化し、proc_open()のパイプ型推論問題を修正する
-        - tests/E2E/ExamplesTest.php
     reportUnmatchedIgnoredErrors: true
