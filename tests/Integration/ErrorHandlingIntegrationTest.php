@@ -35,11 +35,14 @@ class ErrorHandlingIntegrationTest extends TestCase
 
     protected function setUp(): void
     {
-        $redisHost = getenv('REDIS_HOST');
-        $this->host = $redisHost !== false ? $redisHost : 'localhost';
+        $redisHost = getenv('SESSION_REDIS_HOST');
+        $redisPort = getenv('SESSION_REDIS_PORT');
 
-        $redisPort = getenv('REDIS_PORT');
-        $this->port = $redisPort !== false ? (int)$redisPort : 6379;
+        self::assertNotFalse($redisHost, 'SESSION_REDIS_HOST environment variable must be set');
+        self::assertNotFalse($redisPort, 'SESSION_REDIS_PORT environment variable must be set');
+
+        $this->host = $redisHost;
+        $this->port = (int)$redisPort;
     }
 
     public function testSessionHandlerHandlesConnectionFailureGracefully(): void

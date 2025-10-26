@@ -25,15 +25,35 @@ class ReadHookIntegrationTest extends TestCase
             self::fail('Redis extension is required for this test');
         }
 
+        $redisHost = getenv('SESSION_REDIS_HOST');
+        $redisPort = getenv('SESSION_REDIS_PORT');
+
+        self::assertNotFalse($redisHost, 'SESSION_REDIS_HOST environment variable must be set');
+        self::assertNotFalse($redisPort, 'SESSION_REDIS_PORT environment variable must be set');
+
         $this->logger = new Logger('test');
         $this->logger->pushHandler(new NullHandler());
 
         $primaryRedis = new \Redis();
-        $primaryConfig = new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'primary:');
+        $primaryConfig = new RedisConnectionConfig(
+            $redisHost,
+            (int)$redisPort,
+            2.5,
+            null,
+            0,
+            'primary:'
+        );
         $this->primaryConnection = new RedisConnection($primaryRedis, $primaryConfig, $this->logger);
 
         $fallbackRedis = new \Redis();
-        $fallbackConfig = new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'fallback:');
+        $fallbackConfig = new RedisConnectionConfig(
+            $redisHost,
+            (int)$redisPort,
+            2.5,
+            null,
+            0,
+            'fallback:'
+        );
         $this->fallbackConnection = new RedisConnection($fallbackRedis, $fallbackConfig, $this->logger);
 
         $options = new RedisSessionHandlerOptions(null, null, $this->logger);
