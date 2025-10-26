@@ -13,8 +13,8 @@
 # Coverage reports
 /coverage/
 
-# Composer lock (include in development)
-# composer.lock
+# Composer lock (libraries should not commit lock files)
+composer.lock
 
 # Docker volumes and data
 /docker/data/
