@@ -207,6 +207,7 @@ class ReadHookTest extends TestCase
                 throw new \RuntimeException('Test error');
             }
 
+            // PHPStan: onReadError() は常に非 null を返すが、ReadHookInterface 実装としては ?string が必要（未使用の戻り値型警告）
             /** @phpstan-ignore-next-line return.unusedType */
             public function onReadError(string $sessionId, \Throwable $e): ?string
             {
@@ -272,6 +273,7 @@ class ReadHookTest extends TestCase
                 throw new \RuntimeException('Test error');
             }
 
+            // PHPStan: onReadError() は常に非 null を返すが、ReadHookInterface 実装としては ?string が必要（未使用の戻り値型警告） (important-comment)
             /** @phpstan-ignore-next-line return.unusedType */
             public function onReadError(string $sessionId, \Throwable $e): ?string
             {
@@ -289,6 +291,7 @@ class ReadHookTest extends TestCase
                 return $data;
             }
 
+            // PHPStan: onReadError() は常に非 null を返すが、ReadHookInterface 実装としては ?string が必要（未使用の戻り値型警告） (important-comment)
             /** @phpstan-ignore-next-line return.unusedType */
             public function onReadError(string $sessionId, \Throwable $e): ?string
             {
