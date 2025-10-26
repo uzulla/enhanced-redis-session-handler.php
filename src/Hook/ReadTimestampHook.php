@@ -32,6 +32,13 @@ class ReadTimestampHook implements ReadHookInterface
         string $timestampKeyPrefix = 'session:read_at:',
         int $timestampTtl = 86400
     ) {
+        if ($timestampKeyPrefix === '') {
+            throw new \InvalidArgumentException('Timestamp key prefix cannot be empty');
+        }
+        if ($timestampTtl <= 0) {
+            throw new \InvalidArgumentException('Timestamp TTL must be positive');
+        }
+
         $this->connection = $connection;
         $this->logger = $logger;
         $this->timestampKeyPrefix = $timestampKeyPrefix;
