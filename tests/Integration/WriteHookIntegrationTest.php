@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Integration;
 
 use Monolog\Handler\TestHandler;
@@ -23,14 +25,37 @@ class WriteHookIntegrationTest extends TestCase
     protected function setUp(): void
     {
         if (!extension_loaded('redis')) {
-            self::markTestSkipped('Redis extension is not available');
+            self::fail('Redis (phpredis) extension is required for this integration test');
         }
 
         $redisHost = getenv('SESSION_REDIS_HOST');
         $redisPort = getenv('SESSION_REDIS_PORT');
 
-        self::assertNotFalse($redisHost, 'SESSION_REDIS_HOST environment variable must be set');
-        self::assertNotFalse($redisPort, 'SESSION_REDIS_PORT environment variable must be set');
+        if ($redisHost === false) {
+            self::fail('SESSION_REDIS_HOST environment variable must be set');
+        }
+        if ($redisPort === false) {
+            self::fail('SESSION_REDIS_PORT environment variable must be set');
+        }
+
+        $probe = new \Redis();
+        if (!@$probe->connect((string)$redisHost, (int)$redisPort, 1.5)) {
+            self::fail("Redis/Valkey server not reachable at {$redisHost}:{$redisPort}");
+        }
+
+        try {
+            $pong = $probe->ping();
+            if ($pong !== true && $pong !== '+PONG' && $pong !== 'PONG') {
+                self::fail('Redis/Valkey server ping failed');
+            }
+        } catch (\Throwable $e) {
+            self::fail('Redis/Valkey server check failed: ' . $e->getMessage());
+        } finally {
+            try {
+                $probe->close();
+            } catch (\Throwable $e) {
+            }
+        }
 
         $this->logger = new Logger('test');
         $this->logHandler = new TestHandler();
