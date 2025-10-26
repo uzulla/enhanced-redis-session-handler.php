@@ -21,7 +21,14 @@ class RedisSessionHandlerOptions
         ?LoggerInterface $logger = null
     ) {
         $this->idGenerator = $idGenerator ?? new DefaultSessionIdGenerator();
-        $this->maxLifetime = $maxLifetime ?? (int)ini_get('session.gc_maxlifetime');
+
+        $iniValue = ini_get('session.gc_maxlifetime');
+        $lifetime = $maxLifetime ?? ($iniValue !== false ? (int)$iniValue : 1440);
+        if ($lifetime <= 0) {
+            throw new \InvalidArgumentException('Max lifetime must be positive');
+        }
+        $this->maxLifetime = $lifetime;
+
         $this->logger = $logger ?? new NullLogger();
     }
 
