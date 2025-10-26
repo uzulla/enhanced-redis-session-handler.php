@@ -38,9 +38,16 @@ class WriteHookIntegrationTest extends TestCase
             self::fail('SESSION_REDIS_PORT environment variable must be set');
         }
 
+        if (!ctype_digit((string)$redisPort)) {
+            self::fail('SESSION_REDIS_PORT must be a positive integer');
+        }
+
+        $host = $redisHost;
+        $port = (int)$redisPort;
+
         $probe = new \Redis();
-        if (!@$probe->connect((string)$redisHost, (int)$redisPort, 1.5)) {
-            self::fail("Redis/Valkey server not reachable at {$redisHost}:{$redisPort}");
+        if (!@$probe->connect($host, $port, 1.5)) {
+            self::fail("Redis/Valkey server not reachable at {$host}:{$port}");
         }
 
         try {
@@ -63,8 +70,8 @@ class WriteHookIntegrationTest extends TestCase
 
         $primaryRedis = new \Redis();
         $primaryConfig = new RedisConnectionConfig(
-            $redisHost,
-            (int)$redisPort,
+            $host,
+            $port,
             2.5,
             null,
             0
@@ -73,8 +80,8 @@ class WriteHookIntegrationTest extends TestCase
 
         $secondaryRedis = new \Redis();
         $secondaryConfig = new RedisConnectionConfig(
-            $redisHost,
-            (int)$redisPort,
+            $host,
+            $port,
             2.5,
             null,
             1
