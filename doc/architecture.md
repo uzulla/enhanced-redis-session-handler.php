@@ -460,8 +460,9 @@ classDiagram
 ### 11.1 必要な環境
 
 - PHP 7.4以上
-- ext-redis拡張
-- Redis 5.0以上またはValKey
+- ext-redis拡張 5.0以上
+- Redis 5.0以上（公式サポート）
+- ValKey 7.2.5以上（テストはValKey 9.0.0で実施）
 
 ### 11.2 インストール方法
 

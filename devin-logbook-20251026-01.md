@@ -344,3 +344,85 @@ enhanced-redis-session-handler.phpプロジェクトの総合テストとドキ�
 - CHANGELOG.md作成完了
 
 プロジェクトはv1.0.0リリースの準備が整っています。
+
+---
+
+## 追加作業: Redis/ValKeyバージョン要件の明確化 (2025-10-26)
+
+### 背景
+ユーザーから「Redis/ValKey: 5.0以上 とREADMEにあるが、それぞれでバージョンの扱いが異なるのではないですか？」という指摘を受けました。RedisとValKeyは異なるバージョニングスキームを持つため、それぞれを明確に分けて記載する必要があります。
+
+### 調査内容
+
+#### 1. コードベースの分析
+使用しているRedisコマンドを確認：
+```bash
+grep -r '\->set(' src/
+grep -r '\->setex(' src/
+grep -r '\->expire(' src/
+grep -r '\->get(' src/
+```
+
+**結果**:
+- `SETEX` (Redis 2.0.0以降で利用可能)
+- `GET`, `DEL`, `EXISTS`, `EXPIRE` (基本コマンド、非常に古いバージョンから利用可能)
+- `SCAN` (Redis 2.8.0以降で利用可能)
+
+最も新しいコマンドは`SCAN`（Redis 2.8.0+）ですが、実用的なサポートベースラインとしてRedis 5.0以上を推奨。
+
+#### 2. ValKeyのバージョン履歴
+- ValKeyはRedis 7.2.4からフォーク（2024年3月）
+- 初版: ValKey 7.2.5
+- 現在のテスト環境: ValKey 9.0.0
+- 独自のバージョニングを採用
+
+#### 3. スマートフレンドへの相談
+推奨されたバージョン要件：
+- **Redis**: 5.0以上（公式サポート）
+- **ValKey**: 7.2.5以上（テストはValKey 9.0.0で実施）
+- 備考として、より古いRedis（2.8.0以上）でも動作する可能性があることを記載
+
+### 実施した変更
+
+#### 1. README.md
+```markdown
+## 必要な環境
+
+- **PHP**: 7.4以上
+- **ext-redis**: 5.0以上
+- **Redis**: 5.0以上（公式サポート）
+- **ValKey**: 7.2.5以上（テストはValKey 9.0.0で実施）
+
+**備考**: 本ライブラリはGET/SETEX/DEL/EXPIRE/EXISTS/SCANなどの基本コマンドのみを使用します。より古いRedis（2.8.0以上）でも動作する可能性はありますが、サポート対象外です。ValKeyはRedis 7.2.4からフォークされ（初版7.2.5）、現在は独自のバージョニングを採用しています。
+```
+
+#### 2. doc/redis-integration.md
+バージョン要件セクションを更新し、互換性に関する備考を追加。
+
+#### 3. doc/architecture.md
+必要な環境セクションを更新し、RedisとValKeyのバージョンを明確に分離。
+
+#### 4. CHANGELOG.md
+Requirements セクションを更新し、バージョン要件の詳細な説明を追加：
+```markdown
+#### Requirements
+- PHP 7.4 or higher
+- ext-redis extension 5.0 or higher
+- Redis 5.0 or higher (officially supported)
+- ValKey 7.2.5 or higher (tested with ValKey 9.0.0)
+- PSR-3 logger interface (psr/log)
+
+**Note on Redis/ValKey versions**: The library uses basic Redis commands (GET, SETEX, DEL, EXPIRE, EXISTS, SCAN) that are available since Redis 2.8.0. However, official support is provided for Redis 5.0+ and ValKey 7.2.5+. ValKey was forked from Redis 7.2.4 (first release 7.2.5) and now uses independent versioning.
+```
+
+### 更新されたファイル
+1. `/home/ubuntu/repos/enhanced-redis-session-handler.php/README.md`
+2. `/home/ubuntu/repos/enhanced-redis-session-handler.php/doc/redis-integration.md`
+3. `/home/ubuntu/repos/enhanced-redis-session-handler.php/doc/architecture.md`
+4. `/home/ubuntu/repos/enhanced-redis-session-handler.php/CHANGELOG.md`
+
+### 学びと洞察
+- RedisとValKeyは異なるプロジェクトであり、バージョニングスキームも異なる
+- ドキュメントでは明確に区別して記載することが重要
+- 使用しているコマンドの最小要件を調査することで、正確なバージョン要件を決定できる
+- 公式サポートと技術的互換性を区別して記載することで、ユーザーに明確な情報を提供できる

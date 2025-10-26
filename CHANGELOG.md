@@ -83,9 +83,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Requirements
 - PHP 7.4 or higher
-- ext-redis extension
-- Redis/ValKey 5.0 or higher
+- ext-redis extension 5.0 or higher
+- Redis 5.0 or higher (officially supported)
+- ValKey 7.2.5 or higher (tested with ValKey 9.0.0)
 - PSR-3 logger interface (psr/log)
+
+**Note on Redis/ValKey versions**: The library uses basic Redis commands (GET, SETEX, DEL, EXPIRE, EXISTS, SCAN) that are available since Redis 2.8.0. However, official support is provided for Redis 5.0+ and ValKey 7.2.5+. ValKey was forked from Redis 7.2.4 (first release 7.2.5) and now uses independent versioning.
 
 #### Performance Features
 - Connection pooling support
