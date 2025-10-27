@@ -174,8 +174,11 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
                 set_error_handler(function (): bool {
                     return true; // Suppress the error
                 });
-                $unserialized = unserialize($data);
-                restore_error_handler();
+                try {
+                    $unserialized = unserialize($data);
+                } finally {
+                    restore_error_handler();
+                }
 
                 if ($unserialized !== false || $data === serialize(false)) {
                     if (is_array($unserialized)) {
