@@ -75,7 +75,9 @@ class SessionSerializeHandlerTest extends TestCase
             $readData = $handler->read($this->testSessionId);
             self::assertSame($encoded, $readData);
         } finally {
-            ini_set('session.serialize_handler', $originalHandler);
+            if ($originalHandler !== false) {
+                ini_set('session.serialize_handler', $originalHandler);
+            }
         }
     }
 
@@ -105,7 +107,9 @@ class SessionSerializeHandlerTest extends TestCase
             $readData = $handler->read($this->testSessionId);
             self::assertSame($phpFormatData, $readData);
         } finally {
-            ini_set('session.serialize_handler', $originalHandler);
+            if ($originalHandler !== false) {
+                ini_set('session.serialize_handler', $originalHandler);
+            }
         }
     }
 
@@ -134,7 +138,9 @@ class SessionSerializeHandlerTest extends TestCase
 
             $handler->open('', '');
         } finally {
-            ini_set('session.serialize_handler', $originalHandler);
+            if ($originalHandler !== false) {
+                ini_set('session.serialize_handler', $originalHandler);
+            }
         }
     }
 
@@ -166,7 +172,9 @@ class SessionSerializeHandlerTest extends TestCase
             $redisData = $this->connection->get($this->testSessionId);
             self::assertSame($phpFormatData, $redisData);
         } finally {
-            ini_set('session.serialize_handler', $originalHandler);
+            if ($originalHandler !== false) {
+                ini_set('session.serialize_handler', $originalHandler);
+            }
         }
     }
 
@@ -205,7 +213,9 @@ class SessionSerializeHandlerTest extends TestCase
             $redisData = $this->connection->get($this->testSessionId);
             self::assertSame($serialized, $redisData);
         } finally {
-            ini_set('session.serialize_handler', $originalHandler);
+            if ($originalHandler !== false) {
+                ini_set('session.serialize_handler', $originalHandler);
+            }
         }
     }
 
@@ -234,7 +244,9 @@ class SessionSerializeHandlerTest extends TestCase
             $readData = $handler->read($this->testSessionId);
             self::assertSame('', $readData);
         } finally {
-            ini_set('session.serialize_handler', $originalHandler);
+            if ($originalHandler !== false) {
+                ini_set('session.serialize_handler', $originalHandler);
+            }
         }
     }
 
@@ -263,7 +275,9 @@ class SessionSerializeHandlerTest extends TestCase
             $readData = $handler->read($this->testSessionId);
             self::assertSame('', $readData);
         } finally {
-            ini_set('session.serialize_handler', $originalHandler);
+            if ($originalHandler !== false) {
+                ini_set('session.serialize_handler', $originalHandler);
+            }
         }
     }
 
@@ -292,7 +306,9 @@ class SessionSerializeHandlerTest extends TestCase
             $readData = $handler->read($this->testSessionId);
             self::assertSame($phpFormatData, $readData);
         } finally {
-            ini_set('session.serialize_handler', $originalHandler);
+            if ($originalHandler !== false) {
+                ini_set('session.serialize_handler', $originalHandler);
+            }
         }
     }
 
@@ -334,7 +350,9 @@ class SessionSerializeHandlerTest extends TestCase
 
             $this->connection->delete($sessionId2);
         } finally {
-            ini_set('session.serialize_handler', $originalHandler);
+            if ($originalHandler !== false) {
+                ini_set('session.serialize_handler', $originalHandler);
+            }
         }
     }
 }
