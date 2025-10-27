@@ -19,25 +19,59 @@ class FallbackReadHookTest extends TestCase
         $this->logger->pushHandler(new NullHandler());
     }
 
+    public function testConstructorThrowsExceptionWhenFallbackConnectionsIsEmpty(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('At least one fallback connection is required');
+        new FallbackReadHook([], $this->logger);
+    }
+
     public function testBeforeReadDoesNothing(): void
     {
-        $hook = new FallbackReadHook([], $this->logger);
+        if (!extension_loaded('redis')) {
+            self::fail('Redis extension is required for this test');
+        }
+
+        $redis = new \Redis();
+        $config = new RedisConnectionConfig('localhost', 6379);
+        $connection = new RedisConnection($redis, $config, $this->logger);
+        $connection->connect();
+
+        $hook = new FallbackReadHook([$connection], $this->logger);
         $hook->beforeRead('test-session-id');
         $this->addToAssertionCount(1);
     }
 
     public function testAfterReadReturnsDataUnchanged(): void
     {
-        $hook = new FallbackReadHook([], $this->logger);
+        if (!extension_loaded('redis')) {
+            self::fail('Redis extension is required for this test');
+        }
+
+        $redis = new \Redis();
+        $config = new RedisConnectionConfig('localhost', 6379);
+        $connection = new RedisConnection($redis, $config, $this->logger);
+        $connection->connect();
+
+        $hook = new FallbackReadHook([$connection], $this->logger);
         $data = 'test-data';
         $result = $hook->afterRead('test-session-id', $data);
         self::assertSame($data, $result);
     }
 
-    public function testOnReadErrorReturnsNullWhenNoFallbacks(): void
+    public function testOnReadErrorReturnsNullWhenAllFallbacksReturnFalse(): void
     {
-        $hook = new FallbackReadHook([], $this->logger);
-        $result = $hook->onReadError('test-session-id', new \RuntimeException('Test error'));
+        if (!extension_loaded('redis')) {
+            self::fail('Redis extension is required for this test');
+        }
+
+        $redis = new \Redis();
+        $config = new RedisConnectionConfig('localhost', 6379);
+        $connection = new RedisConnection($redis, $config, $this->logger);
+        $connection->connect();
+
+        $hook = new FallbackReadHook([$connection], $this->logger);
+        $result = $hook->onReadError('nonexistent-session-id', new \RuntimeException('Test error'));
         self::assertNull($result);
     }
 

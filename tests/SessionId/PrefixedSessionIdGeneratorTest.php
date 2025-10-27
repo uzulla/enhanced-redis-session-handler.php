@@ -90,6 +90,115 @@ class PrefixedSessionIdGeneratorTest extends TestCase
         new PrefixedSessionIdGenerator('');
     }
 
+    public function testThrowsExceptionForPrefixWithSpaces(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Prefix can only contain alphanumeric characters and hyphens');
+
+        new PrefixedSessionIdGenerator('app name');
+    }
+
+    public function testThrowsExceptionForPrefixWithUnderscore(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Prefix can only contain alphanumeric characters and hyphens');
+
+        new PrefixedSessionIdGenerator('app_name');
+    }
+
+    public function testThrowsExceptionForPrefixWithSpecialCharacters(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Prefix can only contain alphanumeric characters and hyphens');
+
+        new PrefixedSessionIdGenerator('app@name');
+    }
+
+    public function testThrowsExceptionForPrefixWithSlash(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Prefix can only contain alphanumeric characters and hyphens');
+
+        new PrefixedSessionIdGenerator('app/name');
+    }
+
+    public function testThrowsExceptionForPrefixWithDot(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Prefix can only contain alphanumeric characters and hyphens');
+
+        new PrefixedSessionIdGenerator('app.name');
+    }
+
+    public function testAcceptsPrefixWithHyphens(): void
+    {
+        $generator = new PrefixedSessionIdGenerator('my-app');
+        $sessionId = $generator->generate();
+
+        self::assertMatchesRegularExpression('/^my-app_[0-9a-f]+$/', $sessionId);
+    }
+
+    public function testAcceptsPrefixWithMultipleHyphens(): void
+    {
+        $generator = new PrefixedSessionIdGenerator('my-app-name');
+        $sessionId = $generator->generate();
+
+        self::assertMatchesRegularExpression('/^my-app-name_[0-9a-f]+$/', $sessionId);
+    }
+
+    public function testAcceptsPrefixWithNumbers(): void
+    {
+        $generator = new PrefixedSessionIdGenerator('app123');
+        $sessionId = $generator->generate();
+
+        self::assertMatchesRegularExpression('/^app123_[0-9a-f]+$/', $sessionId);
+    }
+
+    public function testAcceptsPrefixWithMixedCase(): void
+    {
+        $generator = new PrefixedSessionIdGenerator('MyApp');
+        $sessionId = $generator->generate();
+
+        self::assertMatchesRegularExpression('/^MyApp_[0-9a-f]+$/', $sessionId);
+    }
+
+    public function testThrowsExceptionForPrefixTooLong(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Prefix length must be <= 64 characters');
+
+        $longPrefix = str_repeat('a', 65);
+        new PrefixedSessionIdGenerator($longPrefix);
+    }
+
+    public function testAcceptsPrefixAt64CharacterLimit(): void
+    {
+        $prefix = str_repeat('a', 64);
+        $generator = new PrefixedSessionIdGenerator($prefix);
+        $sessionId = $generator->generate();
+
+        self::assertStringStartsWith($prefix . '_', $sessionId);
+    }
+
+    public function testThrowsExceptionForRandomLengthTooLarge(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Random part length must be <= 256 characters');
+
+        new PrefixedSessionIdGenerator('test', 258);
+    }
+
+    public function testAcceptsRandomLengthAt256CharacterLimit(): void
+    {
+        $generator = new PrefixedSessionIdGenerator('test', 256);
+        $sessionId = $generator->generate();
+
+        $parts = explode('_', $sessionId);
+        $randomPart = $parts[1];
+
+        self::assertSame(256, strlen($randomPart));
+    }
+
     public function testThrowsExceptionForTooShortRandomLength(): void
     {
         $this->expectException(\InvalidArgumentException::class);

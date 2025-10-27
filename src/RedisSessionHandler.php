@@ -14,6 +14,7 @@ use Uzulla\EnhancedRedisSessionHandler\Hook\ReadHookInterface;
 use Uzulla\EnhancedRedisSessionHandler\Hook\WriteHookInterface;
 use Uzulla\EnhancedRedisSessionHandler\Hook\WriteFilterInterface;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\SessionIdGeneratorInterface;
+use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 
 class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimestampHandlerInterface, LoggerAwareInterface
 {
@@ -121,6 +122,9 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
             $data = $this->connection->get($id);
 
             if ($data === false) {
+                $this->logger->debug('Session not found in Redis', [
+                    'session_id' => SessionIdMasker::mask($id),
+                ]);
                 return '';
             }
 
@@ -131,7 +135,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
             return $data;
         } catch (\Throwable $e) {
             $this->logger->error('Error during session read', [
-                'session_id' => $id,
+                'session_id' => SessionIdMasker::mask($id),
                 'error' => $e->getMessage(),
             ]);
 
@@ -139,7 +143,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
                 $fallbackData = $hook->onReadError($id, $e);
                 if ($fallbackData !== null) {
                     $this->logger->info('Using fallback data from hook', [
-                        'session_id' => $id,
+                        'session_id' => SessionIdMasker::mask($id),
                         'hook' => get_class($hook),
                     ]);
                     return $fallbackData;
@@ -168,12 +172,31 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
             /** @var array<string, mixed> $unserializedData */
             $unserializedData = [];
             if ($data !== '') {
-                $unserialized = @unserialize($data);
-                if ($unserialized !== false || $data === 'b:0;') {
+                set_error_handler(function (): bool {
+                    return true; // Suppress the error
+                });
+                try {
+                    $unserialized = unserialize($data);
+                } finally {
+                    restore_error_handler();
+                }
+
+                if ($unserialized !== false || $data === serialize(false)) {
                     if (is_array($unserialized)) {
                         /** @var array<string, mixed> $unserialized */
                         $unserializedData = $unserialized;
+                    } else {
+                        // セッションデータが配列でない場合のログ記録
+                        $this->logger->warning('Session data is not an array', [
+                            'session_id' => SessionIdMasker::mask($id),
+                            'type' => gettype($unserialized),
+                        ]);
                     }
+                } else {
+                    // デシリアライゼーション失敗時のログ記録
+                    $this->logger->warning('Failed to unserialize session data', [
+                        'session_id' => SessionIdMasker::mask($id),
+                    ]);
                 }
             }
 
@@ -186,7 +209,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
                 /** @var array<string, mixed> $unserializedData */
                 if (!$filter->shouldWrite($id, $unserializedData)) {
                     $this->logger->debug('Write operation cancelled by filter', [
-                        'session_id' => $id,
+                        'session_id' => SessionIdMasker::mask($id),
                         'filter' => get_class($filter),
                     ]);
                     return true; // Return true because cancellation is not an error
@@ -209,7 +232,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
             }
 
             $this->logger->error('Write operation failed', [
-                'session_id' => $id,
+                'session_id' => SessionIdMasker::mask($id),
                 'error' => $e->getMessage(),
             ]);
 
@@ -264,11 +287,24 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
 
     public function create_sid(): string
     {
-        do {
+        $maxAttempts = 10;
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
             $sessionId = $this->idGenerator->generate();
-        } while ($this->connection->exists($sessionId));
+            if (!$this->connection->exists($sessionId)) {
+                if ($attempt > 1) {
+                    $this->logger->warning('Session ID collision occurred', [
+                        'attempts' => $attempt,
+                    ]);
+                }
+                return $sessionId;
+            }
+        }
 
-        return $sessionId;
+        // ループを抜けた = 全ての試行で衝突が発生した
+        $this->logger->critical('Failed to generate unique session ID after maximum attempts', [
+            'attempts' => $maxAttempts,
+        ]);
+        throw new Exception\OperationException('Failed to generate unique session ID');
     }
 
     /**

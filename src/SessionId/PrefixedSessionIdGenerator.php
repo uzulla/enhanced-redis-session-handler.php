@@ -84,6 +84,18 @@ class PrefixedSessionIdGenerator implements SessionIdGeneratorInterface
         if ($prefix === '') {
             throw new \InvalidArgumentException('Prefix cannot be empty');
         }
+        // プレフィックスに使用できる文字を英数字とハイフンのみに制限
+        if (preg_match('/^[a-zA-Z0-9-]+$/', $prefix) !== 1) {
+            throw new \InvalidArgumentException(
+                'Prefix can only contain alphanumeric characters and hyphens'
+            );
+        }
+        if (strlen($prefix) > 64) {
+            throw new \InvalidArgumentException('Prefix length must be <= 64 characters');
+        }
+        if ($randomLength > 256) {
+            throw new \InvalidArgumentException('Random part length must be <= 256 characters');
+        }
         if ($randomLength < 16) {
             throw new \InvalidArgumentException(
                 'Random part length must be at least 16 characters'

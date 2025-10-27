@@ -157,6 +157,10 @@ class RedisConnection implements LoggerAwareInterface
 
     public function set(string $key, string $value, int $ttl): bool
     {
+        if ($ttl <= 0) {
+            throw new \InvalidArgumentException('TTL must be positive');
+        }
+
         $this->connect();
 
         try {
@@ -176,11 +180,12 @@ class RedisConnection implements LoggerAwareInterface
         $this->connect();
 
         try {
-            $this->redis->del($key);
-            return true;
+            $result = $this->redis->del($key);
+            // del()は削除された要素数を返す。0より大きければ削除成功
+            return $result > 0;
         } catch (RedisException $e) {
             $this->logger->error('Redis DELETE operation failed', [
-                'error' => $e->getMessage(),
+                'exception' => $e,
                 'key' => $key,
             ]);
             return false;

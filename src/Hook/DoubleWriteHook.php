@@ -7,6 +7,7 @@ namespace Uzulla\EnhancedRedisSessionHandler\Hook;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
+use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 
 /**
  * Hook implementation that writes session data to a secondary Redis instance.
@@ -37,6 +38,9 @@ class DoubleWriteHook implements WriteHookInterface
         bool $failOnSecondaryError = false,
         ?LoggerInterface $logger = null
     ) {
+        if ($ttl <= 0) {
+            throw new \InvalidArgumentException('TTL must be positive');
+        }
         $this->secondaryConnection = $secondaryConnection;
         $this->ttl = $ttl;
         $this->failOnSecondaryError = $failOnSecondaryError;
@@ -53,7 +57,7 @@ class DoubleWriteHook implements WriteHookInterface
     {
         if (!$success) {
             $this->logger->warning('Primary write failed, skipping secondary write', [
-                'session_id' => $sessionId,
+                'session_id' => SessionIdMasker::mask($sessionId),
             ]);
             unset($this->pendingWrites[$sessionId]);
             return;
@@ -61,7 +65,7 @@ class DoubleWriteHook implements WriteHookInterface
 
         if (!isset($this->pendingWrites[$sessionId])) {
             $this->logger->warning('No pending write data found for session', [
-                'session_id' => $sessionId,
+                'session_id' => SessionIdMasker::mask($sessionId),
             ]);
             return;
         }
@@ -75,21 +79,22 @@ class DoubleWriteHook implements WriteHookInterface
             if (!$secondarySuccess) {
                 $message = 'Secondary Redis write failed';
                 $this->logger->error($message, [
-                    'session_id' => $sessionId,
+                    'session_id' => SessionIdMasker::mask($sessionId),
                 ]);
 
                 if ($this->failOnSecondaryError) {
                     throw new \RuntimeException($message);
                 }
-            } else {
-                $this->logger->debug('Secondary Redis write successful', [
-                    'session_id' => $sessionId,
-                ]);
+                return;
             }
+
+            $this->logger->debug('Secondary Redis write successful', [
+                'session_id' => SessionIdMasker::mask($sessionId),
+            ]);
         } catch (\Throwable $e) {
             $this->logger->error('Exception during secondary Redis write', [
-                'session_id' => $sessionId,
-                'error' => $e->getMessage(),
+                'session_id' => SessionIdMasker::mask($sessionId),
+                'exception' => $e,
             ]);
 
             if ($this->failOnSecondaryError) {
@@ -103,8 +108,8 @@ class DoubleWriteHook implements WriteHookInterface
     public function onWriteError(string $sessionId, \Throwable $exception): void
     {
         $this->logger->error('Primary write error, secondary write skipped', [
-            'session_id' => $sessionId,
-            'error' => $exception->getMessage(),
+            'session_id' => SessionIdMasker::mask($sessionId),
+            'exception' => $exception,
         ]);
         unset($this->pendingWrites[$sessionId]);
     }

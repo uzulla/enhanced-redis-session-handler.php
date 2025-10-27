@@ -59,6 +59,7 @@ class WriteHookIntegrationTest extends TestCase
             try {
                 $probe->close();
             } catch (\Throwable $e) {
+                // クリーンアップ中のエラーは無視：テストセットアップ時の接続切断失敗は影響しない
             }
         }
 
@@ -98,6 +99,7 @@ class WriteHookIntegrationTest extends TestCase
                     $this->primaryConnection->delete($key);
                 }
             } catch (\Exception $e) {
+                // テスト後のクリーンアップ失敗は無視：次のテストに影響を与えない
             }
 
             try {
@@ -107,6 +109,7 @@ class WriteHookIntegrationTest extends TestCase
                     $this->secondaryConnection->delete($key);
                 }
             } catch (\Exception $e) {
+                // テスト後のクリーンアップ失敗は無視：次のテストに影響を与えない
             }
         }
     }

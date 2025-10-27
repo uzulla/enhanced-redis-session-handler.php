@@ -25,6 +25,10 @@ class FallbackReadHook implements ReadHookInterface
      */
     public function __construct(array $fallbackConnections, LoggerInterface $logger)
     {
+        if (count($fallbackConnections) === 0) {
+            throw new \InvalidArgumentException('At least one fallback connection is required');
+        }
+
         $this->fallbackConnections = $fallbackConnections;
         $this->logger = $logger;
     }

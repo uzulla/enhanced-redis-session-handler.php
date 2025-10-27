@@ -101,4 +101,43 @@ class ReadTimestampHookTest extends TestCase
 
         $this->connection->delete($timestampKey);
     }
+
+    public function testConstructorThrowsExceptionWhenTimestampKeyPrefixIsEmpty(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Timestamp key prefix cannot be empty');
+
+        new ReadTimestampHook($this->connection, $this->logger, '');
+    }
+
+    public function testConstructorThrowsExceptionWhenTtlIsZero(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Timestamp TTL must be positive');
+
+        new ReadTimestampHook($this->connection, $this->logger, 'read_at:', 0);
+    }
+
+    public function testConstructorThrowsExceptionWhenTtlIsNegative(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Timestamp TTL must be positive');
+
+        new ReadTimestampHook($this->connection, $this->logger, 'read_at:', -1);
+    }
+
+    public function testConstructorAcceptsPositiveTtl(): void
+    {
+        $hook = new ReadTimestampHook($this->connection, $this->logger, 'read_at:', 1);
+        self::assertInstanceOf(ReadTimestampHook::class, $hook);
+
+        $hook = new ReadTimestampHook($this->connection, $this->logger, 'read_at:', 86400);
+        self::assertInstanceOf(ReadTimestampHook::class, $hook);
+    }
+
+    public function testConstructorAcceptsNonEmptyPrefix(): void
+    {
+        $hook = new ReadTimestampHook($this->connection, $this->logger, 'x');
+        self::assertInstanceOf(ReadTimestampHook::class, $hook);
+    }
 }

@@ -27,15 +27,7 @@ class SessionHandlerFactoryTest extends TestCase
         );
     }
 
-    public function testConstructorRequiresConfig(): void
-    {
-        $config = $this->createDefaultConfig();
-        $factory = new SessionHandlerFactory($config);
-
-        self::assertSame($config, $factory->getConfig());
-    }
-
-    public function testGetConfig(): void
+    public function testConstructorStoresConfigAndGetConfigReturnsIt(): void
     {
         $config = $this->createDefaultConfig();
         $factory = new SessionHandlerFactory($config);
