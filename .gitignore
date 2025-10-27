@@ -29,6 +29,9 @@ composer.lock
 *~
 .DS_Store
 
+# Claude Code local settings
+.claude/settings.local.json
+
 # OS files
 Thumbs.db
 
