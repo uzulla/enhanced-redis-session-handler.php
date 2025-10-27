@@ -99,7 +99,7 @@ class LoggingHookTest extends TestCase
                 LogLevel::DEBUG,
                 'Session write starting',
                 self::callback(function (array $context) {
-                    return $context['session_id'] === 'test_session'
+                    return $context['session_id'] === '...sion'
                         && !isset($context['data'])
                         && isset($context['data_keys'])
                         && isset($context['data_size']);
@@ -121,7 +121,7 @@ class LoggingHookTest extends TestCase
                 LogLevel::DEBUG,
                 'Session write starting',
                 self::callback(function (array $context) {
-                    return $context['session_id'] === 'test_session'
+                    return $context['session_id'] === '...sion'
                         && isset($context['data'])
                         && $context['data'] === ['key' => 'value'];
                 })
@@ -140,7 +140,7 @@ class LoggingHookTest extends TestCase
                 LogLevel::DEBUG,
                 'Session write successful',
                 [
-                    'session_id' => 'test_session',
+                    'session_id' => '...sion',
                     'success' => true,
                 ]
             );
@@ -157,7 +157,7 @@ class LoggingHookTest extends TestCase
                 LogLevel::DEBUG,
                 'Session write failed',
                 [
-                    'session_id' => 'test_session',
+                    'session_id' => '...sion',
                     'success' => false,
                 ]
             );
@@ -176,7 +176,7 @@ class LoggingHookTest extends TestCase
                 LogLevel::ERROR,
                 'Session write error occurred',
                 self::callback(function (array $context) {
-                    return $context['session_id'] === 'test_session'
+                    return $context['session_id'] === '...sion'
                         && $context['exception_class'] === \RuntimeException::class
                         && $context['exception_message'] === 'Test error'
                         && $context['exception_code'] === 123

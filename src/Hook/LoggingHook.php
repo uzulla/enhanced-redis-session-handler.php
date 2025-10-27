@@ -6,6 +6,7 @@ namespace Uzulla\EnhancedRedisSessionHandler\Hook;
 
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
+use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 
 /**
  * Hook implementation that logs session write operations.
@@ -63,7 +64,7 @@ class LoggingHook implements WriteHookInterface
     public function beforeWrite(string $sessionId, array $data): array
     {
         $context = [
-            'session_id' => $sessionId,
+            'session_id' => SessionIdMasker::mask($sessionId),
             'data_keys' => array_keys($data),
             'data_size' => count($data),
         ];
@@ -87,7 +88,7 @@ class LoggingHook implements WriteHookInterface
             $this->afterWriteLevel,
             $success ? 'Session write successful' : 'Session write failed',
             [
-                'session_id' => $sessionId,
+                'session_id' => SessionIdMasker::mask($sessionId),
                 'success' => $success,
             ]
         );
@@ -99,7 +100,7 @@ class LoggingHook implements WriteHookInterface
             $this->errorLevel,
             'Session write error occurred',
             [
-                'session_id' => $sessionId,
+                'session_id' => SessionIdMasker::mask($sessionId),
                 'exception_class' => get_class($exception),
                 'exception_message' => $exception->getMessage(),
                 'exception_code' => $exception->getCode(),
