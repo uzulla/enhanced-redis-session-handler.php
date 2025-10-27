@@ -25,16 +25,8 @@ class FallbackReadHook implements ReadHookInterface
      */
     public function __construct(array $fallbackConnections, LoggerInterface $logger)
     {
-        if (empty($fallbackConnections)) {
+        if (count($fallbackConnections) === 0) {
             throw new \InvalidArgumentException('At least one fallback connection is required');
-        }
-
-        foreach ($fallbackConnections as $connection) {
-            if (!$connection instanceof \Uzulla\EnhancedRedisSessionHandler\RedisConnection) {
-                throw new \InvalidArgumentException(
-                    'All fallback connections must be instances of RedisConnection'
-                );
-            }
         }
 
         $this->fallbackConnections = $fallbackConnections;
