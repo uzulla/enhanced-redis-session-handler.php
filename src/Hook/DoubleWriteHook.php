@@ -114,10 +114,13 @@ class DoubleWriteHook implements WriteHookInterface
 
     /**
      * Mask session ID for secure logging.
-     * Returns first 12 characters of SHA-256 hash to allow correlation while preventing hijacking.
+     * Shows only the last 4 characters to allow correlation while preventing hijacking.
      */
     private static function maskSessionId(string $sessionId): string
     {
-        return substr(hash('sha256', $sessionId), 0, 12);
+        if (strlen($sessionId) <= 4) {
+            return '...' . $sessionId;
+        }
+        return '...' . substr($sessionId, -4);
     }
 }
