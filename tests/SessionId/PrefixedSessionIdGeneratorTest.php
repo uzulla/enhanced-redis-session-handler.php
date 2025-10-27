@@ -90,6 +90,78 @@ class PrefixedSessionIdGeneratorTest extends TestCase
         new PrefixedSessionIdGenerator('');
     }
 
+    public function testThrowsExceptionForPrefixWithSpaces(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Prefix can only contain alphanumeric characters and hyphens');
+
+        new PrefixedSessionIdGenerator('app name');
+    }
+
+    public function testThrowsExceptionForPrefixWithUnderscore(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Prefix can only contain alphanumeric characters and hyphens');
+
+        new PrefixedSessionIdGenerator('app_name');
+    }
+
+    public function testThrowsExceptionForPrefixWithSpecialCharacters(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Prefix can only contain alphanumeric characters and hyphens');
+
+        new PrefixedSessionIdGenerator('app@name');
+    }
+
+    public function testThrowsExceptionForPrefixWithSlash(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Prefix can only contain alphanumeric characters and hyphens');
+
+        new PrefixedSessionIdGenerator('app/name');
+    }
+
+    public function testThrowsExceptionForPrefixWithDot(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Prefix can only contain alphanumeric characters and hyphens');
+
+        new PrefixedSessionIdGenerator('app.name');
+    }
+
+    public function testAcceptsPrefixWithHyphens(): void
+    {
+        $generator = new PrefixedSessionIdGenerator('my-app');
+        $sessionId = $generator->generate();
+
+        self::assertStringStartsWith('my-app_', $sessionId);
+    }
+
+    public function testAcceptsPrefixWithMultipleHyphens(): void
+    {
+        $generator = new PrefixedSessionIdGenerator('my-app-name');
+        $sessionId = $generator->generate();
+
+        self::assertStringStartsWith('my-app-name_', $sessionId);
+    }
+
+    public function testAcceptsPrefixWithNumbers(): void
+    {
+        $generator = new PrefixedSessionIdGenerator('app123');
+        $sessionId = $generator->generate();
+
+        self::assertStringStartsWith('app123_', $sessionId);
+    }
+
+    public function testAcceptsPrefixWithMixedCase(): void
+    {
+        $generator = new PrefixedSessionIdGenerator('MyApp');
+        $sessionId = $generator->generate();
+
+        self::assertStringStartsWith('MyApp_', $sessionId);
+    }
+
     public function testThrowsExceptionForTooShortRandomLength(): void
     {
         $this->expectException(\InvalidArgumentException::class);
