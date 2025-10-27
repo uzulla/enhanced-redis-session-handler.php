@@ -122,7 +122,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
 
             if ($data === false) {
                 $this->logger->debug('Session not found in Redis', [
-                    'session_id' => $id,
+                    'session_id' => $this->maskSessionId($id),
                 ]);
                 return '';
             }
@@ -134,7 +134,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
             return $data;
         } catch (\Throwable $e) {
             $this->logger->error('Error during session read', [
-                'session_id' => $id,
+                'session_id' => $this->maskSessionId($id),
                 'error' => $e->getMessage(),
             ]);
 
@@ -142,7 +142,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
                 $fallbackData = $hook->onReadError($id, $e);
                 if ($fallbackData !== null) {
                     $this->logger->info('Using fallback data from hook', [
-                        'session_id' => $id,
+                        'session_id' => $this->maskSessionId($id),
                         'hook' => get_class($hook),
                     ]);
                     return $fallbackData;
@@ -187,14 +187,14 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
                     } else {
                         // セッションデータが配列でない場合のログ記録
                         $this->logger->warning('Session data is not an array', [
-                            'session_id' => $id,
+                            'session_id' => $this->maskSessionId($id),
                             'type' => gettype($unserialized),
                         ]);
                     }
                 } else {
                     // デシリアライゼーション失敗時のログ記録
                     $this->logger->warning('Failed to unserialize session data', [
-                        'session_id' => $id,
+                        'session_id' => $this->maskSessionId($id),
                     ]);
                 }
             }
@@ -208,7 +208,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
                 /** @var array<string, mixed> $unserializedData */
                 if (!$filter->shouldWrite($id, $unserializedData)) {
                     $this->logger->debug('Write operation cancelled by filter', [
-                        'session_id' => $id,
+                        'session_id' => $this->maskSessionId($id),
                         'filter' => get_class($filter),
                     ]);
                     return true; // Return true because cancellation is not an error
@@ -231,7 +231,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
             }
 
             $this->logger->error('Write operation failed', [
-                'session_id' => $id,
+                'session_id' => $this->maskSessionId($id),
                 'error' => $e->getMessage(),
             ]);
 
@@ -319,5 +319,14 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
     private function getTTL(): int
     {
         return max(60, $this->maxLifetime);
+    }
+
+    /**
+     * Mask session ID for secure logging.
+     * Returns first 12 characters of SHA-256 hash to allow correlation while preventing hijacking.
+     */
+    private function maskSessionId(string $sessionId): string
+    {
+        return substr(hash('sha256', $sessionId), 0, 12);
     }
 }
