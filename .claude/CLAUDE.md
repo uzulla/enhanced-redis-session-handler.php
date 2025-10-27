@@ -73,7 +73,7 @@ docker compose -f docker/docker-compose.yml down
 
 ### レイヤー構成
 
-```
+```text
 PHPアプリケーション
     ↓
 RedisSessionHandler (SessionHandlerInterface実装)
@@ -168,3 +168,51 @@ ReadHookInterfaceやWriteHookInterfaceを実装する際は、既存の実装（
 - `composer.lock`はリポジトリにコミットされていません
 - CIは毎回最新の互換性のある依存関係を解決します
 - 破壊的変更を避け、後方互換性を重視してください
+
+## セキュリティ考慮事項
+
+### セッションIDのログ出力
+
+セッションIDは機密情報のため、ログ出力時は必ずマスキングすること:
+
+```php
+private function maskSessionId(string $sessionId): string
+{
+    if (strlen($sessionId) <= 4) {
+        return '...' . $sessionId;
+    }
+    return '...' . substr($sessionId, -4);
+}
+
+// ログ出力例
+$this->logger->debug('Session operation', [
+    'session_id' => $this->maskSessionId($sessionId),
+]);
+```
+
+**重要**: 生のセッションIDをログに記録すると、ログ漏洩時にセッションハイジャックのリスクがあります。末尾4文字のみ表示することで、デバッグ時の相関分析は可能にしつつセキュリティを確保します。
+
+### 入力検証
+
+設定クラス（Config配下）では、コンストラクタで必ず入力検証を実施:
+- ポート番号: 1-65535の範囲チェック
+- タイムアウト値: 非負の値チェック
+- TTL値: 正の値チェック
+- 配列パラメータ: 空でないことのチェック
+
+無効な値の場合は `InvalidArgumentException` を投げてください。
+
+## コミット規約
+
+- コミットメッセージは日本語で記述
+- 1行で変更の理由（WHY）を説明
+- 複数の独立した修正は別々のコミットに分割
+- コミット前に必ず `composer phpstan` と `composer cs-check` を実行
+
+## Git操作のベストプラクティス
+
+PRレビュー対応時:
+1. 各指摘事項ごとに個別のコミットを作成
+2. コミットメッセージでレビュー指摘の理由を説明
+3. 全修正完了後、PRにまとめコメントを投稿
+4. PHPStanとPHP CS Fixerが通過していることを確認
