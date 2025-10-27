@@ -8,7 +8,7 @@ namespace Uzulla\EnhancedRedisSessionHandler\Serializer;
  * Interface for session data serialization/deserialization.
  *
  * This interface allows supporting different PHP session.serialize_handler formats
- * such as 'php', 'php_serialize', and 'php_binary'.
+ * such as 'php' and 'php_serialize'.
  */
 interface SessionSerializerInterface
 {
