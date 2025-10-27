@@ -93,7 +93,7 @@ class DoubleWriteHook implements WriteHookInterface
         } catch (\Throwable $e) {
             $this->logger->error('Exception during secondary Redis write', [
                 'session_id' => self::maskSessionId($sessionId),
-                'error' => $e->getMessage(),
+                'exception' => $e,
             ]);
 
             if ($this->failOnSecondaryError) {
@@ -108,7 +108,7 @@ class DoubleWriteHook implements WriteHookInterface
     {
         $this->logger->error('Primary write error, secondary write skipped', [
             'session_id' => self::maskSessionId($sessionId),
-            'error' => $exception->getMessage(),
+            'exception' => $exception,
         ]);
         unset($this->pendingWrites[$sessionId]);
     }
