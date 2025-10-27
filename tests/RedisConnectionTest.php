@@ -109,7 +109,7 @@ class RedisConnectionTest extends TestCase
         self::assertFalse($result);
     }
 
-    public function testDeleteReturnsTrueWhenMultipleKeysDeleted(): void
+    public function testDeleteReturnsTrueWhenKeyExistsAmongMultiple(): void
     {
         if (!extension_loaded('redis')) {
             self::markTestSkipped('Redis extension is required for this test');
@@ -131,11 +131,11 @@ class RedisConnectionTest extends TestCase
             self::markTestSkipped('Redis connection not available');
         }
 
-        // 複数のキーを設定
+        // 複数のキーを設定して、その中の1つを削除できることを確認
         $connection->set('test_delete_multiple_1', 'value1', 60);
         $connection->set('test_delete_multiple_2', 'value2', 60);
 
-        // 1つだけ削除（戻り値は1になるはず）
+        // 1つのキーを削除（存在するキーなので true を返す）
         $result = $connection->delete('test_delete_multiple_1');
         self::assertTrue($result);
 
