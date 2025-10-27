@@ -32,6 +32,10 @@ composer.lock
 # Claude Code local settings
 .claude/settings.local.json
 
+# Review files
+review.md
+coderabbit_review.md
+
 # OS files
 Thumbs.db
 
