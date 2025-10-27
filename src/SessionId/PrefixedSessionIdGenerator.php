@@ -90,6 +90,12 @@ class PrefixedSessionIdGenerator implements SessionIdGeneratorInterface
                 'Prefix can only contain alphanumeric characters and hyphens'
             );
         }
+        if (strlen($prefix) > 64) {
+            throw new \InvalidArgumentException('Prefix length must be <= 64 characters');
+        }
+        if ($randomLength > 256) {
+            throw new \InvalidArgumentException('Random part length must be <= 256 characters');
+        }
         if ($randomLength < 16) {
             throw new \InvalidArgumentException(
                 'Random part length must be at least 16 characters'
