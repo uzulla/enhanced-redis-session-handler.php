@@ -203,6 +203,76 @@ interface WriteHookInterface
 - データの圧縮
 - 監査ログの記録
 
+### 3.4 SessionHandlerFactory
+
+#### 3.4.1 責務
+- `RedisSessionHandler`のインスタンス生成
+- `SessionConfig`に基づく設定の適用
+- 依存関係の注入とワイヤリング
+
+#### 3.4.2 主要メソッド
+
+```php
+class SessionHandlerFactory
+{
+    public function __construct(SessionConfig $config);
+    public function build(): RedisSessionHandler;
+    public function getConfig(): SessionConfig;
+}
+```
+
+**設計パターン:**
+ファクトリーパターンを採用することで、複雑な依存関係の管理を簡素化し、ユーザーコードから実装の詳細を隠蔽します。
+
+**使用例:**
+```php
+$config = new SessionConfig(
+    new RedisConnectionConfig(),
+    new DefaultSessionIdGenerator(),
+    (int)ini_get('session.gc_maxlifetime'),
+    new NullLogger()
+);
+
+$factory = new SessionHandlerFactory($config);
+$handler = $factory->build();
+```
+
+詳細な使用方法については、[doc/factory-usage.md](factory-usage.md)を参照してください。
+
+### 3.5 SessionIdMasker
+
+#### 3.5.1 責務
+- セッションIDのマスキング処理
+- ログ出力時のセキュリティ保護
+
+#### 3.5.2 主要メソッド
+
+```php
+class SessionIdMasker
+{
+    public static function mask(string $sessionId): string;
+}
+```
+
+**実装詳細:**
+- デバッグのためにセッションIDの末尾4文字のみを表示
+- 長さが4文字以下の場合は全体を"..."でプレフィックス
+- 例: "abc123def456" → "...f456"
+
+**セキュリティ上の理由:**
+セッションIDは機密情報であり、ログに記録すると漏洩時にセッションハイジャックのリスクがあります。末尾4文字のみ表示することで、デバッグ時の相関分析は可能にしつつ、セキュリティを確保します。
+
+**使用例:**
+```php
+use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
+
+$logger->info('Session read', [
+    'session_id' => SessionIdMasker::mask($sessionId),
+]);
+```
+
+すべての組み込みフック（LoggingHook、DoubleWriteHook、ReadTimestampHook等）は、自動的に`SessionIdMasker`を使用してセッションIDをマスキングします。
+
 ## 4. データフロー
 
 ### 4.1 セッション読み込みフロー
@@ -420,6 +490,27 @@ classDiagram
 - IPアドレスやUser-Agentの検証（ReadHookで実装可能）
 - タイムアウトの適切な設定
 
+### 8.4 セッションIDのログ出力時の保護
+
+セッションIDは機密情報のため、ログ出力時には必ずマスキングすることが重要です。ログ漏洩時のセッションハイジャックのリスクを軽減するため、`SessionIdMasker`ユーティリティクラスを使用します。
+
+```php
+use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
+
+// セッションIDをマスキング（末尾4文字のみ表示）
+$maskedId = SessionIdMasker::mask($sessionId);
+// 例: "abc123def456" → "...f456"
+
+$logger->info('Session operation', [
+    'session_id' => $maskedId,
+]);
+```
+
+**重要**:
+- セキュリティ上、ログには生のセッションIDを記録しないこと
+- すべての組み込みフック（LoggingHook、DoubleWriteHook等）は自動的にセッションIDをマスキング
+- 末尾4文字のみ表示することで、デバッグ時の相関分析は可能にしつつセキュリティを確保
+
 ## 9. 拡張ポイント
 
 ### 9.1 プラグイン機構
@@ -474,17 +565,31 @@ composer require uzulla/enhanced-redis-session-handler
 
 ```php
 <?php
-use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
-use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
+use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
+use Psr\Log\NullLogger;
 
-$connection = new RedisConnection([
-    'host' => 'localhost',
-    'port' => 6379,
-    'timeout' => 2.5,
-    'prefix' => 'myapp:session:',
-]);
+// 設定を作成
+$connectionConfig = new RedisConnectionConfig(
+    host: 'localhost',
+    port: 6379,
+    timeout: 2.5,
+    prefix: 'myapp:session:'
+);
 
-$handler = new RedisSessionHandler($connection);
+$config = new SessionConfig(
+    $connectionConfig,
+    new DefaultSessionIdGenerator(),
+    (int)ini_get('session.gc_maxlifetime'),
+    new NullLogger()
+);
+
+// ファクトリーでハンドラを作成
+$factory = new SessionHandlerFactory($config);
+$handler = $factory->build();
+
 session_set_save_handler($handler, true);
 session_start();
 ```

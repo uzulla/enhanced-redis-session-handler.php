@@ -668,6 +668,8 @@ class CompressionWriteHook implements WriteHookInterface
 ### 5.6 実装例: 監査ログフック
 
 ```php
+use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
+
 class AuditLogWriteHook implements WriteHookInterface
 {
     private LoggerInterface $logger;
@@ -685,7 +687,7 @@ class AuditLogWriteHook implements WriteHookInterface
     public function afterWrite(string $sessionId, bool $success): void
     {
         $this->logger->info('Session write completed', [
-            'session_id' => $sessionId,
+            'session_id' => SessionIdMasker::mask($sessionId),
             'success' => $success,
             'timestamp' => time(),
             'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
@@ -693,6 +695,8 @@ class AuditLogWriteHook implements WriteHookInterface
     }
 }
 ```
+
+**セキュリティ注意**: ログに保存する場合、セッションIDは機密情報のため、必ず`SessionIdMasker::mask()`を使用してマスキングしてください。
 
 ### 5.7 実装例: 書き込みキャンセルフック
 
@@ -992,6 +996,55 @@ class SessionValidationReadHook implements ReadHookInterface
 - アルゴリズム: AES-256-CBC
 - キー管理: 環境変数または専用のキー管理システム
 - IV: セッションIDから派生
+
+### 9.5 セッションIDのログ出力保護
+
+セッションIDは機密情報であり、ログに記録すると漏洩時にセッションハイジャックのリスクがあります。ログ出力時には必ず`SessionIdMasker`を使用してマスキングすることが重要です。
+
+#### 9.5.1 SessionIdMaskerユーティリティクラス
+
+```php
+namespace Uzulla\EnhancedRedisSessionHandler\Support;
+
+class SessionIdMasker
+{
+    /**
+     * セッションIDをマスキングして安全にログ出力できる形式に変換
+     *
+     * @param string $sessionId マスキングするセッションID
+     * @return string マスキングされたセッションID（末尾4文字のみ表示）
+     */
+    public static function mask(string $sessionId): string
+    {
+        if (strlen($sessionId) <= 4) {
+            return '...' . $sessionId;
+        }
+        return '...' . substr($sessionId, -4);
+    }
+}
+```
+
+#### 9.5.2 使用例
+
+```php
+use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
+
+// ログ出力時にマスキング
+$logger->info('Session read', [
+    'session_id' => SessionIdMasker::mask($sessionId),
+    'data_size' => strlen($data),
+]);
+
+// 例: "abc123def456" → "...f456"
+```
+
+#### 9.5.3 セキュリティ上の理由
+
+- **漏洩リスク**: ログファイルが漏洩した場合、完全なセッションIDがあるとセッションハイジャックが可能
+- **デバッグ可能性**: 末尾4文字のみ表示することで、同一セッションの相関分析は可能
+- **自動適用**: すべての組み込みフック（LoggingHook、DoubleWriteHook、ReadTimestampHook等）は自動的にマスキングを適用
+
+**重要**: 本番環境では絶対に生のセッションIDをログに記録しないでください。
 
 ## 10. テスト仕様
 
