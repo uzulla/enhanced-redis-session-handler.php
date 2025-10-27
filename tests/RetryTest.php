@@ -92,6 +92,7 @@ class RetryTest extends TestCase
         try {
             $connection->connect();
         } catch (ConnectionException $e) {
+            // 接続失敗は意図的な動作：リトライログの検証が目的のため例外を無視
         }
 
         $records = $logger->getRecords();
