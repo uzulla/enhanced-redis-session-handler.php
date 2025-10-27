@@ -84,11 +84,12 @@ class DoubleWriteHook implements WriteHookInterface
                 if ($this->failOnSecondaryError) {
                     throw new \RuntimeException($message);
                 }
-            } else {
-                $this->logger->debug('Secondary Redis write successful', [
-                    'session_id' => self::maskSessionId($sessionId),
-                ]);
+                return;
             }
+
+            $this->logger->debug('Secondary Redis write successful', [
+                'session_id' => self::maskSessionId($sessionId),
+            ]);
         } catch (\Throwable $e) {
             $this->logger->error('Exception during secondary Redis write', [
                 'session_id' => self::maskSessionId($sessionId),
