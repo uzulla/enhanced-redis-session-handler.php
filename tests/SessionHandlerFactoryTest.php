@@ -14,6 +14,7 @@ use Uzulla\EnhancedRedisSessionHandler\Hook\WriteHookInterface;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 
 class SessionHandlerFactoryTest extends TestCase
 {
@@ -21,6 +22,7 @@ class SessionHandlerFactoryTest extends TestCase
     {
         return new SessionConfig(
             new RedisConnectionConfig(),
+            new PhpSerializeSerializer(),
             new DefaultSessionIdGenerator(),
             3600,
             new NullLogger()
@@ -58,10 +60,11 @@ class SessionHandlerFactoryTest extends TestCase
             2.5,
             3
         );
+        $serializer = new PhpSerializeSerializer();
         $idGenerator = new DefaultSessionIdGenerator();
         $logger = new NullLogger();
 
-        $config = new SessionConfig($connectionConfig, $idGenerator, 7200, $logger);
+        $config = new SessionConfig($connectionConfig, $serializer, $idGenerator, 7200, $logger);
         $factory = new SessionHandlerFactory($config);
         $handler = $factory->build();
 

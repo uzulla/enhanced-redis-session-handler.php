@@ -10,6 +10,7 @@ use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\SecureSessionIdGenerator;
 
@@ -38,19 +39,22 @@ class RedisSessionHandlerTest extends TestCase
         $this->connection = new RedisConnection($redis, $config, $logger);
 
         $options = new RedisSessionHandlerOptions(null, null, $logger);
-        $this->handler = new RedisSessionHandler($this->connection, $options);
+        $serializer = new PhpSerializeSerializer();
+        $this->handler = new RedisSessionHandler($this->connection, $serializer, $options);
     }
 
     public function testConstructorWithDefaultOptions(): void
     {
-        $handler = new RedisSessionHandler($this->connection);
+        $serializer = new PhpSerializeSerializer();
+        $handler = new RedisSessionHandler($this->connection, $serializer);
         self::assertInstanceOf(RedisSessionHandler::class, $handler);
     }
 
     public function testConstructorWithCustomIdGenerator(): void
     {
         $options = new RedisSessionHandlerOptions(new SecureSessionIdGenerator(32));
-        $handler = new RedisSessionHandler($this->connection, $options);
+        $serializer = new PhpSerializeSerializer();
+        $handler = new RedisSessionHandler($this->connection, $serializer, $options);
         self::assertInstanceOf(RedisSessionHandler::class, $handler);
     }
 

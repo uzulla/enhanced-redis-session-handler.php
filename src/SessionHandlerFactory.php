@@ -32,7 +32,11 @@ class SessionHandlerFactory
             $this->config->getLogger()
         );
 
-        $handler = new RedisSessionHandler($connection, $options);
+        $handler = new RedisSessionHandler(
+            $connection,
+            $this->config->getSerializer(),
+            $options
+        );
 
         foreach ($this->config->getReadHooks() as $hook) {
             $handler->addReadHook($hook);

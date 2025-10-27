@@ -11,6 +11,8 @@ use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\Exception\ConfigurationException;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializer;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 
 class SessionSerializeHandlerTest extends TestCase
 {
@@ -63,6 +65,7 @@ class SessionSerializeHandlerTest extends TestCase
         try {
             $handler = new RedisSessionHandler(
                 $this->connection,
+                new PhpSerializeSerializer(),
                 new RedisSessionHandlerOptions()
             );
 
@@ -96,6 +99,7 @@ class SessionSerializeHandlerTest extends TestCase
         try {
             $handler = new RedisSessionHandler(
                 $this->connection,
+                new PhpSerializer(),
                 new RedisSessionHandlerOptions()
             );
 
@@ -133,11 +137,12 @@ class SessionSerializeHandlerTest extends TestCase
         try {
             $handler = new RedisSessionHandler(
                 $this->connection,
+                new PhpSerializeSerializer(),
                 new RedisSessionHandlerOptions()
             );
 
             $this->expectException(ConfigurationException::class);
-            $this->expectExceptionMessage('Unsupported session.serialize_handler');
+            $this->expectExceptionMessage('Serializer mismatch');
 
             $handler->open('', '');
         } finally {
@@ -159,6 +164,7 @@ class SessionSerializeHandlerTest extends TestCase
         try {
             $handler = new RedisSessionHandler(
                 $this->connection,
+                new PhpSerializer(),
                 new RedisSessionHandlerOptions()
             );
 
@@ -193,6 +199,7 @@ class SessionSerializeHandlerTest extends TestCase
         try {
             $handler = new RedisSessionHandler(
                 $this->connection,
+                new PhpSerializeSerializer(),
                 new RedisSessionHandlerOptions()
             );
 
@@ -234,6 +241,7 @@ class SessionSerializeHandlerTest extends TestCase
         try {
             $handler = new RedisSessionHandler(
                 $this->connection,
+                new PhpSerializer(),
                 new RedisSessionHandlerOptions()
             );
 
@@ -265,6 +273,7 @@ class SessionSerializeHandlerTest extends TestCase
         try {
             $handler = new RedisSessionHandler(
                 $this->connection,
+                new PhpSerializer(),
                 new RedisSessionHandlerOptions()
             );
 
@@ -296,6 +305,7 @@ class SessionSerializeHandlerTest extends TestCase
         try {
             $handler = new RedisSessionHandler(
                 $this->connection,
+                new PhpSerializer(),
                 new RedisSessionHandlerOptions()
             );
 
@@ -327,6 +337,7 @@ class SessionSerializeHandlerTest extends TestCase
             ini_set('session.serialize_handler', 'php_serialize');
             $handler1 = new RedisSessionHandler(
                 $this->connection,
+                new PhpSerializeSerializer(),
                 new RedisSessionHandlerOptions()
             );
             $handler1->open('', '');
@@ -338,6 +349,7 @@ class SessionSerializeHandlerTest extends TestCase
             ini_set('session.serialize_handler', 'php');
             $handler2 = new RedisSessionHandler(
                 $this->connection,
+                new PhpSerializer(),
                 new RedisSessionHandlerOptions()
             );
             $handler2->open('', '');

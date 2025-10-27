@@ -42,6 +42,7 @@ use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\Hook\DoubleWriteHook;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Psr\Log\NullLogger;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
@@ -87,7 +88,9 @@ try {
 
     echo "3. Creating session configuration with double write hook...\n";
     $sessionConfig = new SessionConfig(
+        
         $primaryConfig,
+        new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),
         1440,
         $logger
@@ -195,7 +198,9 @@ try {
     );
 
     $sessionConfig = new SessionConfig(
+        
         $primaryConfig,
+        new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),
         1440,
         $logger

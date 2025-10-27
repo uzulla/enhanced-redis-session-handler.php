@@ -27,6 +27,7 @@ use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 use Psr\Log\LogLevel;
@@ -52,6 +53,7 @@ try {
 
     $sessionConfig = new SessionConfig(
         $connectionConfig,
+        new PhpSerializeSerializer(), // Use php_serialize format (default)
         new DefaultSessionIdGenerator(),
         1440, // 24分 / 24 minutes
         $logger

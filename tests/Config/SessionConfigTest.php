@@ -14,6 +14,7 @@ use Uzulla\EnhancedRedisSessionHandler\Hook\WriteFilterInterface;
 use Uzulla\EnhancedRedisSessionHandler\Hook\WriteHookInterface;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\SessionIdGeneratorInterface;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 
 class SessionConfigTest extends TestCase
 {
@@ -21,6 +22,7 @@ class SessionConfigTest extends TestCase
     {
         return new SessionConfig(
             new RedisConnectionConfig(),
+            new PhpSerializeSerializer(),
             new DefaultSessionIdGenerator(),
             3600,
             new NullLogger()
@@ -30,13 +32,15 @@ class SessionConfigTest extends TestCase
     public function testConstructor(): void
     {
         $connectionConfig = new RedisConnectionConfig();
+        $serializer = new PhpSerializeSerializer();
         $idGenerator = new DefaultSessionIdGenerator();
         $logger = new NullLogger();
         $maxLifetime = 3600;
 
-        $config = new SessionConfig($connectionConfig, $idGenerator, $maxLifetime, $logger);
+        $config = new SessionConfig($connectionConfig, $serializer, $idGenerator, $maxLifetime, $logger);
 
         self::assertSame($connectionConfig, $config->getConnectionConfig());
+        self::assertSame($serializer, $config->getSerializer());
         self::assertSame($idGenerator, $config->getIdGenerator());
         self::assertSame($maxLifetime, $config->getMaxLifetime());
         self::assertSame($logger, $config->getLogger());
@@ -103,6 +107,7 @@ class SessionConfigTest extends TestCase
 
         new SessionConfig(
             new RedisConnectionConfig(),
+            new PhpSerializeSerializer(),
             new DefaultSessionIdGenerator(),
             0,
             new NullLogger()

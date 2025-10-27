@@ -12,6 +12,7 @@ use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 
 class LoggerAwareTest extends TestCase
 {
@@ -22,7 +23,8 @@ class LoggerAwareTest extends TestCase
         $logger = new Logger('test');
         $connection = new RedisConnection($redis, $config, $logger);
 
-        $handler = new RedisSessionHandler($connection);
+        $serializer = new PhpSerializeSerializer();
+        $handler = new RedisSessionHandler($connection, $serializer);
 
         self::assertInstanceOf(LoggerAwareInterface::class, $handler);
     }
@@ -34,7 +36,8 @@ class LoggerAwareTest extends TestCase
         $logger = new Logger('test');
         $connection = new RedisConnection($redis, $config, $logger);
 
-        $handler = new RedisSessionHandler($connection);
+        $serializer = new PhpSerializeSerializer();
+        $handler = new RedisSessionHandler($connection, $serializer);
 
         $newLogger = new Logger('new-test');
         $testHandler = new TestHandler();

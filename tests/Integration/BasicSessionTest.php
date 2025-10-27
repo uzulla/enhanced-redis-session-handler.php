@@ -9,6 +9,7 @@ use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Redis;
 
 class BasicSessionTest extends TestCase
@@ -44,7 +45,8 @@ class BasicSessionTest extends TestCase
         $this->connection = new RedisConnection($redis, $config, $logger);
 
         $options = new RedisSessionHandlerOptions(null, null, $logger);
-        $this->handler = new RedisSessionHandler($this->connection, $options);
+        $serializer = new PhpSerializeSerializer();
+        $this->handler = new RedisSessionHandler($this->connection, $serializer, $options);
 
         $this->connection->connect();
     }

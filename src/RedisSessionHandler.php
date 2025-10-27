@@ -34,9 +34,13 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
     private int $maxLifetime;
     private SessionSerializerInterface $serializer;
 
-    public function __construct(RedisConnection $connection, ?RedisSessionHandlerOptions $options = null)
-    {
+    public function __construct(
+        RedisConnection $connection,
+        SessionSerializerInterface $serializer,
+        ?RedisSessionHandlerOptions $options = null
+    ) {
         $this->connection = $connection;
+        $this->serializer = $serializer;
         $options = $options ?? new RedisSessionHandlerOptions();
 
         $this->idGenerator = $options->getIdGenerator();
@@ -76,39 +80,36 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
 
     /**
      * Initialize session.
-     * Opens the connection to Redis and detects the session.serialize_handler setting.
-     *
-     * This method validates that the session.serialize_handler is supported (php or php_serialize).
-     * If an unsupported handler is detected, it throws a ConfigurationException.
+     * Opens the connection to Redis and validates that the injected serializer matches
+     * the session.serialize_handler INI setting.
      *
      * @param mixed $path Session save path (not used for Redis)
      * @param mixed $name Session name (not used for Redis)
-     * @throws Exception\ConfigurationException if session.serialize_handler is not supported
+     * @throws Exception\ConfigurationException if serializer doesn't match session.serialize_handler
      */
     public function open($path, $name): bool
     {
         try {
             $serializeHandler = ini_get('session.serialize_handler');
             if ($serializeHandler === false || $serializeHandler === '') {
-                $serializeHandler = 'php'; // Default fallback
+                $serializeHandler = 'php'; // PHP default
             }
 
-            switch ($serializeHandler) {
-                case 'php':
-                    $this->serializer = new PhpSerializer();
-                    break;
-                case 'php_serialize':
-                    $this->serializer = new PhpSerializeSerializer();
-                    break;
-                default:
-                    throw new Exception\ConfigurationException(
-                        'Unsupported session.serialize_handler: ' . $serializeHandler . '. ' .
-                        'Only "php" and "php_serialize" are supported.'
-                    );
+            $serializerName = $this->serializer->getName();
+            if ($serializerName !== $serializeHandler) {
+                throw new Exception\ConfigurationException(
+                    sprintf(
+                        'Serializer mismatch: injected serializer is "%s" but session.serialize_handler is "%s". ' .
+                        'Please ensure the serializer matches the INI setting.',
+                        $serializerName,
+                        $serializeHandler
+                    )
+                );
             }
 
-            $this->logger->debug('Session serializer initialized', [
+            $this->logger->debug('Session serializer validated', [
                 'serialize_handler' => $serializeHandler,
+                'serializer' => $serializerName,
             ]);
 
             return $this->connection->connect();

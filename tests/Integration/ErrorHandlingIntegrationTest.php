@@ -8,6 +8,7 @@ use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\Exception\ConnectionException;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\Tests\Support\PsrTestLogger;
 use Redis;
 
@@ -48,7 +49,7 @@ class ErrorHandlingIntegrationTest extends TestCase
 
         $connection = new RedisConnection($redis, $config, $logger);
         $options = new RedisSessionHandlerOptions(null, null, $logger);
-        $handler = new RedisSessionHandler($connection, $options);
+        $handler = new RedisSessionHandler($connection, new PhpSerializeSerializer(), $options);
 
         $result = $handler->open('', 'PHPSESSID');
         self::assertFalse($result);
@@ -82,7 +83,7 @@ class ErrorHandlingIntegrationTest extends TestCase
 
         $connection = new RedisConnection($redis, $config, $logger);
         $options = new RedisSessionHandlerOptions(null, null, $logger);
-        $handler = new RedisSessionHandler($connection, $options);
+        $handler = new RedisSessionHandler($connection, new PhpSerializeSerializer(), $options);
 
         $handler->open('', 'PHPSESSID');
 
@@ -113,7 +114,7 @@ class ErrorHandlingIntegrationTest extends TestCase
 
         $connection = new RedisConnection($redis, $config, $logger);
         $options = new RedisSessionHandlerOptions(null, null, $logger);
-        $handler = new RedisSessionHandler($connection, $options);
+        $handler = new RedisSessionHandler($connection, new PhpSerializeSerializer(), $options);
 
         $result = $handler->write('test-session-id', serialize(['test' => 'data']));
 
