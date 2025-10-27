@@ -115,19 +115,20 @@ class DoubleWriteHookTest extends TestCase
         $logger->expects(self::once())
             ->method('error')
             ->with('Primary write error, secondary write skipped', self::anything());
+        $logger->expects(self::once())
+            ->method('warning')
+            ->with('No pending write data found for session', self::anything());
+
+        // Ensure no secondary write attempt occurs
+        $this->secondaryConnection->expects(self::never())
+            ->method('set');
 
         $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $logger);
         $hook->beforeWrite('test_session', ['key' => 'value']);
         $hook->onWriteError('test_session', new \Exception('Test error'));
 
-        // 後続のafterWriteでデータが見つからないことを確認
-        $logger2 = $this->createMock(LoggerInterface::class);
-        $logger2->expects(self::once())
-            ->method('warning')
-            ->with('No pending write data found for session', self::anything());
-
-        $hook2 = new DoubleWriteHook($this->secondaryConnection, 1440, false, $logger2);
-        $hook2->afterWrite('test_session', true);
+        // 後続のafterWriteでデータが見つからないことを確認（同じインスタンスを使用）
+        $hook->afterWrite('test_session', true);
     }
 
     public function testAfterWriteThrowsExceptionWhenFailOnSecondaryErrorIsTrue(): void
