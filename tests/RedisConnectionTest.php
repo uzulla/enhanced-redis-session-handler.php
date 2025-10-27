@@ -143,7 +143,7 @@ class RedisConnectionTest extends TestCase
         $connection->delete('test_delete_multiple_2');
     }
 
-    public function testDeleteReturnsFalseOnRedisException(): void
+    public function testDeleteHandlesConnectionFailure(): void
     {
         $logger = new Logger('test');
         $logger->pushHandler(new NullHandler());
@@ -153,7 +153,8 @@ class RedisConnectionTest extends TestCase
         $config = new RedisConnectionConfig('invalid-host-that-does-not-exist', 6379, 0.1, null, 0, '', false, 0);
         $connection = new RedisConnection($redis, $config, $logger);
 
-        $result = $connection->delete('test_key');
-        self::assertFalse($result);
+        // 接続失敗時はConnectionExceptionがスローされる
+        $this->expectException(\Uzulla\EnhancedRedisSessionHandler\Exception\ConnectionException::class);
+        $connection->delete('test_key');
     }
 }
