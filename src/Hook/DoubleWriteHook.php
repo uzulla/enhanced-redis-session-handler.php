@@ -7,6 +7,7 @@ namespace Uzulla\EnhancedRedisSessionHandler\Hook;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
+use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 
 /**
  * Hook implementation that writes session data to a secondary Redis instance.
@@ -56,7 +57,7 @@ class DoubleWriteHook implements WriteHookInterface
     {
         if (!$success) {
             $this->logger->warning('Primary write failed, skipping secondary write', [
-                'session_id' => self::maskSessionId($sessionId),
+                'session_id' => SessionIdMasker::mask($sessionId),
             ]);
             unset($this->pendingWrites[$sessionId]);
             return;
@@ -64,7 +65,7 @@ class DoubleWriteHook implements WriteHookInterface
 
         if (!isset($this->pendingWrites[$sessionId])) {
             $this->logger->warning('No pending write data found for session', [
-                'session_id' => self::maskSessionId($sessionId),
+                'session_id' => SessionIdMasker::mask($sessionId),
             ]);
             return;
         }
@@ -78,7 +79,7 @@ class DoubleWriteHook implements WriteHookInterface
             if (!$secondarySuccess) {
                 $message = 'Secondary Redis write failed';
                 $this->logger->error($message, [
-                    'session_id' => self::maskSessionId($sessionId),
+                    'session_id' => SessionIdMasker::mask($sessionId),
                 ]);
 
                 if ($this->failOnSecondaryError) {
@@ -88,11 +89,11 @@ class DoubleWriteHook implements WriteHookInterface
             }
 
             $this->logger->debug('Secondary Redis write successful', [
-                'session_id' => self::maskSessionId($sessionId),
+                'session_id' => SessionIdMasker::mask($sessionId),
             ]);
         } catch (\Throwable $e) {
             $this->logger->error('Exception during secondary Redis write', [
-                'session_id' => self::maskSessionId($sessionId),
+                'session_id' => SessionIdMasker::mask($sessionId),
                 'exception' => $e,
             ]);
 
@@ -107,21 +108,9 @@ class DoubleWriteHook implements WriteHookInterface
     public function onWriteError(string $sessionId, \Throwable $exception): void
     {
         $this->logger->error('Primary write error, secondary write skipped', [
-            'session_id' => self::maskSessionId($sessionId),
+            'session_id' => SessionIdMasker::mask($sessionId),
             'exception' => $exception,
         ]);
         unset($this->pendingWrites[$sessionId]);
-    }
-
-    /**
-     * Mask session ID for secure logging.
-     * Shows only the last 4 characters to allow correlation while preventing hijacking.
-     */
-    private static function maskSessionId(string $sessionId): string
-    {
-        if (strlen($sessionId) <= 4) {
-            return '...' . $sessionId;
-        }
-        return '...' . substr($sessionId, -4);
     }
 }

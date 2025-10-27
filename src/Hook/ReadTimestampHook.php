@@ -6,6 +6,7 @@ namespace Uzulla\EnhancedRedisSessionHandler\Hook;
 
 use Psr\Log\LoggerInterface;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
+use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 
 /**
  * Example hook that tracks session read timestamps.
@@ -68,26 +69,14 @@ class ReadTimestampHook implements ReadHookInterface
             $this->connection->set($timestampKey, $timestamp, $this->timestampTtl);
 
             $this->logger->debug('Recorded session read timestamp', [
-                'session_id' => $this->maskSessionId($sessionId),
+                'session_id' => SessionIdMasker::mask($sessionId),
                 'timestamp' => $timestamp,
             ]);
         } catch (\Throwable $e) {
             $this->logger->warning('Failed to record session read timestamp', [
-                'session_id' => $this->maskSessionId($sessionId),
+                'session_id' => SessionIdMasker::mask($sessionId),
                 'exception' => $e,
             ]);
         }
-    }
-
-    /**
-     * Mask session ID for secure logging.
-     * Shows only the last 4 characters to allow correlation while preventing hijacking.
-     */
-    private function maskSessionId(string $sessionId): string
-    {
-        if (strlen($sessionId) <= 4) {
-            return '...' . $sessionId;
-        }
-        return '...' . substr($sessionId, -4);
     }
 }

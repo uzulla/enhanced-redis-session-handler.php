@@ -14,6 +14,7 @@ use Uzulla\EnhancedRedisSessionHandler\Hook\ReadHookInterface;
 use Uzulla\EnhancedRedisSessionHandler\Hook\WriteHookInterface;
 use Uzulla\EnhancedRedisSessionHandler\Hook\WriteFilterInterface;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\SessionIdGeneratorInterface;
+use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 
 class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimestampHandlerInterface, LoggerAwareInterface
 {
@@ -122,7 +123,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
 
             if ($data === false) {
                 $this->logger->debug('Session not found in Redis', [
-                    'session_id' => $this->maskSessionId($id),
+                    'session_id' => SessionIdMasker::mask($id),
                 ]);
                 return '';
             }
@@ -134,7 +135,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
             return $data;
         } catch (\Throwable $e) {
             $this->logger->error('Error during session read', [
-                'session_id' => $this->maskSessionId($id),
+                'session_id' => SessionIdMasker::mask($id),
                 'error' => $e->getMessage(),
             ]);
 
@@ -142,7 +143,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
                 $fallbackData = $hook->onReadError($id, $e);
                 if ($fallbackData !== null) {
                     $this->logger->info('Using fallback data from hook', [
-                        'session_id' => $this->maskSessionId($id),
+                        'session_id' => SessionIdMasker::mask($id),
                         'hook' => get_class($hook),
                     ]);
                     return $fallbackData;
@@ -187,14 +188,14 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
                     } else {
                         // セッションデータが配列でない場合のログ記録
                         $this->logger->warning('Session data is not an array', [
-                            'session_id' => $this->maskSessionId($id),
+                            'session_id' => SessionIdMasker::mask($id),
                             'type' => gettype($unserialized),
                         ]);
                     }
                 } else {
                     // デシリアライゼーション失敗時のログ記録
                     $this->logger->warning('Failed to unserialize session data', [
-                        'session_id' => $this->maskSessionId($id),
+                        'session_id' => SessionIdMasker::mask($id),
                     ]);
                 }
             }
@@ -208,7 +209,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
                 /** @var array<string, mixed> $unserializedData */
                 if (!$filter->shouldWrite($id, $unserializedData)) {
                     $this->logger->debug('Write operation cancelled by filter', [
-                        'session_id' => $this->maskSessionId($id),
+                        'session_id' => SessionIdMasker::mask($id),
                         'filter' => get_class($filter),
                     ]);
                     return true; // Return true because cancellation is not an error
@@ -231,7 +232,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
             }
 
             $this->logger->error('Write operation failed', [
-                'session_id' => $this->maskSessionId($id),
+                'session_id' => SessionIdMasker::mask($id),
                 'error' => $e->getMessage(),
             ]);
 
@@ -315,17 +316,5 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
     private function getTTL(): int
     {
         return max(60, $this->maxLifetime);
-    }
-
-    /**
-     * Mask session ID for secure logging.
-     * Shows only the last 4 characters to allow correlation while preventing hijacking.
-     */
-    private function maskSessionId(string $sessionId): string
-    {
-        if (strlen($sessionId) <= 4) {
-            return '...' . $sessionId;
-        }
-        return '...' . substr($sessionId, -4);
     }
 }
