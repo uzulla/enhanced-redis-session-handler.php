@@ -88,7 +88,6 @@ try {
 
     echo "3. Creating session configuration with double write hook...\n";
     $sessionConfig = new SessionConfig(
-        
         $primaryConfig,
         new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),
@@ -198,7 +197,6 @@ try {
     );
 
     $sessionConfig = new SessionConfig(
-        
         $primaryConfig,
         new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),

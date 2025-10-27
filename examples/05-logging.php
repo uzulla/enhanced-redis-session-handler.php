@@ -76,7 +76,6 @@ try {
     );
 
     $sessionConfig = new SessionConfig(
-        
         $connectionConfig,
         new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),
@@ -168,7 +167,6 @@ try {
     );
 
     $sessionConfig = new SessionConfig(
-        
         $connectionConfig,
         new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),
@@ -243,7 +241,6 @@ try {
     );
 
     $sessionConfig = new SessionConfig(
-        
         $connectionConfig,
         new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),
@@ -333,7 +330,6 @@ try {
     );
 
     $sessionConfig = new SessionConfig(
-        
         $connectionConfig,
         new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),

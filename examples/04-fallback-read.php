@@ -105,7 +105,6 @@ try {
 
     echo "3. Creating session configuration with fallback read hook...\n";
     $sessionConfig = new SessionConfig(
-        
         $primaryConfig,
         new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),
@@ -300,7 +299,6 @@ try {
     );
 
     $sessionConfig = new SessionConfig(
-        
         $primaryConfig,
         new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),
