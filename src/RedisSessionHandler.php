@@ -287,27 +287,23 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
     public function create_sid(): string
     {
         $maxAttempts = 10;
-        $attempt = 0;
-
-        do {
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
             $sessionId = $this->idGenerator->generate();
-            $attempt++;
-
-            if ($attempt >= $maxAttempts) {
-                $this->logger->critical('Failed to generate unique session ID after maximum attempts', [
-                    'attempts' => $maxAttempts,
-                ]);
-                throw new Exception\OperationException('Failed to generate unique session ID');
+            if (!$this->connection->exists($sessionId)) {
+                if ($attempt > 1) {
+                    $this->logger->warning('Session ID collision occurred', [
+                        'attempts' => $attempt,
+                    ]);
+                }
+                return $sessionId;
             }
-        } while ($this->connection->exists($sessionId));
-
-        if ($attempt > 1) {
-            $this->logger->warning('Session ID collision occurred', [
-                'attempts' => $attempt,
-            ]);
         }
 
-        return $sessionId;
+        // ループを抜けた = 全ての試行で衝突が発生した
+        $this->logger->critical('Failed to generate unique session ID after maximum attempts', [
+            'attempts' => $maxAttempts,
+        ]);
+        throw new Exception\OperationException('Failed to generate unique session ID');
     }
 
     /**
