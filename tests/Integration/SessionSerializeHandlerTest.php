@@ -30,9 +30,12 @@ class SessionSerializeHandlerTest extends TestCase
         $port = $portEnv !== false ? (int)$portEnv : 6379;
 
         $config = new RedisConnectionConfig(
-            host: $host,
-            port: $port,
-            prefix: 'test_serialize_'
+            $host,
+            $port,
+            2.5,
+            null,
+            0,
+            'test_serialize_'
         );
 
         $this->connection = new RedisConnection(new \Redis(), $config, new \Psr\Log\NullLogger());
