@@ -68,14 +68,23 @@ class ReadTimestampHook implements ReadHookInterface
             $this->connection->set($timestampKey, $timestamp, $this->timestampTtl);
 
             $this->logger->debug('Recorded session read timestamp', [
-                'session_id' => $sessionId,
+                'session_id' => $this->maskSessionId($sessionId),
                 'timestamp' => $timestamp,
             ]);
         } catch (\Throwable $e) {
             $this->logger->warning('Failed to record session read timestamp', [
-                'session_id' => $sessionId,
+                'session_id' => $this->maskSessionId($sessionId),
                 'exception' => $e,
             ]);
         }
+    }
+
+    /**
+     * Mask session ID for secure logging.
+     * Returns first 12 characters of SHA-256 hash to allow correlation while preventing hijacking.
+     */
+    private function maskSessionId(string $sessionId): string
+    {
+        return substr(hash('sha256', $sessionId), 0, 12);
     }
 }

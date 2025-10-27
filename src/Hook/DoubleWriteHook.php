@@ -56,7 +56,7 @@ class DoubleWriteHook implements WriteHookInterface
     {
         if (!$success) {
             $this->logger->warning('Primary write failed, skipping secondary write', [
-                'session_id' => $sessionId,
+                'session_id' => self::maskSessionId($sessionId),
             ]);
             unset($this->pendingWrites[$sessionId]);
             return;
@@ -64,7 +64,7 @@ class DoubleWriteHook implements WriteHookInterface
 
         if (!isset($this->pendingWrites[$sessionId])) {
             $this->logger->warning('No pending write data found for session', [
-                'session_id' => $sessionId,
+                'session_id' => self::maskSessionId($sessionId),
             ]);
             return;
         }
@@ -78,7 +78,7 @@ class DoubleWriteHook implements WriteHookInterface
             if (!$secondarySuccess) {
                 $message = 'Secondary Redis write failed';
                 $this->logger->error($message, [
-                    'session_id' => $sessionId,
+                    'session_id' => self::maskSessionId($sessionId),
                 ]);
 
                 if ($this->failOnSecondaryError) {
@@ -86,12 +86,12 @@ class DoubleWriteHook implements WriteHookInterface
                 }
             } else {
                 $this->logger->debug('Secondary Redis write successful', [
-                    'session_id' => $sessionId,
+                    'session_id' => self::maskSessionId($sessionId),
                 ]);
             }
         } catch (\Throwable $e) {
             $this->logger->error('Exception during secondary Redis write', [
-                'session_id' => $sessionId,
+                'session_id' => self::maskSessionId($sessionId),
                 'error' => $e->getMessage(),
             ]);
 
@@ -106,9 +106,18 @@ class DoubleWriteHook implements WriteHookInterface
     public function onWriteError(string $sessionId, \Throwable $exception): void
     {
         $this->logger->error('Primary write error, secondary write skipped', [
-            'session_id' => $sessionId,
+            'session_id' => self::maskSessionId($sessionId),
             'error' => $exception->getMessage(),
         ]);
         unset($this->pendingWrites[$sessionId]);
+    }
+
+    /**
+     * Mask session ID for secure logging.
+     * Returns first 12 characters of SHA-256 hash to allow correlation while preventing hijacking.
+     */
+    private static function maskSessionId(string $sessionId): string
+    {
+        return substr(hash('sha256', $sessionId), 0, 12);
     }
 }
