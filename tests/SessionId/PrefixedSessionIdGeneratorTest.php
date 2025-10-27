@@ -135,7 +135,7 @@ class PrefixedSessionIdGeneratorTest extends TestCase
         $generator = new PrefixedSessionIdGenerator('my-app');
         $sessionId = $generator->generate();
 
-        self::assertStringStartsWith('my-app_', $sessionId);
+        self::assertMatchesRegularExpression('/^my-app_[0-9a-f]+$/', $sessionId);
     }
 
     public function testAcceptsPrefixWithMultipleHyphens(): void
@@ -143,7 +143,7 @@ class PrefixedSessionIdGeneratorTest extends TestCase
         $generator = new PrefixedSessionIdGenerator('my-app-name');
         $sessionId = $generator->generate();
 
-        self::assertStringStartsWith('my-app-name_', $sessionId);
+        self::assertMatchesRegularExpression('/^my-app-name_[0-9a-f]+$/', $sessionId);
     }
 
     public function testAcceptsPrefixWithNumbers(): void
@@ -151,7 +151,7 @@ class PrefixedSessionIdGeneratorTest extends TestCase
         $generator = new PrefixedSessionIdGenerator('app123');
         $sessionId = $generator->generate();
 
-        self::assertStringStartsWith('app123_', $sessionId);
+        self::assertMatchesRegularExpression('/^app123_[0-9a-f]+$/', $sessionId);
     }
 
     public function testAcceptsPrefixWithMixedCase(): void
@@ -159,7 +159,7 @@ class PrefixedSessionIdGeneratorTest extends TestCase
         $generator = new PrefixedSessionIdGenerator('MyApp');
         $sessionId = $generator->generate();
 
-        self::assertStringStartsWith('MyApp_', $sessionId);
+        self::assertMatchesRegularExpression('/^MyApp_[0-9a-f]+$/', $sessionId);
     }
 
     public function testThrowsExceptionForPrefixTooLong(): void
