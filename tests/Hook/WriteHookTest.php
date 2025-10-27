@@ -48,7 +48,7 @@ class WriteHookTest extends TestCase
                 self::assertArrayHasKey('context', $record);
                 $context = $record['context'];
                 self::assertArrayHasKey('session_id', $context);
-                self::assertSame('test_session_id', $context['session_id']);
+                self::assertSame('...n_id', $context['session_id']);
                 self::assertArrayHasKey('data_keys', $context);
                 self::assertSame(['user_id', 'username'], $context['data_keys']);
                 self::assertArrayHasKey('data_size', $context);
@@ -75,7 +75,7 @@ class WriteHookTest extends TestCase
                 self::assertArrayHasKey('context', $record);
                 $context = $record['context'];
                 self::assertArrayHasKey('session_id', $context);
-                self::assertSame('test_session_id', $context['session_id']);
+                self::assertSame('...n_id', $context['session_id']);
                 self::assertArrayHasKey('success', $context);
                 self::assertTrue($context['success']);
                 break;
@@ -100,7 +100,7 @@ class WriteHookTest extends TestCase
                 self::assertArrayHasKey('context', $record);
                 $context = $record['context'];
                 self::assertArrayHasKey('session_id', $context);
-                self::assertSame('test_session_id', $context['session_id']);
+                self::assertSame('...n_id', $context['session_id']);
                 self::assertArrayHasKey('success', $context);
                 self::assertFalse($context['success']);
                 break;
@@ -126,7 +126,7 @@ class WriteHookTest extends TestCase
                 self::assertArrayHasKey('context', $record);
                 $context = $record['context'];
                 self::assertArrayHasKey('session_id', $context);
-                self::assertSame('test_session_id', $context['session_id']);
+                self::assertSame('...n_id', $context['session_id']);
                 self::assertArrayHasKey('exception_class', $context);
                 self::assertSame('RuntimeException', $context['exception_class']);
                 self::assertArrayHasKey('exception_message', $context);
