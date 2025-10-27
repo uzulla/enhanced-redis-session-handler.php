@@ -221,6 +221,7 @@ public function beforeWrite(string $sessionId, array $data): array
 
 ## 関連項目
 
-- [Write Filters](./write-filters.md) - 条件付き書き込み操作について
-- [Read Hooks](./read-hooks.md) - 読み込み操作の傍受について
+- [Factory Usage](./factory-usage.md) - SessionHandlerFactoryの使用方法について
+- [Redis Integration](./redis-integration.md) - Redis/ValKey統合仕様について
 - [Architecture](./architecture.md) - システム全体のアーキテクチャについて
+- [Specification](./specification.md) - 機能仕様書

@@ -225,6 +225,7 @@ class SessionHandlerFactory
 ファクトリーパターンを採用することで、複雑な依存関係の管理を簡素化し、ユーザーコードから実装の詳細を隠蔽します。
 
 **使用例:**
+
 ```php
 $config = new SessionConfig(
     new RedisConnectionConfig(),
@@ -263,6 +264,7 @@ class SessionIdMasker
 セッションIDは機密情報であり、ログに記録すると漏洩時にセッションハイジャックのリスクがあります。末尾4文字のみ表示することで、デバッグ時の相関分析は可能にしつつ、セキュリティを確保します。
 
 **使用例:**
+
 ```php
 use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 
