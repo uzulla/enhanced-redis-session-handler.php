@@ -12,6 +12,7 @@ use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\Hook\ReadHookInterface;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 
 class ReadHookTest extends TestCase
 {
@@ -31,7 +32,7 @@ class ReadHookTest extends TestCase
         $this->connection = new RedisConnection($redis, $config, $logger);
 
         $options = new RedisSessionHandlerOptions(null, null, $logger);
-        $this->handler = new RedisSessionHandler($this->connection, $options);
+        $this->handler = new RedisSessionHandler($this->connection, new PhpSerializeSerializer(), $options);
     }
 
     public function testBeforeReadHookIsCalled(): void

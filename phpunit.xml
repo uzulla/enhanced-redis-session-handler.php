@@ -29,6 +29,7 @@
         <ini name="display_errors" value="1"/>
         <ini name="error_reporting" value="-1"/>
         <ini name="memory_limit" value="-1"/>
+        <ini name="session.serialize_handler" value="php_serialize"/>
         <env name="SESSION_REDIS_HOST" value="localhost"/>
         <env name="SESSION_REDIS_PORT" value="6379"/>
     </php>

@@ -11,6 +11,7 @@ use Uzulla\EnhancedRedisSessionHandler\Hook\DoubleWriteHook;
 use Uzulla\EnhancedRedisSessionHandler\Hook\LoggingHook;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\Tests\Support\PsrTestLogger;
 
 class WriteHookTest extends TestCase
@@ -215,7 +216,7 @@ class WriteHookTest extends TestCase
     public function testMultipleHooksCanBeRegistered(): void
     {
         $options = new RedisSessionHandlerOptions(null, null, $this->logger);
-        $handler = new RedisSessionHandler($this->primaryConnection, $options);
+        $handler = new RedisSessionHandler($this->primaryConnection, new PhpSerializeSerializer(), $options);
 
         $loggingHook = new LoggingHook($this->logger);
         $doubleWriteHook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $this->logger);

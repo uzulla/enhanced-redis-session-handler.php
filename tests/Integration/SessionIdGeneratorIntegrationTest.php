@@ -9,6 +9,7 @@ use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\SecureSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\SessionIdGeneratorInterface;
@@ -66,7 +67,7 @@ class SessionIdGeneratorIntegrationTest extends TestCase
 
         $generator = new DefaultSessionIdGenerator();
         $options = new RedisSessionHandlerOptions($generator, null, $logger);
-        $handler = new RedisSessionHandler($this->connection, $options);
+        $handler = new RedisSessionHandler($this->connection, new PhpSerializeSerializer(), $options);
 
         $handler->open('/tmp', 'PHPSESSID');
         $sessionId = $handler->create_sid();
@@ -82,7 +83,7 @@ class SessionIdGeneratorIntegrationTest extends TestCase
 
         $generator = new SecureSessionIdGenerator(64);
         $options = new RedisSessionHandlerOptions($generator, null, $logger);
-        $handler = new RedisSessionHandler($this->connection, $options);
+        $handler = new RedisSessionHandler($this->connection, new PhpSerializeSerializer(), $options);
 
         $handler->open('/tmp', 'PHPSESSID');
         $sessionId = $handler->create_sid();
@@ -104,7 +105,7 @@ class SessionIdGeneratorIntegrationTest extends TestCase
         };
 
         $options = new RedisSessionHandlerOptions($customGenerator, null, $logger);
-        $handler = new RedisSessionHandler($this->connection, $options);
+        $handler = new RedisSessionHandler($this->connection, new PhpSerializeSerializer(), $options);
 
         $handler->open('/tmp', 'PHPSESSID');
         $sessionId = $handler->create_sid();
@@ -119,7 +120,7 @@ class SessionIdGeneratorIntegrationTest extends TestCase
 
         $generator = new DefaultSessionIdGenerator();
         $options = new RedisSessionHandlerOptions($generator, null, $logger);
-        $handler = new RedisSessionHandler($this->connection, $options);
+        $handler = new RedisSessionHandler($this->connection, new PhpSerializeSerializer(), $options);
 
         $handler->open('/tmp', 'PHPSESSID');
 
@@ -139,7 +140,7 @@ class SessionIdGeneratorIntegrationTest extends TestCase
 
         $generator = new DefaultSessionIdGenerator();
         $options = new RedisSessionHandlerOptions($generator, null, $logger);
-        $handler = new RedisSessionHandler($this->connection, $options);
+        $handler = new RedisSessionHandler($this->connection, new PhpSerializeSerializer(), $options);
 
         $handler->open('/tmp', 'PHPSESSID');
 
@@ -159,11 +160,11 @@ class SessionIdGeneratorIntegrationTest extends TestCase
 
         $defaultGenerator = new DefaultSessionIdGenerator();
         $defaultOptions = new RedisSessionHandlerOptions($defaultGenerator, null, $logger);
-        $defaultHandler = new RedisSessionHandler($this->connection, $defaultOptions);
+        $defaultHandler = new RedisSessionHandler($this->connection, new PhpSerializeSerializer(), $defaultOptions);
 
         $secureGenerator = new SecureSessionIdGenerator(64);
         $secureOptions = new RedisSessionHandlerOptions($secureGenerator, null, $logger);
-        $secureHandler = new RedisSessionHandler($this->connection, $secureOptions);
+        $secureHandler = new RedisSessionHandler($this->connection, new PhpSerializeSerializer(), $secureOptions);
 
         $defaultHandler->open('/tmp', 'PHPSESSID');
         $defaultSessionId = $defaultHandler->create_sid();

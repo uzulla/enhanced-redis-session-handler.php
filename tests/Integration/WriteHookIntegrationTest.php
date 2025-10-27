@@ -13,6 +13,7 @@ use Uzulla\EnhancedRedisSessionHandler\Hook\DoubleWriteHook;
 use Uzulla\EnhancedRedisSessionHandler\Hook\LoggingHook;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\Tests\Support\PsrTestLogger;
 
 class WriteHookIntegrationTest extends TestCase
@@ -88,7 +89,7 @@ class WriteHookIntegrationTest extends TestCase
         $this->secondaryConnection = new RedisConnection($secondaryRedis, $secondaryConfig, $this->logger);
 
         $options = new RedisSessionHandlerOptions(null, null, $this->logger);
-        $this->handler = new RedisSessionHandler($this->primaryConnection, $options);
+        $this->handler = new RedisSessionHandler($this->primaryConnection, new PhpSerializeSerializer(), $options);
     }
 
     protected function tearDown(): void

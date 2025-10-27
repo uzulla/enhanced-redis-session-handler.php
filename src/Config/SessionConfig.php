@@ -10,12 +10,14 @@ use Uzulla\EnhancedRedisSessionHandler\Exception\ConfigurationException;
 use Uzulla\EnhancedRedisSessionHandler\Hook\ReadHookInterface;
 use Uzulla\EnhancedRedisSessionHandler\Hook\WriteFilterInterface;
 use Uzulla\EnhancedRedisSessionHandler\Hook\WriteHookInterface;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\SessionSerializerInterface;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\SessionIdGeneratorInterface;
 
 class SessionConfig
 {
     private RedisConnectionConfig $connectionConfig;
+    private SessionSerializerInterface $serializer;
     private SessionIdGeneratorInterface $idGenerator;
     private int $maxLifetime;
     private LoggerInterface $logger;
@@ -28,11 +30,13 @@ class SessionConfig
 
     public function __construct(
         RedisConnectionConfig $connectionConfig,
+        SessionSerializerInterface $serializer,
         SessionIdGeneratorInterface $idGenerator,
         int $maxLifetime,
         LoggerInterface $logger
     ) {
         $this->connectionConfig = $connectionConfig;
+        $this->serializer = $serializer;
         $this->idGenerator = $idGenerator;
         $this->maxLifetime = $maxLifetime;
         $this->logger = $logger;
@@ -43,6 +47,11 @@ class SessionConfig
     public function getConnectionConfig(): RedisConnectionConfig
     {
         return $this->connectionConfig;
+    }
+
+    public function getSerializer(): SessionSerializerInterface
+    {
+        return $this->serializer;
     }
 
     public function getIdGenerator(): SessionIdGeneratorInterface
@@ -105,6 +114,12 @@ class SessionConfig
     public function setConnectionConfig(RedisConnectionConfig $config): self
     {
         $this->connectionConfig = $config;
+        return $this;
+    }
+
+    public function setSerializer(SessionSerializerInterface $serializer): self
+    {
+        $this->serializer = $serializer;
         return $this;
     }
 

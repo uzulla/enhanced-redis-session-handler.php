@@ -14,6 +14,9 @@ use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\Hook\ReadHookInterface;
 use Uzulla\EnhancedRedisSessionHandler\Hook\WriteHookInterface;
 use Uzulla\EnhancedRedisSessionHandler\Hook\WriteFilterInterface;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializer;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\SessionSerializerInterface;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\SessionIdGeneratorInterface;
 use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 
@@ -29,10 +32,15 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
     /** @var array<WriteFilterInterface> */
     private array $writeFilters = [];
     private int $maxLifetime;
+    private SessionSerializerInterface $serializer;
 
-    public function __construct(RedisConnection $connection, ?RedisSessionHandlerOptions $options = null)
-    {
+    public function __construct(
+        RedisConnection $connection,
+        SessionSerializerInterface $serializer,
+        ?RedisSessionHandlerOptions $options = null
+    ) {
         $this->connection = $connection;
+        $this->serializer = $serializer;
         $options = $options ?? new RedisSessionHandlerOptions();
 
         $this->idGenerator = $options->getIdGenerator();
@@ -72,19 +80,48 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
 
     /**
      * Initialize session.
-     * Opens the connection to Redis.
+     * Opens the connection to Redis and validates that the injected serializer matches
+     * the session.serialize_handler INI setting.
      *
      * @param mixed $path Session save path (not used for Redis)
      * @param mixed $name Session name (not used for Redis)
+     * @throws Exception\ConfigurationException if serializer doesn't match session.serialize_handler
      */
     public function open($path, $name): bool
     {
         try {
-            return $this->connection->connect();
-        } catch (\Exception $e) {
-            $this->logger->error('Failed to open session', [
-                'error' => $e->getMessage(),
+            $serializeHandler = ini_get('session.serialize_handler');
+            if ($serializeHandler === false || $serializeHandler === '') {
+                $serializeHandler = 'php'; // PHP default
+            }
+
+            $serializerName = $this->serializer->getName();
+            if ($serializerName !== $serializeHandler) {
+                throw new Exception\ConfigurationException(
+                    sprintf(
+                        'Serializer mismatch: injected serializer is "%s" but session.serialize_handler is "%s". ' .
+                        'Please ensure the serializer matches the INI setting.',
+                        $serializerName,
+                        $serializeHandler
+                    )
+                );
+            }
+
+            $this->logger->debug('Session serializer validated', [
+                'serialize_handler' => $serializeHandler,
+                'serializer' => $serializerName,
             ]);
+
+            return $this->connection->connect();
+        } catch (Throwable $e) {
+            $this->logger->error('Failed to open session', [
+                'exception' => $e,
+            ]);
+
+            if ($e instanceof Exception\ConfigurationException) {
+                throw $e;
+            }
+
             return false;
         }
     }
@@ -106,6 +143,10 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
      * Note: The argument is typed as mixed (not string) because PHP 7.4's SessionHandlerInterface
      * uses mixed types. We use assert() to ensure it's actually a string at runtime.
      * The return type is string|false as required by SessionHandlerInterface.
+     *
+     * The data returned from Redis is already in the format expected by PHP's session extension,
+     * so we return it as-is without any deserialization. The session extension will handle
+     * deserialization based on session.serialize_handler.
      *
      * @param mixed $id Session ID
      * @return string|false Session data as string, or false on error
@@ -137,7 +178,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
         } catch (Throwable $e) {
             $this->logger->error('Error during session read', [
                 'session_id' => SessionIdMasker::mask($id),
-                'error' => $e->getMessage(),
+                'exception' => $e,
             ]);
 
             foreach ($this->readHooks as $hook) {
@@ -158,11 +199,12 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
     /**
      * Write session data to Redis.
      *
-     * Unserializes the session data before passing to hooks, then serializes it again before storing.
-     * This makes it easier for hooks to inspect and modify the session data.
+     * Deserializes the session data using the appropriate serializer (based on session.serialize_handler)
+     * before passing to hooks, then serializes it again before storing. This makes it easier for hooks
+     * to inspect and modify the session data.
      *
      * @param mixed $id Session ID
-     * @param mixed $data Serialized session data
+     * @param mixed $data Serialized session data (format depends on session.serialize_handler)
      */
     public function write($id, $data): bool
     {
@@ -173,30 +215,12 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
             /** @var array<string, mixed> $unserializedData */
             $unserializedData = [];
             if ($data !== '') {
-                set_error_handler(function (): bool {
-                    return true; // Suppress the error
-                });
                 try {
-                    $unserialized = unserialize($data);
-                } finally {
-                    restore_error_handler();
-                }
-
-                if ($unserialized !== false || $data === serialize(false)) {
-                    if (is_array($unserialized)) {
-                        /** @var array<string, mixed> $unserialized */
-                        $unserializedData = $unserialized;
-                    } else {
-                        // セッションデータが配列でない場合のログ記録
-                        $this->logger->warning('Session data is not an array', [
-                            'session_id' => SessionIdMasker::mask($id),
-                            'type' => gettype($unserialized),
-                        ]);
-                    }
-                } else {
-                    // デシリアライゼーション失敗時のログ記録
-                    $this->logger->warning('Failed to unserialize session data', [
+                    $unserializedData = $this->serializer->decode($data);
+                } catch (Exception\SessionDataException $e) {
+                    $this->logger->warning('Failed to deserialize session data', [
                         'session_id' => SessionIdMasker::mask($id),
+                        'exception' => $e,
                     ]);
                 }
             }
@@ -217,7 +241,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
                 }
             }
 
-            $serializedData = serialize($unserializedData);
+            $serializedData = $this->serializer->encode($unserializedData);
 
             $ttl = $this->getTTL();
             $success = $this->connection->set($id, $serializedData, $ttl);
@@ -234,7 +258,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
 
             $this->logger->error('Write operation failed', [
                 'session_id' => SessionIdMasker::mask($id),
-                'error' => $e->getMessage(),
+                'exception' => $e,
             ]);
 
             return false;

@@ -11,6 +11,7 @@ use Uzulla\EnhancedRedisSessionHandler\Hook\ReadTimestampHook;
 use Uzulla\EnhancedRedisSessionHandler\Hook\FallbackReadHook;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Redis;
 
 class ReadHookIntegrationTest extends TestCase
@@ -58,7 +59,7 @@ class ReadHookIntegrationTest extends TestCase
         $this->fallbackConnection = new RedisConnection($fallbackRedis, $fallbackConfig, $this->logger);
 
         $options = new RedisSessionHandlerOptions(null, null, $this->logger);
-        $this->handler = new RedisSessionHandler($this->primaryConnection, $options);
+        $this->handler = new RedisSessionHandler($this->primaryConnection, new PhpSerializeSerializer(), $options);
     }
 
     protected function tearDown(): void
@@ -84,7 +85,7 @@ class ReadHookIntegrationTest extends TestCase
         $invalidConnection = new RedisConnection($invalidRedis, $invalidConfig, $this->logger);
 
         $options = new RedisSessionHandlerOptions(null, null, $this->logger);
-        $handler = new RedisSessionHandler($invalidConnection, $options);
+        $handler = new RedisSessionHandler($invalidConnection, new PhpSerializeSerializer(), $options);
 
         $this->fallbackConnection->connect();
         $this->fallbackConnection->set('test-session', 'fallback-session-data', 3600);
@@ -153,7 +154,7 @@ class ReadHookIntegrationTest extends TestCase
         $invalidConnection = new RedisConnection($invalidRedis, $invalidConfig, $this->logger);
 
         $options = new RedisSessionHandlerOptions(null, null, $this->logger);
-        $handler = new RedisSessionHandler($invalidConnection, $options);
+        $handler = new RedisSessionHandler($invalidConnection, new PhpSerializeSerializer(), $options);
 
         $this->fallbackConnection->connect();
         $this->fallbackConnection->set('test-session', 'fallback-data', 3600);

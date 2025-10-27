@@ -24,6 +24,7 @@ use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Psr\Log\NullLogger;
 
 echo "=== Enhanced Redis Session Handler - Basic Usage Example ===\n\n";
@@ -42,6 +43,7 @@ try {
     echo "2. Creating session configuration...\n";
     $sessionConfig = new SessionConfig(
         $connectionConfig,
+        new PhpSerializeSerializer(), // Use php_serialize format (default)
         new DefaultSessionIdGenerator(),
         1440, // 24分 / 24 minutes
         new NullLogger()

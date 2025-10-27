@@ -25,6 +25,7 @@ use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\PrefixedSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\TimestampPrefixedSessionIdGenerator;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Psr\Log\NullLogger;
 
 echo "=== Enhanced Redis Session Handler - Custom Session ID Generator Example ===\n\n";
@@ -49,6 +50,7 @@ try {
 
     $sessionConfig = new SessionConfig(
         $connectionConfig,
+        new PhpSerializeSerializer(),
         new PrefixedSessionIdGenerator('myapp', 32),
         1440,
         new NullLogger()
@@ -97,6 +99,7 @@ try {
 
     $sessionConfig = new SessionConfig(
         $connectionConfig,
+        new PhpSerializeSerializer(),
         new TimestampPrefixedSessionIdGenerator(32),
         1440,
         new NullLogger()
@@ -152,6 +155,7 @@ try {
 
     $adminSessionConfig = new SessionConfig(
         $adminConfig,
+        new PhpSerializeSerializer(),
         new PrefixedSessionIdGenerator('admin', 32),
         1440,
         new NullLogger()
@@ -183,6 +187,7 @@ try {
 
     $apiSessionConfig = new SessionConfig(
         $apiConfig,
+        new PhpSerializeSerializer(),
         new PrefixedSessionIdGenerator('api', 32),
         1440,
         new NullLogger()

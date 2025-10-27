@@ -36,6 +36,7 @@ use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\Hook\LoggingHook;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\RotatingFileHandler;
@@ -76,6 +77,7 @@ try {
 
     $sessionConfig = new SessionConfig(
         $connectionConfig,
+        new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),
         1440,
         $logger
@@ -166,6 +168,7 @@ try {
 
     $sessionConfig = new SessionConfig(
         $connectionConfig,
+        new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),
         1440,
         $logger
@@ -239,6 +242,7 @@ try {
 
     $sessionConfig = new SessionConfig(
         $connectionConfig,
+        new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),
         1440,
         $logger
@@ -327,6 +331,7 @@ try {
 
     $sessionConfig = new SessionConfig(
         $connectionConfig,
+        new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),
         1440,
         $logger
