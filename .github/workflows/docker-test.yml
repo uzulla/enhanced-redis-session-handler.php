@@ -21,7 +21,9 @@ jobs:
       run: docker compose -f docker/docker-compose.yml up -d
     
     - name: Wait for services to be ready
-      run: sleep 10
+      run: |
+        timeout 30 bash -c 'until docker compose -f docker/docker-compose.yml exec -T storage redis-cli ping > /dev/null 2>&1; do sleep 1; done'
+        timeout 30 bash -c 'until docker compose -f docker/docker-compose.yml exec -T storage-fallback redis-cli ping > /dev/null 2>&1; do sleep 1; done'
     
     - name: Check PHP version
       run: |
