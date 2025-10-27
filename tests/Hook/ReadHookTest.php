@@ -4,6 +4,9 @@ namespace Uzulla\EnhancedRedisSessionHandler\Tests\Hook;
 
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
+use Redis;
+use RuntimeException;
+use Throwable;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\Hook\ReadHookInterface;
@@ -23,7 +26,7 @@ class ReadHookTest extends TestCase
 
         $logger = new NullLogger();
 
-        $redis = new \Redis();
+        $redis = new Redis();
         $config = new RedisConnectionConfig('localhost', 6379);
         $this->connection = new RedisConnection($redis, $config, $logger);
 
@@ -56,7 +59,7 @@ class ReadHookTest extends TestCase
                 return $data;
             }
 
-            public function onReadError(string $sessionId, \Throwable $e): ?string
+            public function onReadError(string $sessionId, Throwable $e): ?string
             {
                 return null;
             }
@@ -83,7 +86,7 @@ class ReadHookTest extends TestCase
                 return 'modified:' . $data;
             }
 
-            public function onReadError(string $sessionId, \Throwable $e): ?string
+            public function onReadError(string $sessionId, Throwable $e): ?string
             {
                 return null;
             }
@@ -132,7 +135,7 @@ class ReadHookTest extends TestCase
                 return $data . ':hook1';
             }
 
-            public function onReadError(string $sessionId, \Throwable $e): ?string
+            public function onReadError(string $sessionId, Throwable $e): ?string
             {
                 return null;
             }
@@ -163,7 +166,7 @@ class ReadHookTest extends TestCase
                 return $data . ':hook2';
             }
 
-            public function onReadError(string $sessionId, \Throwable $e): ?string
+            public function onReadError(string $sessionId, Throwable $e): ?string
             {
                 return null;
             }
@@ -204,10 +207,10 @@ class ReadHookTest extends TestCase
 
             public function afterRead(string $sessionId, string $data): string
             {
-                throw new \RuntimeException('Test error');
+                throw new RuntimeException('Test error');
             }
 
-            public function onReadError(string $sessionId, \Throwable $e): string
+            public function onReadError(string $sessionId, Throwable $e): string
             {
                 $this->testState->errorCalled = true;
                 $this->testState->caughtException = $e;
@@ -223,7 +226,7 @@ class ReadHookTest extends TestCase
         $result = $this->handler->read('test-session-id');
 
         self::assertTrue($testState->errorCalled);
-        self::assertInstanceOf(\RuntimeException::class, $testState->caughtException);
+        self::assertInstanceOf(RuntimeException::class, $testState->caughtException);
         self::assertSame('fallback-data', $result);
 
         $this->connection->delete('test-session-id');
@@ -238,10 +241,10 @@ class ReadHookTest extends TestCase
 
             public function afterRead(string $sessionId, string $data): string
             {
-                throw new \RuntimeException('Test error');
+                throw new RuntimeException('Test error');
             }
 
-            public function onReadError(string $sessionId, \Throwable $e): ?string
+            public function onReadError(string $sessionId, Throwable $e): ?string
             {
                 return null;
             }
@@ -268,10 +271,10 @@ class ReadHookTest extends TestCase
 
             public function afterRead(string $sessionId, string $data): string
             {
-                throw new \RuntimeException('Test error');
+                throw new RuntimeException('Test error');
             }
 
-            public function onReadError(string $sessionId, \Throwable $e): string
+            public function onReadError(string $sessionId, Throwable $e): string
             {
                 return 'fallback-from-hook1';
             }
@@ -287,7 +290,7 @@ class ReadHookTest extends TestCase
                 return $data;
             }
 
-            public function onReadError(string $sessionId, \Throwable $e): string
+            public function onReadError(string $sessionId, Throwable $e): string
             {
                 return 'fallback-from-hook2';
             }

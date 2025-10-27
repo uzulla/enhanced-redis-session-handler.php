@@ -5,6 +5,7 @@ namespace Uzulla\EnhancedRedisSessionHandler\Tests;
 use Monolog\Handler\NullHandler;
 use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
+use Redis;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\Exception\ConnectionException;
@@ -16,7 +17,7 @@ class RedisConnectionTest extends TestCase
         $logger = new Logger('test');
         $logger->pushHandler(new NullHandler());
 
-        $redis = new \Redis();
+        $redis = new Redis();
         $config = new RedisConnectionConfig();
         $connection = new RedisConnection($redis, $config, $logger);
         self::assertInstanceOf(RedisConnection::class, $connection);
@@ -27,7 +28,7 @@ class RedisConnectionTest extends TestCase
         $logger = new Logger('test');
         $logger->pushHandler(new NullHandler());
 
-        $redis = new \Redis();
+        $redis = new Redis();
         $config = new RedisConnectionConfig(
             '127.0.0.1',
             6380,
@@ -45,7 +46,7 @@ class RedisConnectionTest extends TestCase
         $logger = new Logger('test');
         $logger->pushHandler(new NullHandler());
 
-        $redis = new \Redis();
+        $redis = new Redis();
         $config = new RedisConnectionConfig();
         $connection = new RedisConnection($redis, $config, $logger);
         self::assertFalse($connection->isConnected());
@@ -60,7 +61,7 @@ class RedisConnectionTest extends TestCase
         $logger = new Logger('test');
         $logger->pushHandler(new NullHandler());
 
-        $redis = new \Redis();
+        $redis = new Redis();
         $redisHostEnv = getenv('SESSION_REDIS_HOST');
         $redisHost = $redisHostEnv !== false ? $redisHostEnv : 'localhost';
         $redisPortEnv = getenv('SESSION_REDIS_PORT');
@@ -89,7 +90,7 @@ class RedisConnectionTest extends TestCase
         $logger = new Logger('test');
         $logger->pushHandler(new NullHandler());
 
-        $redis = new \Redis();
+        $redis = new Redis();
         $redisHostEnv = getenv('SESSION_REDIS_HOST');
         $redisHost = $redisHostEnv !== false ? $redisHostEnv : 'localhost';
         $redisPortEnv = getenv('SESSION_REDIS_PORT');
@@ -118,7 +119,7 @@ class RedisConnectionTest extends TestCase
         $logger = new Logger('test');
         $logger->pushHandler(new NullHandler());
 
-        $redis = new \Redis();
+        $redis = new Redis();
         $redisHostEnv = getenv('SESSION_REDIS_HOST');
         $redisHost = $redisHostEnv !== false ? $redisHostEnv : 'localhost';
         $redisPortEnv = getenv('SESSION_REDIS_PORT');
@@ -148,13 +149,13 @@ class RedisConnectionTest extends TestCase
         $logger = new Logger('test');
         $logger->pushHandler(new NullHandler());
 
-        $redis = new \Redis();
+        $redis = new Redis();
         // 無効なホストで接続失敗させる
         $config = new RedisConnectionConfig('invalid-host-that-does-not-exist', 6379, 0.1, null, 0, '', false, 0);
         $connection = new RedisConnection($redis, $config, $logger);
 
         // 接続失敗時はConnectionExceptionがスローされる
-        $this->expectException(\Uzulla\EnhancedRedisSessionHandler\Exception\ConnectionException::class);
+        $this->expectException(ConnectionException::class);
         $connection->delete('test_key');
     }
 }

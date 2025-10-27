@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler;
 
+use InvalidArgumentException;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerInterface;
 use Redis;
@@ -158,7 +159,7 @@ class RedisConnection implements LoggerAwareInterface
     public function set(string $key, string $value, int $ttl): bool
     {
         if ($ttl <= 0) {
-            throw new \InvalidArgumentException('TTL must be positive');
+            throw new InvalidArgumentException('TTL must be positive');
         }
 
         $this->connect();

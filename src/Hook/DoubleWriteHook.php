@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler\Hook;
 
+use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use RuntimeException;
+use Throwable;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 
@@ -39,7 +42,7 @@ class DoubleWriteHook implements WriteHookInterface
         ?LoggerInterface $logger = null
     ) {
         if ($ttl <= 0) {
-            throw new \InvalidArgumentException('TTL must be positive');
+            throw new InvalidArgumentException('TTL must be positive');
         }
         $this->secondaryConnection = $secondaryConnection;
         $this->ttl = $ttl;
@@ -83,7 +86,7 @@ class DoubleWriteHook implements WriteHookInterface
                 ]);
 
                 if ($this->failOnSecondaryError) {
-                    throw new \RuntimeException($message);
+                    throw new RuntimeException($message);
                 }
                 return;
             }
@@ -91,7 +94,7 @@ class DoubleWriteHook implements WriteHookInterface
             $this->logger->debug('Secondary Redis write successful', [
                 'session_id' => SessionIdMasker::mask($sessionId),
             ]);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->logger->error('Exception during secondary Redis write', [
                 'session_id' => SessionIdMasker::mask($sessionId),
                 'exception' => $e,
@@ -105,7 +108,7 @@ class DoubleWriteHook implements WriteHookInterface
         }
     }
 
-    public function onWriteError(string $sessionId, \Throwable $exception): void
+    public function onWriteError(string $sessionId, Throwable $exception): void
     {
         $this->logger->error('Primary write error, secondary write skipped', [
             'session_id' => SessionIdMasker::mask($sessionId),

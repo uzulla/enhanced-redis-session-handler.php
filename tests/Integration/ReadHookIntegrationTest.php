@@ -11,6 +11,7 @@ use Uzulla\EnhancedRedisSessionHandler\Hook\ReadTimestampHook;
 use Uzulla\EnhancedRedisSessionHandler\Hook\FallbackReadHook;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
+use Redis;
 
 class ReadHookIntegrationTest extends TestCase
 {
@@ -34,7 +35,7 @@ class ReadHookIntegrationTest extends TestCase
         $this->logger = new Logger('test');
         $this->logger->pushHandler(new NullHandler());
 
-        $primaryRedis = new \Redis();
+        $primaryRedis = new Redis();
         $primaryConfig = new RedisConnectionConfig(
             $redisHost,
             (int)$redisPort,
@@ -45,7 +46,7 @@ class ReadHookIntegrationTest extends TestCase
         );
         $this->primaryConnection = new RedisConnection($primaryRedis, $primaryConfig, $this->logger);
 
-        $fallbackRedis = new \Redis();
+        $fallbackRedis = new Redis();
         $fallbackConfig = new RedisConnectionConfig(
             $redisHost,
             (int)$redisPort,
@@ -78,7 +79,7 @@ class ReadHookIntegrationTest extends TestCase
 
     public function testFallbackReadHookIntegration(): void
     {
-        $invalidRedis = new \Redis();
+        $invalidRedis = new Redis();
         $invalidConfig = new RedisConnectionConfig('invalid-host', 6379);
         $invalidConnection = new RedisConnection($invalidRedis, $invalidConfig, $this->logger);
 
@@ -147,7 +148,7 @@ class ReadHookIntegrationTest extends TestCase
 
     public function testFallbackHookActivatesOnPrimaryFailure(): void
     {
-        $invalidRedis = new \Redis();
+        $invalidRedis = new Redis();
         $invalidConfig = new RedisConnectionConfig('invalid-host', 6379);
         $invalidConnection = new RedisConnection($invalidRedis, $invalidConfig, $this->logger);
 

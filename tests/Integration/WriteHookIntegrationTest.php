@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Integration;
 
 use PHPUnit\Framework\TestCase;
+use Redis;
+use Throwable;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\Hook\DoubleWriteHook;
@@ -43,7 +45,7 @@ class WriteHookIntegrationTest extends TestCase
         $host = $redisHost;
         $port = (int)$redisPort;
 
-        $probe = new \Redis();
+        $probe = new Redis();
         if (!@$probe->connect($host, $port, 1.5)) {
             self::fail("Redis/Valkey server not reachable at {$host}:{$port}");
         }
@@ -53,19 +55,19 @@ class WriteHookIntegrationTest extends TestCase
             if ($pong !== true && $pong !== '+PONG' && $pong !== 'PONG') {
                 self::fail('Redis/Valkey server ping failed');
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             self::fail('Redis/Valkey server check failed: ' . $e->getMessage());
         } finally {
             try {
                 $probe->close();
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 // クリーンアップ中のエラーは無視：テストセットアップ時の接続切断失敗は影響しない
             }
         }
 
         $this->logger = new PsrTestLogger();
 
-        $primaryRedis = new \Redis();
+        $primaryRedis = new Redis();
         $primaryConfig = new RedisConnectionConfig(
             $host,
             $port,
@@ -75,7 +77,7 @@ class WriteHookIntegrationTest extends TestCase
         );
         $this->primaryConnection = new RedisConnection($primaryRedis, $primaryConfig, $this->logger);
 
-        $secondaryRedis = new \Redis();
+        $secondaryRedis = new Redis();
         $secondaryConfig = new RedisConnectionConfig(
             $host,
             $port,

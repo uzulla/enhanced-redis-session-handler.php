@@ -9,6 +9,7 @@ use Uzulla\EnhancedRedisSessionHandler\Exception\ConnectionException;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
 use Uzulla\EnhancedRedisSessionHandler\Tests\Support\PsrTestLogger;
+use Redis;
 
 class ErrorHandlingIntegrationTest extends TestCase
 {
@@ -31,7 +32,7 @@ class ErrorHandlingIntegrationTest extends TestCase
     {
         $logger = new PsrTestLogger();
 
-        $redis = new \Redis();
+        $redis = new Redis();
         $config = new RedisConnectionConfig(
             'invalid-host-that-does-not-exist',
             9999,
@@ -65,7 +66,7 @@ class ErrorHandlingIntegrationTest extends TestCase
     {
         $logger = new PsrTestLogger();
 
-        $redis = new \Redis();
+        $redis = new Redis();
         $config = new RedisConnectionConfig(
             $this->host,
             $this->port,
@@ -96,7 +97,7 @@ class ErrorHandlingIntegrationTest extends TestCase
     {
         $logger = new PsrTestLogger();
 
-        $redis = new \Redis();
+        $redis = new Redis();
         $config = new RedisConnectionConfig(
             'invalid-host',
             9999,
@@ -132,7 +133,7 @@ class ErrorHandlingIntegrationTest extends TestCase
     {
         $logger = new PsrTestLogger();
 
-        $redis = new \Redis();
+        $redis = new Redis();
         $config = new RedisConnectionConfig(
             'invalid-host',
             9999,

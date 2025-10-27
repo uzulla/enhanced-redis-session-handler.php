@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Hook;
 
+use InvalidArgumentException;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
+use RuntimeException;
+use Throwable;
 use Uzulla\EnhancedRedisSessionHandler\Hook\LoggingHook;
 
 class LoggingHookTest extends TestCase
@@ -42,7 +45,7 @@ class LoggingHookTest extends TestCase
 
     public function testConstructorThrowsExceptionWhenBeforeWriteLevelIsInvalid(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Invalid log level for beforeWrite');
 
         new LoggingHook($this->logger, 'invalid_level');
@@ -50,7 +53,7 @@ class LoggingHookTest extends TestCase
 
     public function testConstructorThrowsExceptionWhenAfterWriteLevelIsInvalid(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Invalid log level for afterWrite');
 
         new LoggingHook($this->logger, LogLevel::DEBUG, 'invalid_level');
@@ -58,7 +61,7 @@ class LoggingHookTest extends TestCase
 
     public function testConstructorThrowsExceptionWhenErrorLevelIsInvalid(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Invalid log level for error');
 
         new LoggingHook($this->logger, LogLevel::DEBUG, LogLevel::DEBUG, 'invalid_level');
@@ -168,7 +171,7 @@ class LoggingHookTest extends TestCase
 
     public function testOnWriteErrorLogsException(): void
     {
-        $exception = new \RuntimeException('Test error', 123);
+        $exception = new RuntimeException('Test error', 123);
 
         $this->logger->expects(self::once())
             ->method('log')
@@ -177,7 +180,7 @@ class LoggingHookTest extends TestCase
                 'Session write error occurred',
                 self::callback(function (array $context) {
                     return $context['session_id'] === '...sion'
-                        && $context['exception_class'] === \RuntimeException::class
+                        && $context['exception_class'] === RuntimeException::class
                         && $context['exception_message'] === 'Test error'
                         && $context['exception_code'] === 123
                         && isset($context['exception_file'])

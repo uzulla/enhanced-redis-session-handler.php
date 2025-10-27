@@ -9,6 +9,7 @@ use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use SessionHandlerInterface;
 use SessionUpdateTimestampHandlerInterface;
+use Throwable;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\Hook\ReadHookInterface;
 use Uzulla\EnhancedRedisSessionHandler\Hook\WriteHookInterface;
@@ -133,7 +134,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
             }
 
             return $data;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->logger->error('Error during session read', [
                 'session_id' => SessionIdMasker::mask($id),
                 'error' => $e->getMessage(),
@@ -226,7 +227,7 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
             }
 
             return $success;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             foreach ($this->writeHooks as $hook) {
                 $hook->onWriteError($id, $e);
             }

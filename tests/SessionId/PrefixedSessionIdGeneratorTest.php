@@ -2,6 +2,7 @@
 
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\SessionId;
 
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\PrefixedSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\SessionIdGeneratorInterface;
@@ -84,7 +85,7 @@ class PrefixedSessionIdGeneratorTest extends TestCase
 
     public function testThrowsExceptionForEmptyPrefix(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Prefix cannot be empty');
 
         new PrefixedSessionIdGenerator('');
@@ -92,7 +93,7 @@ class PrefixedSessionIdGeneratorTest extends TestCase
 
     public function testThrowsExceptionForPrefixWithSpaces(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Prefix can only contain alphanumeric characters and hyphens');
 
         new PrefixedSessionIdGenerator('app name');
@@ -100,7 +101,7 @@ class PrefixedSessionIdGeneratorTest extends TestCase
 
     public function testThrowsExceptionForPrefixWithUnderscore(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Prefix can only contain alphanumeric characters and hyphens');
 
         new PrefixedSessionIdGenerator('app_name');
@@ -108,7 +109,7 @@ class PrefixedSessionIdGeneratorTest extends TestCase
 
     public function testThrowsExceptionForPrefixWithSpecialCharacters(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Prefix can only contain alphanumeric characters and hyphens');
 
         new PrefixedSessionIdGenerator('app@name');
@@ -116,7 +117,7 @@ class PrefixedSessionIdGeneratorTest extends TestCase
 
     public function testThrowsExceptionForPrefixWithSlash(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Prefix can only contain alphanumeric characters and hyphens');
 
         new PrefixedSessionIdGenerator('app/name');
@@ -124,7 +125,7 @@ class PrefixedSessionIdGeneratorTest extends TestCase
 
     public function testThrowsExceptionForPrefixWithDot(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Prefix can only contain alphanumeric characters and hyphens');
 
         new PrefixedSessionIdGenerator('app.name');
@@ -164,7 +165,7 @@ class PrefixedSessionIdGeneratorTest extends TestCase
 
     public function testThrowsExceptionForPrefixTooLong(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Prefix length must be <= 64 characters');
 
         $longPrefix = str_repeat('a', 65);
@@ -182,7 +183,7 @@ class PrefixedSessionIdGeneratorTest extends TestCase
 
     public function testThrowsExceptionForRandomLengthTooLarge(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Random part length must be <= 256 characters');
 
         new PrefixedSessionIdGenerator('test', 258);
@@ -201,7 +202,7 @@ class PrefixedSessionIdGeneratorTest extends TestCase
 
     public function testThrowsExceptionForTooShortRandomLength(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Random part length must be at least 16 characters');
 
         new PrefixedSessionIdGenerator('test', 14);
@@ -209,7 +210,7 @@ class PrefixedSessionIdGeneratorTest extends TestCase
 
     public function testThrowsExceptionForOddRandomLength(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Random part length must be an even number');
 
         new PrefixedSessionIdGenerator('test', 33);

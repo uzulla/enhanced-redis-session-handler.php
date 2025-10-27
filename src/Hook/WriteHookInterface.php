@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler\Hook;
 
+use Throwable;
+
 interface WriteHookInterface
 {
     /**
@@ -27,7 +29,7 @@ interface WriteHookInterface
      * Called when an error occurs during the write operation.
      *
      * @param string $sessionId The session ID
-     * @param \Throwable $exception The exception that occurred
+     * @param Throwable $exception The exception that occurred
      */
-    public function onWriteError(string $sessionId, \Throwable $exception): void;
+    public function onWriteError(string $sessionId, Throwable $exception): void;
 }

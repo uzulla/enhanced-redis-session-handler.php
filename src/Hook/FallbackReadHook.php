@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler\Hook;
 
+use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
+use Throwable;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 
 /**
@@ -26,7 +28,7 @@ class FallbackReadHook implements ReadHookInterface
     public function __construct(array $fallbackConnections, LoggerInterface $logger)
     {
         if (count($fallbackConnections) === 0) {
-            throw new \InvalidArgumentException('At least one fallback connection is required');
+            throw new InvalidArgumentException('At least one fallback connection is required');
         }
 
         $this->fallbackConnections = $fallbackConnections;
@@ -42,7 +44,7 @@ class FallbackReadHook implements ReadHookInterface
         return $data;
     }
 
-    public function onReadError(string $sessionId, \Throwable $e): ?string
+    public function onReadError(string $sessionId, Throwable $e): ?string
     {
         $this->logger->warning('Primary Redis read failed, attempting fallback', [
             'session_id' => $sessionId,
@@ -59,7 +61,7 @@ class FallbackReadHook implements ReadHookInterface
                     ]);
                     return $data;
                 }
-            } catch (\Throwable $fallbackError) {
+            } catch (Throwable $fallbackError) {
                 $this->logger->warning('Fallback Redis read failed', [
                     'session_id' => $sessionId,
                     'fallback_index' => $index,
