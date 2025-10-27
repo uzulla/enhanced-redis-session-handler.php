@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Hook;
 
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
@@ -12,6 +13,7 @@ use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 
 class DoubleWriteHookTest extends TestCase
 {
+    /** @var RedisConnection&MockObject */
     private RedisConnection $secondaryConnection;
 
     protected function setUp(): void
@@ -152,7 +154,7 @@ class DoubleWriteHookTest extends TestCase
         $hook->beforeWrite('test_session', ['key' => 'value']);
         $hook->afterWrite('test_session', true);
 
-        // 例外が投げられないことを確認（テストが完了すればOK）
-        self::assertTrue(true);
+        // 例外が投げられないことを確認（モックの期待値がチェックされる）
+        $this->addToAssertionCount(1);
     }
 }

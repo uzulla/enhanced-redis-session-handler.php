@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Hook;
 
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
@@ -11,6 +12,7 @@ use Uzulla\EnhancedRedisSessionHandler\Hook\LoggingHook;
 
 class LoggingHookTest extends TestCase
 {
+    /** @var LoggerInterface&MockObject */
     private LoggerInterface $logger;
 
     protected function setUp(): void
@@ -173,7 +175,7 @@ class LoggingHookTest extends TestCase
             ->with(
                 LogLevel::ERROR,
                 'Session write error occurred',
-                self::callback(function (array $context) use ($exception) {
+                self::callback(function (array $context) {
                     return $context['session_id'] === 'test_session'
                         && $context['exception_class'] === \RuntimeException::class
                         && $context['exception_message'] === 'Test error'
@@ -192,6 +194,7 @@ class LoggingHookTest extends TestCase
         $this->logger->expects(self::exactly(3))
             ->method('log')
             ->willReturnCallback(function (string $level, string $message) {
+                /** @var int $callCount */
                 static $callCount = 0;
                 $callCount++;
 

@@ -39,7 +39,7 @@ class RedisSessionHandlerOptionsTest extends TestCase
         // 現在のini設定値を取得
         $currentIniValue = ini_get('session.gc_maxlifetime');
         if ($currentIniValue === false) {
-            $this->markTestSkipped('Cannot get session.gc_maxlifetime');
+            self::markTestSkipped('Cannot get session.gc_maxlifetime');
         }
 
         $expectedValue = (int)$currentIniValue;
@@ -54,7 +54,7 @@ class RedisSessionHandlerOptionsTest extends TestCase
         // ini_getが失敗することをシミュレートするのは困難なため、
         // ini_getが有効な値を返す場合のテストのみ実施
         // 実際のコードでは ini_get が false を返した場合に 1440 が使用される
-        $this->markTestSkipped('Cannot reliably test ini_get failure scenario in unit tests');
+        self::markTestSkipped('Cannot reliably test ini_get failure scenario in unit tests');
     }
 
     public function testConstructorThrowsExceptionWhenMaxLifetimeIsZero(): void
