@@ -1,14 +1,14 @@
-# Write Hooks
+# 書き込みフック（Write Hooks）
 
-Write hooks provide a powerful mechanism to extend session write operations with custom functionality. They allow you to intercept and react to session write events at different stages of the write lifecycle.
+書き込みフックは、セッション書き込み操作にカスタム機能を追加する強力な仕組みです。書き込みライフサイクルのさまざまな段階でセッション書き込みイベントを傍受し、反応することができます。
 
-## Overview
+## 概要
 
-The `WriteHookInterface` defines three methods that are called at different points during a session write operation:
+`WriteHookInterface`は、セッション書き込み操作中のさまざまなタイミングで呼び出される3つのメソッドを定義します：
 
-1. **beforeWrite**: Called before the session data is written to Redis
-2. **afterWrite**: Called after the write operation completes (success or failure)
-3. **onWriteError**: Called when an exception occurs during the write operation
+1. **beforeWrite**: セッションデータがRedisに書き込まれる前に呼び出される
+2. **afterWrite**: 書き込み操作が完了した後に呼び出される（成功・失敗どちらでも）
+3. **onWriteError**: 書き込み操作中に例外が発生した場合に呼び出される
 
 ## WriteHookInterface
 
@@ -16,45 +16,45 @@ The `WriteHookInterface` defines three methods that are called at different poin
 interface WriteHookInterface
 {
     /**
-     * Called before writing session data to Redis.
+     * セッションデータをRedisに書き込む前に呼び出されます。
      *
-     * @param string $sessionId The session ID
-     * @param array<string, mixed> $data The unserialized session data
-     * @return array<string, mixed> The modified session data
+     * @param string $sessionId セッションID
+     * @param array<string, mixed> $data デシリアライズされたセッションデータ
+     * @return array<string, mixed> 変更されたセッションデータ
      */
     public function beforeWrite(string $sessionId, array $data): array;
 
     /**
-     * Called after writing session data to Redis.
+     * セッションデータをRedisに書き込んだ後に呼び出されます。
      *
-     * @param string $sessionId The session ID
-     * @param bool $success Whether the write operation was successful
+     * @param string $sessionId セッションID
+     * @param bool $success 書き込み操作が成功したかどうか
      */
     public function afterWrite(string $sessionId, bool $success): void;
 
     /**
-     * Called when an error occurs during the write operation.
+     * 書き込み操作中にエラーが発生した場合に呼び出されます。
      *
-     * @param string $sessionId The session ID
-     * @param \Throwable $exception The exception that occurred
+     * @param string $sessionId セッションID
+     * @param \Throwable $exception 発生した例外
      */
     public function onWriteError(string $sessionId, \Throwable $exception): void;
 }
 ```
 
-## Built-in Implementations
+## 組み込み実装
 
 ### LoggingHook
 
-The `LoggingHook` provides comprehensive logging of session write operations using PSR-3 compatible loggers.
+`LoggingHook`は、PSR-3互換のロガーを使用してセッション書き込み操作の包括的なロギングを提供します。
 
-**Features:**
-- Logs session write start, success, and failure events
-- Configurable log levels for different events
-- Optional session data logging (disabled by default for security)
-- Detailed error information on write failures
+**機能:**
+- セッション書き込みの開始、成功、失敗イベントをログ記録
+- イベントごとに設定可能なログレベル
+- オプションのセッションデータロギング（セキュリティのためデフォルトでは無効）
+- 書き込み失敗時の詳細なエラー情報
 
-**Example:**
+**使用例:**
 
 ```php
 use Monolog\Logger;
@@ -67,10 +67,10 @@ $logger->pushHandler(new StreamHandler('/var/log/sessions.log', Logger::INFO));
 
 $loggingHook = new LoggingHook(
     $logger,
-    LogLevel::INFO,      // beforeWrite log level
-    LogLevel::INFO,      // afterWrite log level
-    LogLevel::ERROR,     // onWriteError log level
-    false                // log session data (false for security)
+    LogLevel::INFO,      // beforeWriteのログレベル
+    LogLevel::INFO,      // afterWriteのログレベル
+    LogLevel::ERROR,     // onWriteErrorのログレベル
+    false                // セッションデータをログ記録（セキュリティのためfalse）
 );
 
 $handler->addWriteHook($loggingHook);
@@ -78,21 +78,21 @@ $handler->addWriteHook($loggingHook);
 
 ### DoubleWriteHook
 
-The `DoubleWriteHook` writes session data to a secondary Redis instance, providing redundancy and backup capabilities.
+`DoubleWriteHook`は、セッションデータをセカンダリRedisインスタンスに書き込み、冗長性とバックアップ機能を提供します。
 
-**Features:**
-- Writes to secondary Redis after primary write succeeds
-- Configurable TTL for secondary storage
-- Optional failure mode (fail or continue on secondary write errors)
-- Comprehensive logging of secondary write operations
+**機能:**
+- プライマリ書き込みが成功した後にセカンダリRedisに書き込み
+- セカンダリストレージ用の設定可能なTTL
+- オプションの失敗モード（セカンダリ書き込みエラー時に失敗するか続行するか）
+- セカンダリ書き込み操作の包括的なロギング
 
-**Use Cases:**
-- Creating backup copies of session data
-- Replicating sessions across data centers
-- Migrating sessions to a new Redis instance
-- High availability setups
+**用途:**
+- セッションデータのバックアップコピー作成
+- データセンター間でのセッションレプリケーション
+- 新しいRedisインスタンスへのセッション移行
+- 高可用性セットアップ
 
-**Example:**
+**使用例:**
 
 ```php
 use Uzulla\EnhancedRedisSessionHandler\Hook\DoubleWriteHook;
@@ -103,20 +103,21 @@ $secondaryConnection = new RedisConnection($secondaryRedis, $secondaryConfig, $l
 
 $doubleWriteHook = new DoubleWriteHook(
     $secondaryConnection,
-    1440,                // TTL in seconds
-    false,               // fail on secondary error
+    1440,                // TTL（秒）
+    false,               // セカンダリエラー時に失敗するか
     $logger
 );
 
 $handler->addWriteHook($doubleWriteHook);
 ```
 
-## Creating Custom Hooks
+## カスタムフックの作成
 
-You can create custom hooks by implementing the `WriteHookInterface`:
+`WriteHookInterface`を実装することで、カスタムフックを作成できます：
 
 ```php
 use Uzulla\EnhancedRedisSessionHandler\Hook\WriteHookInterface;
+use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 
 class CustomAuditHook implements WriteHookInterface
 {
@@ -129,94 +130,98 @@ class CustomAuditHook implements WriteHookInterface
 
     public function beforeWrite(string $sessionId, array $data): array
     {
-        // Log audit trail before write
+        // 書き込み前に監査証跡をログ記録
+        // 重要: セキュリティのため、ログ記録時は必ずセッションIDをマスキングすること
         $this->auditLogger->info('Session write initiated', [
-            'session_id' => $sessionId,
+            'session_id' => SessionIdMasker::mask($sessionId),
             'user_id' => $data['user_id'] ?? null,
         ]);
 
-        // Return data unchanged (or modify if needed)
+        // データを未変更で返す（必要に応じて変更も可能）
         return $data;
     }
 
     public function afterWrite(string $sessionId, bool $success): void
     {
-        // Log audit trail after write
+        // 書き込み後に監査証跡をログ記録
         if ($success) {
             $this->auditLogger->info('Session write completed', [
-                'session_id' => $sessionId,
+                'session_id' => SessionIdMasker::mask($sessionId),
             ]);
         }
     }
 
     public function onWriteError(string $sessionId, \Throwable $exception): void
     {
-        // Log error to audit system
+        // エラーを監査システムにログ記録
         $this->auditLogger->error('Session write failed', [
-            'session_id' => $sessionId,
+            'session_id' => SessionIdMasker::mask($sessionId),
             'error' => $exception->getMessage(),
         ]);
     }
 }
 ```
 
-## Hook Execution Order
+**セキュリティ注意**: ログ漏洩時のセッションハイジャックを防ぐため、セッションIDをログ記録する際は必ず`SessionIdMasker::mask()`を使用してください。
 
-When multiple hooks are registered, they are executed in the order they were added:
+## フックの実行順序
+
+複数のフックが登録されている場合、追加された順序で実行されます：
 
 ```php
-$handler->addWriteHook($loggingHook);      // Executed first
-$handler->addWriteHook($doubleWriteHook);  // Executed second
-$handler->addWriteHook($customHook);       // Executed third
+$handler->addWriteHook($loggingHook);      // 最初に実行
+$handler->addWriteHook($doubleWriteHook);  // 2番目に実行
+$handler->addWriteHook($customHook);       // 3番目に実行
 ```
 
-**beforeWrite** hooks are chained - each hook receives the data returned by the previous hook:
+**beforeWrite**フックはチェーン化されます - 各フックは前のフックが返したデータを受け取ります：
 
 ```php
-// Hook 1 modifies data
+// フック1がデータを変更
 public function beforeWrite(string $sessionId, array $data): array
 {
     $data['processed_by_hook1'] = true;
     return $data;
 }
 
-// Hook 2 receives modified data from Hook 1
+// フック2はフック1で変更されたデータを受け取る
 public function beforeWrite(string $sessionId, array $data): array
 {
-    // $data['processed_by_hook1'] is true here
+    // ここでは$data['processed_by_hook1']がtrueになっている
     $data['processed_by_hook2'] = true;
     return $data;
 }
 ```
 
-## Error Handling
+## エラーハンドリング
 
-If an exception occurs during the write operation:
+書き込み操作中に例外が発生した場合：
 
-1. The `onWriteError` method is called on all registered hooks
-2. The error is logged
-3. The write operation returns `false`
+1. 登録されているすべてのフックで`onWriteError`メソッドが呼び出されます
+2. エラーがログに記録されます
+3. 書き込み操作は`false`を返します
 
-Hooks should handle their own errors gracefully and not throw exceptions unless absolutely necessary.
+フックは自身のエラーを適切に処理し、絶対に必要な場合を除いて例外をスローしないようにしてください。
 
-## Best Practices
+## ベストプラクティス
 
-1. **Keep hooks lightweight**: Hooks are called on every session write, so keep processing minimal
-2. **Handle errors gracefully**: Don't let hook failures break session functionality
-3. **Use appropriate log levels**: Avoid excessive logging in production
-4. **Be security conscious**: Don't log sensitive session data
-5. **Test thoroughly**: Test hooks with various scenarios including error conditions
-6. **Document behavior**: Clearly document what your custom hooks do
+1. **フックを軽量に保つ**: フックはセッション書き込みごとに呼び出されるため、処理を最小限に抑える
+2. **エラーを適切に処理する**: フックの失敗がセッション機能を壊さないようにする
+3. **適切なログレベルを使用する**: 本番環境での過剰なロギングを避ける
+4. **セキュリティを意識する**: 機密性の高いセッションデータをログに記録しない
+5. **十分にテストする**: エラー条件を含むさまざまなシナリオでフックをテストする
+6. **動作を文書化する**: カスタムフックの動作を明確に文書化する
 
-## Performance Considerations
+## パフォーマンスに関する考慮事項
 
-- Hooks add overhead to session write operations
-- Use asynchronous processing for expensive operations when possible
-- Consider using write filters to skip unnecessary writes
-- Monitor hook performance in production
+- フックはセッション書き込み操作にオーバーヘッドを追加します
+- 重い処理には可能な限り非同期処理を使用する
+- 不要な書き込みをスキップするために書き込みフィルターの使用を検討する
+- 本番環境でフックのパフォーマンスを監視する
 
-## See Also
+## 関連項目
 
-- [Write Filters](./write-filters.md) - For conditional write operations
-- [Read Hooks](./read-hooks.md) - For intercepting read operations
-- [Architecture](./architecture.md) - Overall system architecture
+- [Factory Usage](./factory-usage.md) - SessionHandlerFactoryの使用方法について
+- [Redis Integration](./redis-integration.md) - Redis/ValKey統合仕様について
+- [Architecture](./architecture.md) - システム全体のアーキテクチャについて
+- [Specification](./specification.md) - 機能仕様書
