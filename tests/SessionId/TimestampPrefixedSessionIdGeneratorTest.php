@@ -2,6 +2,7 @@
 
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\SessionId;
 
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\SessionIdGeneratorInterface;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\TimestampPrefixedSessionIdGenerator;
@@ -83,7 +84,7 @@ class TimestampPrefixedSessionIdGeneratorTest extends TestCase
 
     public function testThrowsExceptionForTooShortRandomLength(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Random part length must be at least 16 characters');
 
         new TimestampPrefixedSessionIdGenerator(14);
@@ -91,7 +92,7 @@ class TimestampPrefixedSessionIdGeneratorTest extends TestCase
 
     public function testThrowsExceptionForOddRandomLength(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Random part length must be an even number');
 
         new TimestampPrefixedSessionIdGenerator(33);

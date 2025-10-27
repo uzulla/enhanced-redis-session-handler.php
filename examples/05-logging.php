@@ -30,6 +30,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
+
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
@@ -114,7 +115,7 @@ try {
 
     echo "\n7. Session operations completed.\n\n";
 
-    $redis = new \Redis();
+    $redis = new Redis();
     $redis->connect('localhost', 6379);
     $redis->del('session:logged:' . $sessionId);
 } catch (\Exception $e) {

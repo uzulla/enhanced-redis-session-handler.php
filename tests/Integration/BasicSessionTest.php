@@ -9,6 +9,7 @@ use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
+use Redis;
 
 class BasicSessionTest extends TestCase
 {
@@ -39,7 +40,7 @@ class BasicSessionTest extends TestCase
             'test:session:'
         );
 
-        $redis = new \Redis();
+        $redis = new Redis();
         $this->connection = new RedisConnection($redis, $config, $logger);
 
         $options = new RedisSessionHandlerOptions(null, null, $logger);

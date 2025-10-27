@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler\Hook;
 
+use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
+use Throwable;
 use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 
 /**
@@ -45,13 +47,13 @@ class LoggingHook implements WriteHookInterface
         ];
 
         if (!in_array($beforeWriteLevel, $validLevels, true)) {
-            throw new \InvalidArgumentException('Invalid log level for beforeWrite');
+            throw new InvalidArgumentException('Invalid log level for beforeWrite');
         }
         if (!in_array($afterWriteLevel, $validLevels, true)) {
-            throw new \InvalidArgumentException('Invalid log level for afterWrite');
+            throw new InvalidArgumentException('Invalid log level for afterWrite');
         }
         if (!in_array($errorLevel, $validLevels, true)) {
-            throw new \InvalidArgumentException('Invalid log level for error');
+            throw new InvalidArgumentException('Invalid log level for error');
         }
 
         $this->logger = $logger;
@@ -94,7 +96,7 @@ class LoggingHook implements WriteHookInterface
         );
     }
 
-    public function onWriteError(string $sessionId, \Throwable $exception): void
+    public function onWriteError(string $sessionId, Throwable $exception): void
     {
         $this->logger->log(
             $this->errorLevel,

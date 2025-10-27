@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Hook;
 
+use InvalidArgumentException;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use RuntimeException;
 use Uzulla\EnhancedRedisSessionHandler\Hook\DoubleWriteHook;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 
@@ -39,7 +41,7 @@ class DoubleWriteHookTest extends TestCase
 
     public function testConstructorThrowsExceptionWhenTtlIsZero(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('TTL must be positive');
 
         new DoubleWriteHook($this->secondaryConnection, 0);
@@ -47,7 +49,7 @@ class DoubleWriteHookTest extends TestCase
 
     public function testConstructorThrowsExceptionWhenTtlIsNegative(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('TTL must be positive');
 
         new DoubleWriteHook($this->secondaryConnection, -1);
@@ -137,7 +139,7 @@ class DoubleWriteHookTest extends TestCase
             ->method('set')
             ->willReturn(false);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Secondary Redis write failed');
 
         $hook = new DoubleWriteHook($this->secondaryConnection, 1440, true);

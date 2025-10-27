@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Config;
 
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 
@@ -54,7 +55,7 @@ class RedisConnectionConfigTest extends TestCase
 
     public function testConstructorThrowsExceptionWhenHostIsEmpty(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Host cannot be empty');
 
         new RedisConnectionConfig('');
@@ -62,7 +63,7 @@ class RedisConnectionConfigTest extends TestCase
 
     public function testConstructorThrowsExceptionWhenPortIsZero(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Port must be between 1 and 65535');
 
         new RedisConnectionConfig('localhost', 0);
@@ -70,7 +71,7 @@ class RedisConnectionConfigTest extends TestCase
 
     public function testConstructorThrowsExceptionWhenPortIsNegative(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Port must be between 1 and 65535');
 
         new RedisConnectionConfig('localhost', -1);
@@ -78,7 +79,7 @@ class RedisConnectionConfigTest extends TestCase
 
     public function testConstructorThrowsExceptionWhenPortIsTooLarge(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Port must be between 1 and 65535');
 
         new RedisConnectionConfig('localhost', 65536);
@@ -86,7 +87,7 @@ class RedisConnectionConfigTest extends TestCase
 
     public function testConstructorThrowsExceptionWhenTimeoutIsNegative(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Timeout must be non-negative');
 
         new RedisConnectionConfig('localhost', 6379, -1.0);
@@ -94,7 +95,7 @@ class RedisConnectionConfigTest extends TestCase
 
     public function testConstructorThrowsExceptionWhenReadTimeoutIsNegative(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Read timeout must be non-negative');
 
         new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 100, -1.0);
@@ -102,7 +103,7 @@ class RedisConnectionConfigTest extends TestCase
 
     public function testConstructorThrowsExceptionWhenDatabaseIsNegative(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Database must be non-negative');
 
         new RedisConnectionConfig('localhost', 6379, 2.5, null, -1);
@@ -110,7 +111,7 @@ class RedisConnectionConfigTest extends TestCase
 
     public function testConstructorThrowsExceptionWhenMaxRetriesIsNegative(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Max retries must be non-negative');
 
         new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 100, 2.5, -1);
@@ -118,7 +119,7 @@ class RedisConnectionConfigTest extends TestCase
 
     public function testConstructorThrowsExceptionWhenRetryIntervalIsNegative(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Retry interval must be non-negative');
 
         new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, -1);

@@ -5,6 +5,7 @@ namespace Uzulla\EnhancedRedisSessionHandler\Tests;
 use Monolog\Handler\NullHandler;
 use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
+use Redis;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
@@ -28,7 +29,7 @@ class RedisSessionHandlerTest extends TestCase
         $logger = new Logger('test');
         $logger->pushHandler(new NullHandler());
 
-        $redis = new \Redis();
+        $redis = new Redis();
         $config = new RedisConnectionConfig(
             $redisHost,
             (int)$redisPort

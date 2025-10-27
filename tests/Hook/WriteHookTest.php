@@ -3,6 +3,8 @@
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Hook;
 
 use PHPUnit\Framework\TestCase;
+use Redis;
+use RuntimeException;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\Hook\DoubleWriteHook;
@@ -21,11 +23,11 @@ class WriteHookTest extends TestCase
     {
         $this->logger = new PsrTestLogger();
 
-        $primaryRedis = new \Redis();
+        $primaryRedis = new Redis();
         $primaryConfig = new RedisConnectionConfig('localhost', 6379);
         $this->primaryConnection = new RedisConnection($primaryRedis, $primaryConfig, $this->logger);
 
-        $secondaryRedis = new \Redis();
+        $secondaryRedis = new Redis();
         $secondaryConfig = new RedisConnectionConfig('localhost', 6379, 1);
         $this->secondaryConnection = new RedisConnection($secondaryRedis, $secondaryConfig, $this->logger);
     }
@@ -112,7 +114,7 @@ class WriteHookTest extends TestCase
     public function testLoggingHookLogsWriteError(): void
     {
         $hook = new LoggingHook($this->logger);
-        $exception = new \RuntimeException('Test error', 123);
+        $exception = new RuntimeException('Test error', 123);
 
         $hook->onWriteError('test_session_id', $exception);
 
@@ -194,7 +196,7 @@ class WriteHookTest extends TestCase
     {
         $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $this->logger);
         $data = ['user_id' => 123];
-        $exception = new \RuntimeException('Test error');
+        $exception = new RuntimeException('Test error');
 
         $hook->beforeWrite('test_session_id', $data);
         $hook->onWriteError('test_session_id', $exception);

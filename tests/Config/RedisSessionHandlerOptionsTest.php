@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Config;
 
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
@@ -59,7 +60,7 @@ class RedisSessionHandlerOptionsTest extends TestCase
 
     public function testConstructorThrowsExceptionWhenMaxLifetimeIsZero(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Max lifetime must be positive');
 
         new RedisSessionHandlerOptions(null, 0);
@@ -67,7 +68,7 @@ class RedisSessionHandlerOptionsTest extends TestCase
 
     public function testConstructorThrowsExceptionWhenMaxLifetimeIsNegative(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Max lifetime must be positive');
 
         new RedisSessionHandlerOptions(null, -1);

@@ -12,6 +12,7 @@ use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\SecureSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\SessionIdGeneratorInterface;
+use Redis;
 
 class SessionIdGeneratorIntegrationTest extends TestCase
 {
@@ -41,7 +42,7 @@ class SessionIdGeneratorIntegrationTest extends TestCase
             'test:session:'
         );
 
-        $redis = new \Redis();
+        $redis = new Redis();
         $this->connection = new RedisConnection($redis, $config, $logger);
 
         $this->connection->connect();

@@ -5,7 +5,9 @@ namespace Uzulla\EnhancedRedisSessionHandler\Tests;
 use Monolog\Handler\TestHandler;
 use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerInterface;
+use Redis;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
@@ -15,19 +17,19 @@ class LoggerAwareTest extends TestCase
 {
     public function testRedisSessionHandlerImplementsLoggerAwareInterface(): void
     {
-        $redis = new \Redis();
+        $redis = new Redis();
         $config = new RedisConnectionConfig();
         $logger = new Logger('test');
         $connection = new RedisConnection($redis, $config, $logger);
 
         $handler = new RedisSessionHandler($connection);
 
-        self::assertInstanceOf(\Psr\Log\LoggerAwareInterface::class, $handler);
+        self::assertInstanceOf(LoggerAwareInterface::class, $handler);
     }
 
     public function testRedisSessionHandlerSetLogger(): void
     {
-        $redis = new \Redis();
+        $redis = new Redis();
         $config = new RedisConnectionConfig();
         $logger = new Logger('test');
         $connection = new RedisConnection($redis, $config, $logger);
@@ -45,17 +47,17 @@ class LoggerAwareTest extends TestCase
 
     public function testRedisConnectionImplementsLoggerAwareInterface(): void
     {
-        $redis = new \Redis();
+        $redis = new Redis();
         $config = new RedisConnectionConfig();
         $logger = new Logger('test');
         $connection = new RedisConnection($redis, $config, $logger);
 
-        self::assertInstanceOf(\Psr\Log\LoggerAwareInterface::class, $connection);
+        self::assertInstanceOf(LoggerAwareInterface::class, $connection);
     }
 
     public function testRedisConnectionSetLogger(): void
     {
-        $redis = new \Redis();
+        $redis = new Redis();
         $config = new RedisConnectionConfig();
         $logger = new Logger('test');
         $connection = new RedisConnection($redis, $config, $logger);
