@@ -22,7 +22,7 @@
 
 ### 問題の影響
 
-```
+```text
 1. session_start() → セッションID生成 → Cookie送信
 2. $_SESSION が空の場合 → WriteFilterがRedis書き込みキャンセル
 3. 次回アクセス時 → CookieのセッションIDでRedisを確認 → 存在しない → 無駄な通信
@@ -68,7 +68,7 @@
 
 ### 3.2 ファイル構成
 
-```
+```text
 src/
   Hook/
     EmptySessionFilter.php        # 空セッションフィルター
@@ -177,12 +177,14 @@ $_SESSION['user_id'] = 123;  // 通常通り動作
 既存のコードで `session_set_save_handler()` と `session_start()` を呼んでいる箇所を以下のように変更：
 
 **変更前:**
+
 ```php
 session_set_save_handler($handler, true);
 session_start();
 ```
 
 **変更後:**
+
 ```php
 EmptySessionManager::setup($handler, $logger);
 session_start();
@@ -287,3 +289,5 @@ session_start();
 
 この機能はオプトイン方式のため、既存のコードには影響しません。
 ```
+
+
