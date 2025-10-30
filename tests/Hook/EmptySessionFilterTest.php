@@ -56,8 +56,7 @@ class EmptySessionFilterTest extends TestCase
                 self::assertArrayHasKey('context', $record);
                 $context = $record['context'];
                 self::assertArrayHasKey('session_id', $context);
-                self::assertArrayHasKey('data_empty', $context);
-                self::assertTrue($context['data_empty']);
+                self::assertArrayNotHasKey('data', $context);
                 $maskedId = $context['session_id'];
                 self::assertIsString($maskedId);
                 self::assertStringContainsString('...', $maskedId);
@@ -84,12 +83,8 @@ class EmptySessionFilterTest extends TestCase
                 self::assertArrayHasKey('context', $record);
                 $context = $record['context'];
                 self::assertArrayHasKey('session_id', $context);
-                self::assertArrayHasKey('data_empty', $context);
-                self::assertFalse($context['data_empty']);
-                self::assertArrayHasKey('data_keys', $context);
-                $dataKeys = $context['data_keys'];
-                self::assertIsArray($dataKeys);
-                self::assertSame(['user_id'], $dataKeys);
+                self::assertArrayHasKey('data', $context);
+                self::assertSame($data, $context['data']);
                 $maskedId = $context['session_id'];
                 self::assertIsString($maskedId);
                 self::assertStringContainsString('...', $maskedId);
@@ -119,14 +114,8 @@ class EmptySessionFilterTest extends TestCase
             if ($record['message'] === 'Session has data, write operation allowed') {
                 $found = true;
                 $context = $record['context'];
-                self::assertArrayHasKey('data_keys', $context);
-                $dataKeys = $context['data_keys'];
-                self::assertIsArray($dataKeys);
-                self::assertCount(4, $dataKeys);
-                self::assertContains('user_id', $dataKeys);
-                self::assertContains('username', $dataKeys);
-                self::assertContains('email', $dataKeys);
-                self::assertContains('role', $dataKeys);
+                self::assertArrayHasKey('data', $context);
+                self::assertSame($data, $context['data']);
                 break;
             }
         }

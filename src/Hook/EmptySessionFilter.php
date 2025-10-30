@@ -49,7 +49,6 @@ class EmptySessionFilter implements WriteFilterInterface
                 'Empty session detected, write operation cancelled',
                 [
                     'session_id' => SessionIdMasker::mask($sessionId),
-                    'data_empty' => true,
                 ]
             );
             return false;
@@ -59,8 +58,7 @@ class EmptySessionFilter implements WriteFilterInterface
             'Session has data, write operation allowed',
             [
                 'session_id' => SessionIdMasker::mask($sessionId),
-                'data_empty' => false,
-                'data_keys' => array_keys($data),
+                'data' => $data,
             ]
         );
         return true;
