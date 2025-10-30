@@ -9,11 +9,16 @@ use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use SessionHandlerInterface;
 use SessionUpdateTimestampHandlerInterface;
+use Throwable;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\Hook\ReadHookInterface;
 use Uzulla\EnhancedRedisSessionHandler\Hook\WriteHookInterface;
 use Uzulla\EnhancedRedisSessionHandler\Hook\WriteFilterInterface;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializer;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\SessionSerializerInterface;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\SessionIdGeneratorInterface;
+use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 
 class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimestampHandlerInterface, LoggerAwareInterface
 {
@@ -27,10 +32,15 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
     /** @var array<WriteFilterInterface> */
     private array $writeFilters = [];
     private int $maxLifetime;
+    private SessionSerializerInterface $serializer;
 
-    public function __construct(RedisConnection $connection, ?RedisSessionHandlerOptions $options = null)
-    {
+    public function __construct(
+        RedisConnection $connection,
+        SessionSerializerInterface $serializer,
+        ?RedisSessionHandlerOptions $options = null
+    ) {
         $this->connection = $connection;
+        $this->serializer = $serializer;
         $options = $options ?? new RedisSessionHandlerOptions();
 
         $this->idGenerator = $options->getIdGenerator();
@@ -70,19 +80,48 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
 
     /**
      * Initialize session.
-     * Opens the connection to Redis.
+     * Opens the connection to Redis and validates that the injected serializer matches
+     * the session.serialize_handler INI setting.
      *
      * @param mixed $path Session save path (not used for Redis)
      * @param mixed $name Session name (not used for Redis)
+     * @throws Exception\ConfigurationException if serializer doesn't match session.serialize_handler
      */
     public function open($path, $name): bool
     {
         try {
-            return $this->connection->connect();
-        } catch (\Exception $e) {
-            $this->logger->error('Failed to open session', [
-                'error' => $e->getMessage(),
+            $serializeHandler = ini_get('session.serialize_handler');
+            if ($serializeHandler === false || $serializeHandler === '') {
+                $serializeHandler = 'php'; // PHP default
+            }
+
+            $serializerName = $this->serializer->getName();
+            if ($serializerName !== $serializeHandler) {
+                throw new Exception\ConfigurationException(
+                    sprintf(
+                        'Serializer mismatch: injected serializer is "%s" but session.serialize_handler is "%s". ' .
+                        'Please ensure the serializer matches the INI setting.',
+                        $serializerName,
+                        $serializeHandler
+                    )
+                );
+            }
+
+            $this->logger->debug('Session serializer validated', [
+                'serialize_handler' => $serializeHandler,
+                'serializer' => $serializerName,
             ]);
+
+            return $this->connection->connect();
+        } catch (Throwable $e) {
+            $this->logger->error('Failed to open session', [
+                'exception' => $e,
+            ]);
+
+            if ($e instanceof Exception\ConfigurationException) {
+                throw $e;
+            }
+
             return false;
         }
     }
@@ -105,6 +144,10 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
      * uses mixed types. We use assert() to ensure it's actually a string at runtime.
      * The return type is string|false as required by SessionHandlerInterface.
      *
+     * The data returned from Redis is already in the format expected by PHP's session extension,
+     * so we return it as-is without any deserialization. The session extension will handle
+     * deserialization based on session.serialize_handler.
+     *
      * @param mixed $id Session ID
      * @return string|false Session data as string, or false on error
      */
@@ -121,6 +164,9 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
             $data = $this->connection->get($id);
 
             if ($data === false) {
+                $this->logger->debug('Session not found in Redis', [
+                    'session_id' => SessionIdMasker::mask($id),
+                ]);
                 return '';
             }
 
@@ -129,17 +175,17 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
             }
 
             return $data;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->logger->error('Error during session read', [
-                'session_id' => $id,
-                'error' => $e->getMessage(),
+                'session_id' => SessionIdMasker::mask($id),
+                'exception' => $e,
             ]);
 
             foreach ($this->readHooks as $hook) {
                 $fallbackData = $hook->onReadError($id, $e);
                 if ($fallbackData !== null) {
                     $this->logger->info('Using fallback data from hook', [
-                        'session_id' => $id,
+                        'session_id' => SessionIdMasker::mask($id),
                         'hook' => get_class($hook),
                     ]);
                     return $fallbackData;
@@ -153,11 +199,12 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
     /**
      * Write session data to Redis.
      *
-     * Unserializes the session data before passing to hooks, then serializes it again before storing.
-     * This makes it easier for hooks to inspect and modify the session data.
+     * Deserializes the session data using the appropriate serializer (based on session.serialize_handler)
+     * before passing to hooks, then serializes it again before storing. This makes it easier for hooks
+     * to inspect and modify the session data.
      *
      * @param mixed $id Session ID
-     * @param mixed $data Serialized session data
+     * @param mixed $data Serialized session data (format depends on session.serialize_handler)
      */
     public function write($id, $data): bool
     {
@@ -168,12 +215,13 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
             /** @var array<string, mixed> $unserializedData */
             $unserializedData = [];
             if ($data !== '') {
-                $unserialized = @unserialize($data);
-                if ($unserialized !== false || $data === 'b:0;') {
-                    if (is_array($unserialized)) {
-                        /** @var array<string, mixed> $unserialized */
-                        $unserializedData = $unserialized;
-                    }
+                try {
+                    $unserializedData = $this->serializer->decode($data);
+                } catch (Exception\SessionDataException $e) {
+                    $this->logger->warning('Failed to deserialize session data', [
+                        'session_id' => SessionIdMasker::mask($id),
+                        'exception' => $e,
+                    ]);
                 }
             }
 
@@ -186,14 +234,14 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
                 /** @var array<string, mixed> $unserializedData */
                 if (!$filter->shouldWrite($id, $unserializedData)) {
                     $this->logger->debug('Write operation cancelled by filter', [
-                        'session_id' => $id,
+                        'session_id' => SessionIdMasker::mask($id),
                         'filter' => get_class($filter),
                     ]);
                     return true; // Return true because cancellation is not an error
                 }
             }
 
-            $serializedData = serialize($unserializedData);
+            $serializedData = $this->serializer->encode($unserializedData);
 
             $ttl = $this->getTTL();
             $success = $this->connection->set($id, $serializedData, $ttl);
@@ -203,14 +251,14 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
             }
 
             return $success;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             foreach ($this->writeHooks as $hook) {
                 $hook->onWriteError($id, $e);
             }
 
             $this->logger->error('Write operation failed', [
-                'session_id' => $id,
-                'error' => $e->getMessage(),
+                'session_id' => SessionIdMasker::mask($id),
+                'exception' => $e,
             ]);
 
             return false;
@@ -264,11 +312,24 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionUpdateTimes
 
     public function create_sid(): string
     {
-        do {
+        $maxAttempts = 10;
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
             $sessionId = $this->idGenerator->generate();
-        } while ($this->connection->exists($sessionId));
+            if (!$this->connection->exists($sessionId)) {
+                if ($attempt > 1) {
+                    $this->logger->warning('Session ID collision occurred', [
+                        'attempts' => $attempt,
+                    ]);
+                }
+                return $sessionId;
+            }
+        }
 
-        return $sessionId;
+        // ループを抜けた = 全ての試行で衝突が発生した
+        $this->logger->critical('Failed to generate unique session ID after maximum attempts', [
+            'attempts' => $maxAttempts,
+        ]);
+        throw new Exception\OperationException('Failed to generate unique session ID');
     }
 
     /**

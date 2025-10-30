@@ -5,34 +5,39 @@ namespace Uzulla\EnhancedRedisSessionHandler\Tests;
 use Monolog\Handler\TestHandler;
 use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerInterface;
+use Redis;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 
 class LoggerAwareTest extends TestCase
 {
     public function testRedisSessionHandlerImplementsLoggerAwareInterface(): void
     {
-        $redis = new \Redis();
+        $redis = new Redis();
         $config = new RedisConnectionConfig();
         $logger = new Logger('test');
         $connection = new RedisConnection($redis, $config, $logger);
 
-        $handler = new RedisSessionHandler($connection);
+        $serializer = new PhpSerializeSerializer();
+        $handler = new RedisSessionHandler($connection, $serializer);
 
-        self::assertInstanceOf(\Psr\Log\LoggerAwareInterface::class, $handler);
+        self::assertInstanceOf(LoggerAwareInterface::class, $handler);
     }
 
     public function testRedisSessionHandlerSetLogger(): void
     {
-        $redis = new \Redis();
+        $redis = new Redis();
         $config = new RedisConnectionConfig();
         $logger = new Logger('test');
         $connection = new RedisConnection($redis, $config, $logger);
 
-        $handler = new RedisSessionHandler($connection);
+        $serializer = new PhpSerializeSerializer();
+        $handler = new RedisSessionHandler($connection, $serializer);
 
         $newLogger = new Logger('new-test');
         $testHandler = new TestHandler();
@@ -45,17 +50,17 @@ class LoggerAwareTest extends TestCase
 
     public function testRedisConnectionImplementsLoggerAwareInterface(): void
     {
-        $redis = new \Redis();
+        $redis = new Redis();
         $config = new RedisConnectionConfig();
         $logger = new Logger('test');
         $connection = new RedisConnection($redis, $config, $logger);
 
-        self::assertInstanceOf(\Psr\Log\LoggerAwareInterface::class, $connection);
+        self::assertInstanceOf(LoggerAwareInterface::class, $connection);
     }
 
     public function testRedisConnectionSetLogger(): void
     {
-        $redis = new \Redis();
+        $redis = new Redis();
         $config = new RedisConnectionConfig();
         $logger = new Logger('test');
         $connection = new RedisConnection($redis, $config, $logger);

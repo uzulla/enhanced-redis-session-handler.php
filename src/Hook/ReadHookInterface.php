@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler\Hook;
 
+use Throwable;
+
 interface ReadHookInterface
 {
     /**
@@ -26,8 +28,8 @@ interface ReadHookInterface
      * Called when an error occurs during read operation.
      *
      * @param string $sessionId The session ID
-     * @param \Throwable $e The exception that occurred
+     * @param Throwable $e The exception that occurred
      * @return string|null Return string data to use as fallback, or null to propagate the error
      */
-    public function onReadError(string $sessionId, \Throwable $e): ?string;
+    public function onReadError(string $sessionId, Throwable $e): ?string;
 }

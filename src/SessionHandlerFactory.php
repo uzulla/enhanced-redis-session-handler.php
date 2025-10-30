@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler;
 
+use Redis;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 
@@ -18,7 +19,7 @@ class SessionHandlerFactory
 
     public function build(): RedisSessionHandler
     {
-        $redis = new \Redis();
+        $redis = new Redis();
         $connection = new RedisConnection(
             $redis,
             $this->config->getConnectionConfig(),
@@ -31,7 +32,11 @@ class SessionHandlerFactory
             $this->config->getLogger()
         );
 
-        $handler = new RedisSessionHandler($connection, $options);
+        $handler = new RedisSessionHandler(
+            $connection,
+            $this->config->getSerializer(),
+            $options
+        );
 
         foreach ($this->config->getReadHooks() as $hook) {
             $handler->addReadHook($hook);

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler\SessionId;
 
+use InvalidArgumentException;
+
 /**
  * Timestamp-prefixed session ID generator (Example Implementation)
  *
@@ -62,12 +64,12 @@ class TimestampPrefixedSessionIdGenerator implements SessionIdGeneratorInterface
     public function __construct(int $randomLength = 32)
     {
         if ($randomLength < 16) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 'Random part length must be at least 16 characters'
             );
         }
         if ($randomLength % 2 !== 0) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 'Random part length must be an even number'
             );
         }

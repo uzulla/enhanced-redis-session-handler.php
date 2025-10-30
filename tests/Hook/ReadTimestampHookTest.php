@@ -2,9 +2,13 @@
 
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Hook;
 
+use InvalidArgumentException;
 use Monolog\Handler\NullHandler;
 use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
+use Redis;
+use RuntimeException;
+use Throwable;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Hook\ReadTimestampHook;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
@@ -23,7 +27,7 @@ class ReadTimestampHookTest extends TestCase
         $this->logger = new Logger('test');
         $this->logger->pushHandler(new NullHandler());
 
-        $redis = new \Redis();
+        $redis = new Redis();
         $config = new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'timestamp:');
         $this->connection = new RedisConnection($redis, $config, $this->logger);
         $this->connection->connect();
@@ -69,13 +73,13 @@ class ReadTimestampHookTest extends TestCase
     public function testOnReadErrorReturnsNull(): void
     {
         $hook = new ReadTimestampHook($this->connection, $this->logger);
-        $result = $hook->onReadError('test-session-id', new \RuntimeException('Test error'));
+        $result = $hook->onReadError('test-session-id', new RuntimeException('Test error'));
         self::assertNull($result);
     }
 
     public function testAfterReadHandlesTimestampErrors(): void
     {
-        $redis = new \Redis();
+        $redis = new Redis();
         $config = new RedisConnectionConfig('invalid-host', 6379);
         $invalidConnection = new RedisConnection($redis, $config, $this->logger);
 
@@ -100,5 +104,44 @@ class ReadTimestampHookTest extends TestCase
         self::assertNotFalse($timestamp);
 
         $this->connection->delete($timestampKey);
+    }
+
+    public function testConstructorThrowsExceptionWhenTimestampKeyPrefixIsEmpty(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Timestamp key prefix cannot be empty');
+
+        new ReadTimestampHook($this->connection, $this->logger, '');
+    }
+
+    public function testConstructorThrowsExceptionWhenTtlIsZero(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Timestamp TTL must be positive');
+
+        new ReadTimestampHook($this->connection, $this->logger, 'read_at:', 0);
+    }
+
+    public function testConstructorThrowsExceptionWhenTtlIsNegative(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Timestamp TTL must be positive');
+
+        new ReadTimestampHook($this->connection, $this->logger, 'read_at:', -1);
+    }
+
+    public function testConstructorAcceptsPositiveTtl(): void
+    {
+        $hook = new ReadTimestampHook($this->connection, $this->logger, 'read_at:', 1);
+        self::assertInstanceOf(ReadTimestampHook::class, $hook);
+
+        $hook = new ReadTimestampHook($this->connection, $this->logger, 'read_at:', 86400);
+        self::assertInstanceOf(ReadTimestampHook::class, $hook);
+    }
+
+    public function testConstructorAcceptsNonEmptyPrefix(): void
+    {
+        $hook = new ReadTimestampHook($this->connection, $this->logger, 'x');
+        self::assertInstanceOf(ReadTimestampHook::class, $hook);
     }
 }

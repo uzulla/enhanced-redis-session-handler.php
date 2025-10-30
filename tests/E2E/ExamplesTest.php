@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\E2E;
 
 use PHPUnit\Framework\TestCase;
+use Redis;
 
 /**
  * E2E tests for example files
@@ -31,15 +32,14 @@ class ExamplesTest extends TestCase
         self::$redisHost = $hostEnv;
         self::$redisPort = (int)$portEnv;
 
-        $redis = new \Redis();
+        $redis = new Redis();
         try {
-            $connected = @$redis->connect(self::$redisHost, self::$redisPort, 1.0);
-            if ($connected === false) {
+            if (!$redis->connect(self::$redisHost, self::$redisPort, 1.0)) {
                 self::fail('Redis is not available at ' . self::$redisHost . ':' . self::$redisPort);
             }
             $redis->close();
-        } catch (\Exception $e) {
-            self::fail('Redis is not available: ' . $e->getMessage());
+        } catch (\RedisException $e) {
+            self::fail('Redis connection failed: ' . $e->getMessage());
         }
     }
 
@@ -167,7 +167,7 @@ class ExamplesTest extends TestCase
      */
     public function test03DoubleWriteExample(): void
     {
-        $redis = new \Redis();
+        $redis = new Redis();
         $redis->connect(self::$redisHost, self::$redisPort);
 
         try {
@@ -194,7 +194,7 @@ class ExamplesTest extends TestCase
      */
     public function test04FallbackReadExample(): void
     {
-        $redis = new \Redis();
+        $redis = new Redis();
         $redis->connect(self::$redisHost, self::$redisPort);
 
         try {
@@ -264,7 +264,7 @@ class ExamplesTest extends TestCase
      */
     public function testExamplesCleanUpRedisKeys(): void
     {
-        $redis = new \Redis();
+        $redis = new Redis();
         $redis->connect(self::$redisHost, self::$redisPort);
 
         $keysBefore = $redis->dbSize();

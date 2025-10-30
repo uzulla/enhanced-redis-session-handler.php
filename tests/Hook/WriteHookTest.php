@@ -3,12 +3,15 @@
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Hook;
 
 use PHPUnit\Framework\TestCase;
+use Redis;
+use RuntimeException;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\Hook\DoubleWriteHook;
 use Uzulla\EnhancedRedisSessionHandler\Hook\LoggingHook;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\Tests\Support\PsrTestLogger;
 
 class WriteHookTest extends TestCase
@@ -21,11 +24,11 @@ class WriteHookTest extends TestCase
     {
         $this->logger = new PsrTestLogger();
 
-        $primaryRedis = new \Redis();
+        $primaryRedis = new Redis();
         $primaryConfig = new RedisConnectionConfig('localhost', 6379);
         $this->primaryConnection = new RedisConnection($primaryRedis, $primaryConfig, $this->logger);
 
-        $secondaryRedis = new \Redis();
+        $secondaryRedis = new Redis();
         $secondaryConfig = new RedisConnectionConfig('localhost', 6379, 1);
         $this->secondaryConnection = new RedisConnection($secondaryRedis, $secondaryConfig, $this->logger);
     }
@@ -48,7 +51,7 @@ class WriteHookTest extends TestCase
                 self::assertArrayHasKey('context', $record);
                 $context = $record['context'];
                 self::assertArrayHasKey('session_id', $context);
-                self::assertSame('test_session_id', $context['session_id']);
+                self::assertSame('...n_id', $context['session_id']);
                 self::assertArrayHasKey('data_keys', $context);
                 self::assertSame(['user_id', 'username'], $context['data_keys']);
                 self::assertArrayHasKey('data_size', $context);
@@ -75,7 +78,7 @@ class WriteHookTest extends TestCase
                 self::assertArrayHasKey('context', $record);
                 $context = $record['context'];
                 self::assertArrayHasKey('session_id', $context);
-                self::assertSame('test_session_id', $context['session_id']);
+                self::assertSame('...n_id', $context['session_id']);
                 self::assertArrayHasKey('success', $context);
                 self::assertTrue($context['success']);
                 break;
@@ -100,7 +103,7 @@ class WriteHookTest extends TestCase
                 self::assertArrayHasKey('context', $record);
                 $context = $record['context'];
                 self::assertArrayHasKey('session_id', $context);
-                self::assertSame('test_session_id', $context['session_id']);
+                self::assertSame('...n_id', $context['session_id']);
                 self::assertArrayHasKey('success', $context);
                 self::assertFalse($context['success']);
                 break;
@@ -112,7 +115,7 @@ class WriteHookTest extends TestCase
     public function testLoggingHookLogsWriteError(): void
     {
         $hook = new LoggingHook($this->logger);
-        $exception = new \RuntimeException('Test error', 123);
+        $exception = new RuntimeException('Test error', 123);
 
         $hook->onWriteError('test_session_id', $exception);
 
@@ -126,7 +129,7 @@ class WriteHookTest extends TestCase
                 self::assertArrayHasKey('context', $record);
                 $context = $record['context'];
                 self::assertArrayHasKey('session_id', $context);
-                self::assertSame('test_session_id', $context['session_id']);
+                self::assertSame('...n_id', $context['session_id']);
                 self::assertArrayHasKey('exception_class', $context);
                 self::assertSame('RuntimeException', $context['exception_class']);
                 self::assertArrayHasKey('exception_message', $context);
@@ -194,7 +197,7 @@ class WriteHookTest extends TestCase
     {
         $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $this->logger);
         $data = ['user_id' => 123];
-        $exception = new \RuntimeException('Test error');
+        $exception = new RuntimeException('Test error');
 
         $hook->beforeWrite('test_session_id', $data);
         $hook->onWriteError('test_session_id', $exception);
@@ -213,7 +216,7 @@ class WriteHookTest extends TestCase
     public function testMultipleHooksCanBeRegistered(): void
     {
         $options = new RedisSessionHandlerOptions(null, null, $this->logger);
-        $handler = new RedisSessionHandler($this->primaryConnection, $options);
+        $handler = new RedisSessionHandler($this->primaryConnection, new PhpSerializeSerializer(), $options);
 
         $loggingHook = new LoggingHook($this->logger);
         $doubleWriteHook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $this->logger);

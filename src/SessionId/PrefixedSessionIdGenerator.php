@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler\SessionId;
 
+use InvalidArgumentException;
+
 /**
  * Prefixed session ID generator (Example Implementation)
  *
@@ -82,15 +84,27 @@ class PrefixedSessionIdGenerator implements SessionIdGeneratorInterface
     public function __construct(string $prefix = 'app', int $randomLength = 32)
     {
         if ($prefix === '') {
-            throw new \InvalidArgumentException('Prefix cannot be empty');
+            throw new InvalidArgumentException('Prefix cannot be empty');
+        }
+        // プレフィックスに使用できる文字を英数字とハイフンのみに制限
+        if (preg_match('/^[a-zA-Z0-9-]+$/', $prefix) !== 1) {
+            throw new InvalidArgumentException(
+                'Prefix can only contain alphanumeric characters and hyphens'
+            );
+        }
+        if (strlen($prefix) > 64) {
+            throw new InvalidArgumentException('Prefix length must be <= 64 characters');
+        }
+        if ($randomLength > 256) {
+            throw new InvalidArgumentException('Random part length must be <= 256 characters');
         }
         if ($randomLength < 16) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 'Random part length must be at least 16 characters'
             );
         }
         if ($randomLength % 2 !== 0) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 'Random part length must be an even number'
             );
         }

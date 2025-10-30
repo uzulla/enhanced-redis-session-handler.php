@@ -30,11 +30,13 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
+
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\Hook\LoggingHook;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\RotatingFileHandler;
@@ -75,6 +77,7 @@ try {
 
     $sessionConfig = new SessionConfig(
         $connectionConfig,
+        new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),
         1440,
         $logger
@@ -114,7 +117,7 @@ try {
 
     echo "\n7. Session operations completed.\n\n";
 
-    $redis = new \Redis();
+    $redis = new Redis();
     $redis->connect('localhost', 6379);
     $redis->del('session:logged:' . $sessionId);
 } catch (\Exception $e) {
@@ -165,6 +168,7 @@ try {
 
     $sessionConfig = new SessionConfig(
         $connectionConfig,
+        new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),
         1440,
         $logger
@@ -238,6 +242,7 @@ try {
 
     $sessionConfig = new SessionConfig(
         $connectionConfig,
+        new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),
         1440,
         $logger
@@ -326,6 +331,7 @@ try {
 
     $sessionConfig = new SessionConfig(
         $connectionConfig,
+        new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),
         1440,
         $logger

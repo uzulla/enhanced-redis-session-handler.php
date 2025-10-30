@@ -761,6 +761,22 @@ $connection = new RedisConnection([
 - 最小権限の原則に従う
 - セッション用の専用ユーザーを作成
 
+### 10.4 セッションIDのログ保護
+
+セッションIDは機密情報であり、ログに記録する際には必ずマスキングする必要があります。
+
+```php
+use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
+
+// ログ出力時にセッションIDをマスキング
+$logger->info('Redis operation', [
+    'session_id' => SessionIdMasker::mask($sessionId),
+    'operation' => 'GET',
+]);
+```
+
+詳細は[doc/architecture.md](architecture.md)および[doc/specification.md](specification.md)のセキュリティセクションを参照してください。
+
 ## 11. 監視とデバッグ
 
 ### 11.1 接続状態の監視

@@ -35,6 +35,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
+
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
@@ -42,6 +43,7 @@ use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\Hook\FallbackReadHook;
 use Uzulla\EnhancedRedisSessionHandler\Hook\DoubleWriteHook;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Psr\Log\NullLogger;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
@@ -78,7 +80,7 @@ try {
         'session:fallback1:'
     );
 
-    $fallback1Redis = new \Redis();
+    $fallback1Redis = new Redis();
     $fallback1Connection = new RedisConnection(
         $fallback1Redis,
         $fallback1Config,
@@ -94,7 +96,7 @@ try {
         'session:fallback2:'
     );
 
-    $fallback2Redis = new \Redis();
+    $fallback2Redis = new Redis();
     $fallback2Connection = new RedisConnection(
         $fallback2Redis,
         $fallback2Config,
@@ -104,6 +106,7 @@ try {
     echo "3. Creating session configuration with fallback read hook...\n";
     $sessionConfig = new SessionConfig(
         $primaryConfig,
+        new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),
         1440,
         $logger
@@ -164,19 +167,19 @@ try {
 
     echo "7. Verifying data in all Redis instances...\n";
 
-    $redis0 = new \Redis();
+    $redis0 = new Redis();
     $redis0->connect('localhost', 6379);
     $redis0->select(0);
     $data0 = $redis0->get('session:primary:' . $sessionId);
     echo "   Primary Redis (db 0): " . ($data0 !== false ? 'EXISTS' : 'NOT FOUND') . "\n";
 
-    $redis1 = new \Redis();
+    $redis1 = new Redis();
     $redis1->connect('localhost', 6379);
     $redis1->select(1);
     $data1 = $redis1->get('session:fallback1:' . $sessionId);
     echo "   Fallback 1 Redis (db 1): " . ($data1 !== false ? 'EXISTS' : 'NOT FOUND') . "\n";
 
-    $redis2 = new \Redis();
+    $redis2 = new Redis();
     $redis2->connect('localhost', 6379);
     $redis2->select(2);
     $data2 = $redis2->get('session:fallback2:' . $sessionId);
@@ -229,18 +232,18 @@ try {
 
     echo "1. Writing different data to each Redis instance...\n";
 
-    $redis0 = new \Redis();
+    $redis0 = new Redis();
     $redis0->connect('localhost', 6379);
     $redis0->select(0);
 
-    $redis1 = new \Redis();
+    $redis1 = new Redis();
     $redis1->connect('localhost', 6379);
     $redis1->select(1);
     $data1 = serialize(['source' => 'fallback1', 'priority' => 1]);
     $redis1->setex('session:fallback1:' . $testSessionId, 300, $data1);
     echo "   Fallback 1 (db 1): Written with priority 1\n";
 
-    $redis2 = new \Redis();
+    $redis2 = new Redis();
     $redis2->connect('localhost', 6379);
     $redis2->select(2);
     $data2 = serialize(['source' => 'fallback2', 'priority' => 2]);
@@ -267,7 +270,7 @@ try {
         'session:fallback1:'
     );
 
-    $fallback1Redis = new \Redis();
+    $fallback1Redis = new Redis();
     $fallback1Connection = new RedisConnection(
         $fallback1Redis,
         $fallback1Config,
@@ -283,7 +286,7 @@ try {
         'session:fallback2:'
     );
 
-    $fallback2Redis = new \Redis();
+    $fallback2Redis = new Redis();
     $fallback2Connection = new RedisConnection(
         $fallback2Redis,
         $fallback2Config,
@@ -297,6 +300,7 @@ try {
 
     $sessionConfig = new SessionConfig(
         $primaryConfig,
+        new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),
         1440,
         $logger

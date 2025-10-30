@@ -35,12 +35,14 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
+
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\Hook\DoubleWriteHook;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Psr\Log\NullLogger;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
@@ -77,7 +79,7 @@ try {
         'session:secondary:'
     );
 
-    $secondaryRedis = new \Redis();
+    $secondaryRedis = new Redis();
     $secondaryConnection = new RedisConnection(
         $secondaryRedis,
         $secondaryConfig,
@@ -87,6 +89,7 @@ try {
     echo "3. Creating session configuration with double write hook...\n";
     $sessionConfig = new SessionConfig(
         $primaryConfig,
+        new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),
         1440,
         $logger
@@ -132,13 +135,13 @@ try {
 
     echo "7. Verifying data in both Redis instances...\n";
 
-    $primaryRedis = new \Redis();
+    $primaryRedis = new Redis();
     $primaryRedis->connect('localhost', 6379);
     $primaryRedis->select(0);
     $primaryData = $primaryRedis->get('session:primary:' . $sessionId);
     echo "   Primary Redis data exists: " . ($primaryData !== false ? 'YES' : 'NO') . "\n";
 
-    $secondaryRedis = new \Redis();
+    $secondaryRedis = new Redis();
     $secondaryRedis->connect('localhost', 6379);
     $secondaryRedis->select(1);
     $secondaryData = $secondaryRedis->get('session:secondary:' . $sessionId);
@@ -186,7 +189,7 @@ try {
         'session:secondary:'
     );
 
-    $secondaryRedis = new \Redis();
+    $secondaryRedis = new Redis();
     $secondaryConnection = new RedisConnection(
         $secondaryRedis,
         $secondaryConfig,
@@ -195,6 +198,7 @@ try {
 
     $sessionConfig = new SessionConfig(
         $primaryConfig,
+        new PhpSerializeSerializer(),
         new DefaultSessionIdGenerator(),
         1440,
         $logger

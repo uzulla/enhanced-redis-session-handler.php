@@ -46,7 +46,7 @@ cd /path/to/enhanced-redis-session-handler.php
 ### 2. Docker環境を起動 / Start Docker Environment
 
 ```bash
-docker-compose up -d
+docker compose -f docker/docker-compose.yml up -d
 ```
 
 このコマンドは以下のコンテナを起動します：
@@ -60,7 +60,7 @@ This command starts the following containers:
 ### 3. コンテナの起動を確認 / Verify Container Status
 
 ```bash
-docker-compose ps
+docker compose -f docker/docker-compose.yml ps
 ```
 
 すべてのコンテナが "Up" 状態であることを確認してください。
@@ -130,10 +130,10 @@ exit
 
 ```bash
 # アプリケーションコンテナのログを表示 / Display application container logs
-docker-compose logs app
+docker compose -f docker/docker-compose.yml logs app
 
 # リアルタイムでログを監視 / Monitor logs in real-time
-docker-compose logs -f app
+docker compose -f docker/docker-compose.yml logs -f app
 ```
 
 #### PHPエラーログ / PHP Error Logs
@@ -147,7 +147,7 @@ docker exec enhanced-redis-session-handler-app tail -f /var/log/apache2/php_erro
 
 ```bash
 # Redisログを表示 / Display Redis logs
-docker-compose logs storage
+docker compose -f docker/docker-compose.yml logs storage
 ```
 
 ## トラブルシューティング / Troubleshooting
@@ -163,12 +163,12 @@ This site can't be reached
 
 1. Dockerコンテナが起動しているか確認
    ```bash
-   docker-compose ps
+   docker compose -f docker/docker-compose.yml ps
    ```
 
 2. コンテナを再起動
    ```bash
-   docker-compose restart app
+   docker compose -f docker/docker-compose.yml restart app
    ```
 
 3. ポート8080が他のプロセスで使用されていないか確認
@@ -192,7 +192,7 @@ Failed to open session
 
 1. Redisコンテナが起動しているか確認
    ```bash
-   docker-compose ps storage
+   docker compose -f docker/docker-compose.yml ps storage
    ```
 
 2. Redis接続をテスト
@@ -208,8 +208,8 @@ Failed to open session
 
 4. コンテナを再起動
    ```bash
-   docker-compose down
-   docker-compose up -d
+   docker compose -f docker/docker-compose.yml down
+   docker compose -f docker/docker-compose.yml up -d
    ```
 
 ### 問題: セッションデータが保存されない / Issue: Session Data Not Persisted
@@ -257,9 +257,9 @@ Fatal error: Class 'Uzulla\EnhancedRedisSessionHandler\...' not found
 
 ## 環境変数 / Environment Variables
 
-以下の環境変数がdocker-compose.ymlで設定されています：
+以下の環境変数がdocker/docker-compose.ymlで設定されています：
 
-The following environment variables are configured in docker-compose.yml:
+The following environment variables are configured in docker/docker-compose.yml:
 
 | 変数名 / Variable | デフォルト値 / Default | 説明 / Description |
 |------------------|----------------------|-------------------|
@@ -317,19 +317,19 @@ $sessionConfig = new SessionConfig(
 ### コンテナの停止 / Stop Containers
 
 ```bash
-docker-compose stop
+docker compose -f docker/docker-compose.yml stop
 ```
 
 ### コンテナの停止と削除 / Stop and Remove Containers
 
 ```bash
-docker-compose down
+docker compose -f docker/docker-compose.yml down
 ```
 
 ### コンテナとボリュームの削除 / Remove Containers and Volumes
 
 ```bash
-docker-compose down -v
+docker compose -f docker/docker-compose.yml down -v
 ```
 
 **注意:** `-v` オプションを使用すると、Redisに保存されたすべてのセッションデータが削除されます。

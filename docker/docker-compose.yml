@@ -1,14 +1,14 @@
 services:
   app:
     build:
-      context: .
+      context: ..
       dockerfile: docker/app/Dockerfile
     container_name: enhanced-redis-session-handler-app
     ports:
       - "8080:80"
     volumes:
-      - ./:/var/www/html
-      - ./docker/app/php.ini:/usr/local/etc/php/conf.d/custom.ini
+      - ../:/var/www/html
+      - ./app/php.ini:/usr/local/etc/php/conf.d/custom.ini
     environment:
       - REDIS_HOST=storage
       - REDIS_PORT=6379

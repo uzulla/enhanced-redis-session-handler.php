@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler\Hook;
 
+use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
+use Throwable;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
+use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 
 /**
  * Example hook that tracks session read timestamps.
@@ -32,6 +35,13 @@ class ReadTimestampHook implements ReadHookInterface
         string $timestampKeyPrefix = 'session:read_at:',
         int $timestampTtl = 86400
     ) {
+        if ($timestampKeyPrefix === '') {
+            throw new InvalidArgumentException('Timestamp key prefix cannot be empty');
+        }
+        if ($timestampTtl <= 0) {
+            throw new InvalidArgumentException('Timestamp TTL must be positive');
+        }
+
         $this->connection = $connection;
         $this->logger = $logger;
         $this->timestampKeyPrefix = $timestampKeyPrefix;
@@ -48,7 +58,7 @@ class ReadTimestampHook implements ReadHookInterface
         return $data;
     }
 
-    public function onReadError(string $sessionId, \Throwable $e): ?string
+    public function onReadError(string $sessionId, Throwable $e): ?string
     {
         return null;
     }
@@ -61,12 +71,12 @@ class ReadTimestampHook implements ReadHookInterface
             $this->connection->set($timestampKey, $timestamp, $this->timestampTtl);
 
             $this->logger->debug('Recorded session read timestamp', [
-                'session_id' => $sessionId,
+                'session_id' => SessionIdMasker::mask($sessionId),
                 'timestamp' => $timestamp,
             ]);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->logger->warning('Failed to record session read timestamp', [
-                'session_id' => $sessionId,
+                'session_id' => SessionIdMasker::mask($sessionId),
                 'exception' => $e,
             ]);
         }
