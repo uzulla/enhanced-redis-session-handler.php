@@ -149,7 +149,7 @@ class EmptySessionFilterTest extends TestCase
                 $found = true;
                 $context = $record['context'];
                 self::assertArrayHasKey('session_id', $context);
-                self::assertSame('...' . $sessionId, $context['session_id']);
+                self::assertSame('...hort', $context['session_id']);
                 break;
             }
         }
