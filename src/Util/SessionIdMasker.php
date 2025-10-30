@@ -14,6 +14,12 @@ namespace Uzulla\EnhancedRedisSessionHandler\Util;
 class SessionIdMasker
 {
     /**
+     * Number of characters to show at the beginning of the session ID.
+     * The rest will be masked with asterisks.
+     */
+    private const VISIBLE_PREFIX_LENGTH = 8;
+
+    /**
      * Mask a session ID for safe logging.
      *
      * Shows the first 8 characters and masks the rest with asterisks.
@@ -33,15 +39,14 @@ class SessionIdMasker
             return '';
         }
 
-        $visibleLength = 8;
         $length = strlen($sessionId);
 
-        if ($length <= $visibleLength) {
+        if ($length <= self::VISIBLE_PREFIX_LENGTH) {
             return $sessionId;
         }
 
-        $visible = substr($sessionId, 0, $visibleLength);
-        $masked = str_repeat('*', $length - $visibleLength);
+        $visible = substr($sessionId, 0, self::VISIBLE_PREFIX_LENGTH);
+        $masked = str_repeat('*', $length - self::VISIBLE_PREFIX_LENGTH);
 
         return $visible . $masked;
     }
