@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Uzulla\EnhancedRedisSessionHandler\Hook;
 
 use Psr\Log\LoggerInterface;
-use Uzulla\EnhancedRedisSessionHandler\Util\SessionIdMasker;
+use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 
 /**
  * Filter that prevents writing empty session data to Redis.

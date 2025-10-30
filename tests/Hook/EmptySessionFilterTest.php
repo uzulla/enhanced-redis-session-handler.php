@@ -60,7 +60,7 @@ class EmptySessionFilterTest extends TestCase
                 self::assertTrue($context['data_empty']);
                 $maskedId = $context['session_id'];
                 self::assertIsString($maskedId);
-                self::assertStringContainsString('*', $maskedId);
+                self::assertStringContainsString('...', $maskedId);
                 break;
             }
         }
@@ -92,7 +92,7 @@ class EmptySessionFilterTest extends TestCase
                 self::assertSame(['user_id'], $dataKeys);
                 $maskedId = $context['session_id'];
                 self::assertIsString($maskedId);
-                self::assertStringContainsString('*', $maskedId);
+                self::assertStringContainsString('...', $maskedId);
                 break;
             }
         }
@@ -149,7 +149,7 @@ class EmptySessionFilterTest extends TestCase
                 $found = true;
                 $context = $record['context'];
                 self::assertArrayHasKey('session_id', $context);
-                self::assertSame($sessionId, $context['session_id']);
+                self::assertSame('...' . $sessionId, $context['session_id']);
                 break;
             }
         }
