@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Uzulla\EnhancedRedisSessionHandler\Hook;
 
 use Psr\Log\LoggerInterface;
-use Psr\Log\LogLevel;
 use Uzulla\EnhancedRedisSessionHandler\Util\SessionIdMasker;
 
 /**
@@ -16,22 +15,19 @@ use Uzulla\EnhancedRedisSessionHandler\Util\SessionIdMasker;
  * This helps avoid sending unnecessary Set-Cookie headers for empty sessions.
  *
  * An empty session is defined as one where the session data array is empty.
+ *
+ * All logging is performed at DEBUG level as this is intended for debugging purposes only.
  */
 class EmptySessionFilter implements WriteFilterInterface
 {
     private LoggerInterface $logger;
-    private string $logLevel;
 
     /**
      * @param LoggerInterface $logger PSR-3 compatible logger
-     * @param string $logLevel Log level for filter decisions (default: debug)
      */
-    public function __construct(
-        LoggerInterface $logger,
-        string $logLevel = LogLevel::DEBUG
-    ) {
+    public function __construct(LoggerInterface $logger)
+    {
         $this->logger = $logger;
-        $this->logLevel = $logLevel;
     }
 
     /**
@@ -49,8 +45,7 @@ class EmptySessionFilter implements WriteFilterInterface
         $isEmpty = count($data) === 0;
 
         if ($isEmpty) {
-            $this->logger->log(
-                $this->logLevel,
+            $this->logger->debug(
                 'Empty session detected, write operation cancelled',
                 [
                     'session_id' => SessionIdMasker::mask($sessionId),
@@ -60,8 +55,7 @@ class EmptySessionFilter implements WriteFilterInterface
             return false;
         }
 
-        $this->logger->log(
-            $this->logLevel,
+        $this->logger->debug(
             'Session has data, write operation allowed',
             [
                 'session_id' => SessionIdMasker::mask($sessionId),
