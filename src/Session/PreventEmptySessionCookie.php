@@ -57,6 +57,14 @@ class PreventEmptySessionCookie
     private static ?EmptySessionFilter $filter = null;
 
     /**
+     * The logger instance used for logging warnings and debug messages.
+     * This is stored to allow logging from the static shutdown function.
+     *
+     * @var LoggerInterface|null
+     */
+    private static ?LoggerInterface $logger = null;
+
+    /**
      * Set up the session handler with empty session prevention.
      *
      * This method should be called before session_start(). It:
@@ -77,6 +85,7 @@ class PreventEmptySessionCookie
             return;
         }
 
+        self::$logger = $logger;
         self::$filter = new EmptySessionFilter($logger);
         $handler->addWriteFilter(self::$filter);
 
@@ -120,15 +129,18 @@ class PreventEmptySessionCookie
                     throw new \LogicException('session_name() returned false');
                 }
 
-                setcookie(
-                    $sessionName,
-                    '',
-                    time() - self::PAST_EXPIRATION_OFFSET_SECONDS,
-                    $params['path'],
-                    $params['domain'],
-                    $params['secure'],
-                    $params['httponly']
-                );
+                $options = [
+                    'expires' => time() - self::PAST_EXPIRATION_OFFSET_SECONDS,
+                    'path' => $params['path'],
+                    'domain' => $params['domain'],
+                    'secure' => $params['secure'],
+                    'httponly' => $params['httponly'],
+                    'samesite' => $params['samesite'],
+                ];
+                $cookieSet = setcookie($sessionName, '', $options);
+                if (!$cookieSet && self::$logger !== null) {
+                    self::$logger->warning('Failed to set cookie for empty session cleanup', ['session_name' => $sessionName]);
+                }
             }
         }
     }
@@ -145,5 +157,6 @@ class PreventEmptySessionCookie
     {
         self::$initialized = false;
         self::$filter = null;
+        self::$logger = null;
     }
 }
