@@ -64,13 +64,26 @@ class PreventEmptySessionCookieTest extends TestCase
      */
     public function testSetupCanBeCalledMultipleTimes(): void
     {
-        PreventEmptySessionCookie::setup($this->handler, $this->logger);
+        $redis = new \Redis();
+        $config = new RedisConnectionConfig('127.0.0.1', 6379);
+        $connection = new RedisConnection($redis, $config, $this->logger);
+        $serializer = new PhpSerializer();
 
-        PreventEmptySessionCookie::setup($this->handler, $this->logger);
+        $spy = new class ($connection, $serializer) extends RedisSessionHandler {
+            public int $addWriteFilterCalls = 0;
 
-        PreventEmptySessionCookie::setup($this->handler, $this->logger);
+            public function addWriteFilter(\Uzulla\EnhancedRedisSessionHandler\Hook\WriteFilterInterface $filter): void
+            {
+                $this->addWriteFilterCalls++;
+                parent::addWriteFilter($filter);
+            }
+        };
 
-        self::assertInstanceOf(PsrTestLogger::class, $this->logger);
+        PreventEmptySessionCookie::setup($spy, $this->logger);
+        PreventEmptySessionCookie::setup($spy, $this->logger);
+        PreventEmptySessionCookie::setup($spy, $this->logger);
+
+        self::assertSame(1, $spy->addWriteFilterCalls, 'addWriteFilter should only be called once despite multiple setup() calls');
     }
 
     /**
@@ -132,9 +145,12 @@ class PreventEmptySessionCookieTest extends TestCase
      */
     public function testSetupRegistersSessionHandler(): void
     {
+        $moduleNameBefore = session_module_name();
+
         PreventEmptySessionCookie::setup($this->handler, $this->logger);
 
-        self::assertInstanceOf(RedisSessionHandler::class, $this->handler);
+        self::assertSame('user', session_module_name(), 'setup() should register a user-level session handler via session_set_save_handler()');
+        self::assertNotSame($moduleNameBefore, session_module_name(), 'Session module name should change after setup()');
     }
 
     /**
