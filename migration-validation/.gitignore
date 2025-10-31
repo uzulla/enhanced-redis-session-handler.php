@@ -1,0 +1,21 @@
+# Environment variables
+.env
+
+# Docker volumes
+volumes/
+
+# Composer dependencies
+public/vendor/
+vendor/
+composer.lock
+
+# Library directory (created by Docker)
+library/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

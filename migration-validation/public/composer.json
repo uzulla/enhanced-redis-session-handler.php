@@ -1,0 +1,20 @@
+{
+    "name": "migration-validation/interop-test",
+    "description": "Interoperability test for enhanced-redis-session-handler",
+    "type": "project",
+    "require": {
+        "php": ">=8.1",
+        "uzulla/enhanced-redis-session-handler": "dev-main"
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "/workspace",
+            "options": {
+                "symlink": false
+            }
+        }
+    ],
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

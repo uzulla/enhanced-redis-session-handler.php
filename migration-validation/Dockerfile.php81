@@ -1,0 +1,31 @@
+FROM php:8.1-apache
+
+# Install redis extension version 6.2.0
+RUN pecl install redis-6.2.0 \
+    && docker-php-ext-enable redis
+
+# Install Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Install git and unzip (required by Composer)
+RUN apt-get update && apt-get install -y \
+    git \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Enable Apache mod_rewrite
+RUN a2enmod rewrite
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Expose port 80
+EXPOSE 80
+
+# Use custom entrypoint
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["apache2-foreground"]
