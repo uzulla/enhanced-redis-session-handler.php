@@ -1,0 +1,41 @@
+services:
+  php74-apache:
+    build:
+      context: .
+      dockerfile: Dockerfile.php74
+    container_name: migration-php74
+    ports:
+      - "8074:80"
+    volumes:
+      - ./public:/var/www/html
+    networks:
+      - migration-net
+    depends_on:
+      - redis
+
+  php81-apache:
+    build:
+      context: .
+      dockerfile: Dockerfile.php81
+    container_name: migration-php81
+    ports:
+      - "8081:80"
+    volumes:
+      - ./public:/var/www/html
+    networks:
+      - migration-net
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    container_name: migration-redis
+    ports:
+      - "16379:6379"
+    networks:
+      - migration-net
+    command: redis-server --port 6379
+
+networks:
+  migration-net:
+    driver: bridge
