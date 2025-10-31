@@ -23,6 +23,14 @@ class EmptySessionFilter implements WriteFilterInterface
     private LoggerInterface $logger;
 
     /**
+     * Tracks whether the last write operation was for empty session data.
+     * This is used by PreventEmptySessionCookie to determine if session_destroy() should be called.
+     *
+     * @var bool
+     */
+    private bool $lastWriteWasEmpty = false;
+
+    /**
      * @param LoggerInterface $logger PSR-3 compatible logger
      */
     public function __construct(LoggerInterface $logger)
@@ -36,6 +44,9 @@ class EmptySessionFilter implements WriteFilterInterface
      * Returns false if the session data is empty (empty array),
      * preventing the write operation and avoiding unnecessary cookie transmission.
      *
+     * This method also updates the internal state to track whether the last write was empty,
+     * which can be queried via wasLastWriteEmpty().
+     *
      * @param string $sessionId The session ID
      * @param array<string, mixed> $data The unserialized session data
      * @return bool True to allow the write, false to cancel it
@@ -43,6 +54,7 @@ class EmptySessionFilter implements WriteFilterInterface
     public function shouldWrite(string $sessionId, array $data): bool
     {
         $isEmpty = count($data) === 0;
+        $this->lastWriteWasEmpty = $isEmpty;
 
         if ($isEmpty) {
             $this->logger->debug(
@@ -62,5 +74,18 @@ class EmptySessionFilter implements WriteFilterInterface
             ]
         );
         return true;
+    }
+
+    /**
+     * Check if the last write operation was for empty session data.
+     *
+     * This method is used by PreventEmptySessionCookie to determine whether
+     * session_destroy() should be called to prevent sending unnecessary cookies.
+     *
+     * @return bool True if the last shouldWrite() call was for empty data, false otherwise
+     */
+    public function wasLastWriteEmpty(): bool
+    {
+        return $this->lastWriteWasEmpty;
     }
 }
