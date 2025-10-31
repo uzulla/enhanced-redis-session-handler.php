@@ -4,6 +4,9 @@
 # Docker volumes
 volumes/
 
+# Composer dependencies (PHP 8.1 container only)
+public/vendor/
+
 # IDE
 .idea/
 .vscode/

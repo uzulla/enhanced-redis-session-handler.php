@@ -23,6 +23,30 @@ docker-compose up -d
 - redis-ext バージョン
 - 動作確認メッセージ
 
+### 相互運用性テスト（PHP 8.1のみ）
+
+PHP 8.1コンテナでは、enhanced-redis-session-handlerライブラリとredis-extの相互運用性をテストできます。
+
+#### 1. Composerで依存関係をインストール
+
+```bash
+docker-compose exec php81-apache composer install
+```
+
+#### 2. 相互運用性テストにアクセス
+
+http://localhost:8081/session_interop.php
+
+このページでは以下のテストが実行されます：
+- セッションハンドラーの登録
+- セッションデータの書き込み
+- セッションデータの読み取り
+- セッションIDの検証
+- タイムスタンプの更新
+- セッションの破棄
+
+すべてのテストが成功すれば、redis-extとenhanced-redis-session-handlerが正しく連携していることが確認できます。
+
 ### Redis接続確認
 
 ```bash
@@ -40,7 +64,10 @@ docker-compose down
 ## 構成
 
 - **PHP 7.4 コンテナ**: Apache + mod_php + redis-ext 6.0.2 (ポート 8074)
-- **PHP 8.1 コンテナ**: Apache + mod_php + redis-ext 6.2.0 (ポート 8081)
+  - ベースライン環境として使用
+- **PHP 8.1 コンテナ**: Apache + mod_php + redis-ext 6.2.0 + Composer (ポート 8081)
+  - enhanced-redis-session-handlerライブラリの相互運用性テスト用
+  - リポジトリルートが `/workspace` にマウントされています
 - **Redis コンテナ**: Redis 7 Alpine (ポート 16379)
 
 ## トラブルシューティング

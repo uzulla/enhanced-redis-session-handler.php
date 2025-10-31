@@ -22,6 +22,7 @@ services:
       - "8081:80"
     volumes:
       - ./public:/var/www/html
+      - ..:/workspace:ro
     networks:
       - migration-net
     depends_on:
