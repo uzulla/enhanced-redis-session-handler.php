@@ -91,8 +91,6 @@ class PreventEmptySessionCookieTest extends TestCase
      */
     public function testSetupPreventsMultipleInitialization(): void
     {
-        $initialLogCount = count($this->logger->getRecords());
-
         PreventEmptySessionCookie::setup($this->handler, $this->logger);
         $afterFirstCall = count($this->logger->getRecords());
 
@@ -133,11 +131,18 @@ class PreventEmptySessionCookieTest extends TestCase
         self::assertNotSame(PHP_SESSION_ACTIVE, session_status());
     }
 
+    /**
+     * @runInSeparateProcess
+     */
     public function testCheckAndCleanupDoesNothingWhenFilterIsNull(): void
     {
+        session_start();
+
+        self::assertSame(PHP_SESSION_ACTIVE, session_status(), 'Session should be active');
+
         PreventEmptySessionCookie::checkAndCleanup();
 
-        self::assertNotSame(PHP_SESSION_ACTIVE, session_status());
+        self::assertSame(PHP_SESSION_ACTIVE, session_status(), 'Session should remain active when filter is null');
     }
 
     /**
