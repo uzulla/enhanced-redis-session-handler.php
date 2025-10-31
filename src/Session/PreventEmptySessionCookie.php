@@ -116,8 +116,9 @@ class PreventEmptySessionCookie
             if (!headers_sent()) {
                 $params = session_get_cookie_params();
                 $sessionName = session_name();
-                // session_name() can return false, but only if called with invalid argument
-                assert($sessionName !== false);
+                if ($sessionName === false) {
+                    throw new \LogicException('session_name() returned false');
+                }
 
                 setcookie(
                     $sessionName,
