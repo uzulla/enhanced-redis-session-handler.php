@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+ob_start();
+
 /**
  * Bidirectional session interoperability test
  * 
@@ -215,7 +217,7 @@ if (!in_array($action, ['write_old', 'read_new', 'write_new', 'read_old'], true)
                         2.5,
                         null,
                         0,
-                        '' // No prefix - same as redis-ext default
+                        'PHPREDIS_SESSION:'
                     );
                     
                     $sessionConfig = new SessionConfig(
@@ -290,7 +292,7 @@ if (!in_array($action, ['write_old', 'read_new', 'write_new', 'read_old'], true)
                         2.5,
                         null,
                         0,
-                        '' // No prefix - same as redis-ext default
+                        'PHPREDIS_SESSION:'
                     );
                     
                     $sessionConfig = new SessionConfig(
@@ -427,3 +429,4 @@ if (!in_array($action, ['write_old', 'read_new', 'write_new', 'read_old'], true)
     </div>
 </body>
 </html>
+<?php ob_end_flush(); ?>
