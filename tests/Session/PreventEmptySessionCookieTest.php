@@ -41,22 +41,28 @@ class PreventEmptySessionCookieTest extends TestCase
      */
     public function testSetupRegistersFilterWithHandler(): void
     {
-        PreventEmptySessionCookie::setup($this->handler, $this->logger);
+        $redis = new \Redis();
+        $config = new RedisConnectionConfig('127.0.0.1', 6379);
+        $connection = new RedisConnection($redis, $config, $this->logger);
+        $serializer = new PhpSerializer();
 
-        self::assertTrue($this->logger->hasDebugRecords(), 'Logger should have debug records');
+        $spy = new class ($connection, $serializer) extends RedisSessionHandler {
+            public ?\Uzulla\EnhancedRedisSessionHandler\Hook\WriteFilterInterface $capturedFilter = null;
 
-        $records = $this->logger->getRecords();
-        $found = false;
-        foreach ($records as $record) {
-            if ($record['message'] === 'Registered empty session cleanup handler') {
-                $found = true;
-                break;
+            public function addWriteFilter(\Uzulla\EnhancedRedisSessionHandler\Hook\WriteFilterInterface $filter): void
+            {
+                $this->capturedFilter = $filter;
+                parent::addWriteFilter($filter);
             }
-        }
+        };
 
-        if (!isset($_COOKIE[session_name()])) {
-            self::assertTrue($found, 'Expected log message about cleanup handler registration not found');
-        }
+        PreventEmptySessionCookie::setup($spy, $this->logger);
+
+        self::assertInstanceOf(
+            \Uzulla\EnhancedRedisSessionHandler\Hook\EmptySessionFilter::class,
+            $spy->capturedFilter,
+            'setup() should register an EmptySessionFilter with the handler'
+        );
     }
 
     /**
@@ -124,11 +130,16 @@ class PreventEmptySessionCookieTest extends TestCase
         );
     }
 
+    /**
+     * @runInSeparateProcess
+     */
     public function testCheckAndCleanupDoesNothingWhenSessionNotActive(): void
     {
+        self::assertNotSame(PHP_SESSION_ACTIVE, session_status(), 'Precondition: session should not be active');
+
         PreventEmptySessionCookie::checkAndCleanup();
 
-        self::assertNotSame(PHP_SESSION_ACTIVE, session_status());
+        self::assertNotSame(PHP_SESSION_ACTIVE, session_status(), 'Session should remain not active after checkAndCleanup()');
     }
 
     /**
