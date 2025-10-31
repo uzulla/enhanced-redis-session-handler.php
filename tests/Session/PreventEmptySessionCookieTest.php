@@ -24,10 +24,7 @@ class PreventEmptySessionCookieTest extends TestCase
         $this->logger = new PsrTestLogger();
 
         $redis = new \Redis();
-        $config = new RedisConnectionConfig(
-            host: '127.0.0.1',
-            port: 6379
-        );
+        $config = new RedisConnectionConfig('127.0.0.1', 6379);
         $connection = new RedisConnection($redis, $config, $this->logger);
         $serializer = new PhpSerializer();
 
