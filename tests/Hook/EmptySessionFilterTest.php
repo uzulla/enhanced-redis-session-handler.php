@@ -144,4 +144,83 @@ class EmptySessionFilterTest extends TestCase
         }
         self::assertTrue($found, 'Expected log message not found');
     }
+
+    public function testWasLastWriteEmptyInitialState(): void
+    {
+        $result = $this->filter->wasLastWriteEmpty();
+
+        self::assertFalse($result, 'wasLastWriteEmpty should return false initially');
+    }
+
+    public function testWasLastWriteEmptyAfterEmptyWrite(): void
+    {
+        $sessionId = 'test_session_id_12345678';
+        $data = [];
+
+        $this->filter->shouldWrite($sessionId, $data);
+        $result = $this->filter->wasLastWriteEmpty();
+
+        self::assertTrue($result, 'wasLastWriteEmpty should return true after empty write');
+    }
+
+    public function testWasLastWriteEmptyAfterNonEmptyWrite(): void
+    {
+        $sessionId = 'test_session_id_12345678';
+        $data = ['user_id' => 123];
+
+        $this->filter->shouldWrite($sessionId, $data);
+        $result = $this->filter->wasLastWriteEmpty();
+
+        self::assertFalse($result, 'wasLastWriteEmpty should return false after non-empty write');
+    }
+
+    public function testWasLastWriteEmptyStateTransitionEmptyToNonEmpty(): void
+    {
+        $sessionId = 'test_session_id_12345678';
+
+        $this->filter->shouldWrite($sessionId, []);
+        self::assertTrue($this->filter->wasLastWriteEmpty(), 'State should be true after empty write');
+
+        $this->filter->shouldWrite($sessionId, ['user_id' => 123]);
+        self::assertFalse($this->filter->wasLastWriteEmpty(), 'State should be false after non-empty write');
+    }
+
+    public function testWasLastWriteEmptyStateTransitionNonEmptyToEmpty(): void
+    {
+        $sessionId = 'test_session_id_12345678';
+
+        $this->filter->shouldWrite($sessionId, ['user_id' => 123]);
+        self::assertFalse($this->filter->wasLastWriteEmpty(), 'State should be false after non-empty write');
+
+        $this->filter->shouldWrite($sessionId, []);
+        self::assertTrue($this->filter->wasLastWriteEmpty(), 'State should be true after empty write');
+    }
+
+    public function testWasLastWriteEmptyConsecutiveEmptyCalls(): void
+    {
+        $sessionId = 'test_session_id_12345678';
+
+        $this->filter->shouldWrite($sessionId, []);
+        self::assertTrue($this->filter->wasLastWriteEmpty(), 'State should be true after first empty write');
+
+        $this->filter->shouldWrite($sessionId, []);
+        self::assertTrue($this->filter->wasLastWriteEmpty(), 'State should remain true after second empty write');
+
+        $this->filter->shouldWrite($sessionId, []);
+        self::assertTrue($this->filter->wasLastWriteEmpty(), 'State should remain true after third empty write');
+    }
+
+    public function testWasLastWriteEmptyConsecutiveNonEmptyCalls(): void
+    {
+        $sessionId = 'test_session_id_12345678';
+
+        $this->filter->shouldWrite($sessionId, ['key1' => 'value1']);
+        self::assertFalse($this->filter->wasLastWriteEmpty(), 'State should be false after first non-empty write');
+
+        $this->filter->shouldWrite($sessionId, ['key2' => 'value2']);
+        self::assertFalse($this->filter->wasLastWriteEmpty(), 'State should remain false after second non-empty write');
+
+        $this->filter->shouldWrite($sessionId, ['key3' => 'value3']);
+        self::assertFalse($this->filter->wasLastWriteEmpty(), 'State should remain false after third non-empty write');
+    }
 }
