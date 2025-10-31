@@ -1,12 +1,5 @@
 FROM php:7.4-apache
 
-# Install dependencies for redis extension
-RUN apt-get update && apt-get install -y \
-    libzip-dev \
-    zip \
-    unzip \
-    && rm -rf /var/lib/apt/lists/*
-
 # Install redis extension version 6.0.2
 RUN pecl install redis-6.0.2 \
     && docker-php-ext-enable redis
