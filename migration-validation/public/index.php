@@ -7,6 +7,8 @@ declare(strict_types=1);
  * 
  * Provides a simple interface to test bidirectional compatibility between
  * redis-ext and enhanced-redis-session-handler library.
+ * 
+ * Supports both 'php' and 'php_serialize' serializers.
  */
 
 header('Content-Type: text/html; charset=utf-8');
@@ -17,7 +19,7 @@ header('Content-Type: text/html; charset=utf-8');
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Migration Validation - PHP Serializer Interoperability Test</title>
+    <title>Migration Validation - Session Serializer Interoperability Test</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -120,7 +122,7 @@ header('Content-Type: text/html; charset=utf-8');
 </head>
 <body>
     <div class="container">
-        <h1>🔄 PHP Serializer Interoperability Test</h1>
+        <h1>🔄 Session Serializer Interoperability Test</h1>
         
         <div class="info-section">
             <h3>Environment Information</h3>
@@ -140,6 +142,12 @@ header('Content-Type: text/html; charset=utf-8');
         <div class="note">
             <h3>📋 テスト手順</h3>
             <p>このページでは、redis-ext と enhanced-redis-session-handler ライブラリの相互運用性をテストできます。</p>
+            <p>2つのシリアライザ形式をサポートしています：</p>
+            <ul>
+                <li><strong>php</strong>: 従来のPHPセッション形式 (key|serialized_value)</li>
+                <li><strong>php_serialize</strong>: 標準のPHP serialize()形式 (PHP 7.0+のデフォルト)</li>
+            </ul>
+            <p>各シリアライザで以下のテストを実行できます：</p>
             <ol>
                 <li><strong>旧→新テスト</strong>: redis-ext でセッションを書き込み、ライブラリで読み込む</li>
                 <li><strong>新→旧テスト</strong>: ライブラリでセッションを書き込み、redis-ext で読み込む</li>
@@ -147,25 +155,47 @@ header('Content-Type: text/html; charset=utf-8');
             </ol>
         </div>
 
-        <h2>🧪 Bidirectional Compatibility Tests</h2>
+        <h2>🧪 PHP Serializer Tests</h2>
 
         <div class="test-menu">
             <div class="test-item">
-                <div class="test-title">1. 旧→新テスト (redis-ext → library)</div>
+                <div class="test-title">1. 旧→新テスト (redis-ext → library) - php serializer</div>
                 <div class="test-description">
-                    redis-ext でセッションを書き込み、enhanced-redis-session-handler ライブラリで読み込みます。
+                    redis-ext でセッションを書き込み (php形式)、enhanced-redis-session-handler ライブラリで読み込みます。
                 </div>
-                <a href="test.php?action=write_old" class="test-link">Step 1: redis-ext で書き込み</a>
-                <a href="test.php?action=read_new" class="test-link">Step 2: ライブラリで読み込み</a>
+                <a href="test.php?action=write_old&serializer=php" class="test-link">Step 1: redis-ext で書き込み</a>
+                <a href="test.php?action=read_new&serializer=php" class="test-link">Step 2: ライブラリで読み込み</a>
             </div>
 
             <div class="test-item">
-                <div class="test-title">2. 新→旧テスト (library → redis-ext)</div>
+                <div class="test-title">2. 新→旧テスト (library → redis-ext) - php serializer</div>
                 <div class="test-description">
-                    enhanced-redis-session-handler ライブラリでセッションを書き込み、redis-ext で読み込みます。
+                    enhanced-redis-session-handler ライブラリでセッションを書き込み (php形式)、redis-ext で読み込みます。
                 </div>
-                <a href="test.php?action=write_new" class="test-link">Step 1: ライブラリで書き込み</a>
-                <a href="test.php?action=read_old" class="test-link">Step 2: redis-ext で読み込み</a>
+                <a href="test.php?action=write_new&serializer=php" class="test-link">Step 1: ライブラリで書き込み</a>
+                <a href="test.php?action=read_old&serializer=php" class="test-link">Step 2: redis-ext で読み込み</a>
+            </div>
+        </div>
+
+        <h2>🧪 PHP Serialize Serializer Tests</h2>
+
+        <div class="test-menu">
+            <div class="test-item">
+                <div class="test-title">3. 旧→新テスト (redis-ext → library) - php_serialize serializer</div>
+                <div class="test-description">
+                    redis-ext でセッションを書き込み (php_serialize形式)、enhanced-redis-session-handler ライブラリで読み込みます。
+                </div>
+                <a href="test.php?action=write_old&serializer=php_serialize" class="test-link">Step 1: redis-ext で書き込み</a>
+                <a href="test.php?action=read_new&serializer=php_serialize" class="test-link">Step 2: ライブラリで読み込み</a>
+            </div>
+
+            <div class="test-item">
+                <div class="test-title">4. 新→旧テスト (library → redis-ext) - php_serialize serializer</div>
+                <div class="test-description">
+                    enhanced-redis-session-handler ライブラリでセッションを書き込み (php_serialize形式)、redis-ext で読み込みます。
+                </div>
+                <a href="test.php?action=write_new&serializer=php_serialize" class="test-link">Step 1: ライブラリで書き込み</a>
+                <a href="test.php?action=read_old&serializer=php_serialize" class="test-link">Step 2: redis-ext で読み込み</a>
             </div>
         </div>
 

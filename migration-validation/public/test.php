@@ -22,14 +22,21 @@ use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializer;
 use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Psr\Log\NullLogger;
 
 header('Content-Type: text/html; charset=utf-8');
 
 $action = $_GET['action'] ?? '';
+$serializer = $_GET['serializer'] ?? 'php';
 
 if (!in_array($action, ['write_old', 'read_new', 'write_new', 'read_old'], true)) {
+    header('Location: index.php');
+    exit;
+}
+
+if (!in_array($serializer, ['php', 'php_serialize'], true)) {
     header('Location: index.php');
     exit;
 }
@@ -40,7 +47,7 @@ if (!in_array($action, ['write_old', 'read_new', 'write_new', 'read_old'], true)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Session Interoperability Test - <?php echo htmlspecialchars($action); ?></title>
+    <title>Session Interoperability Test - <?php echo htmlspecialchars($action); ?> (<?php echo htmlspecialchars($serializer); ?>)</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -128,6 +135,7 @@ if (!in_array($action, ['write_old', 'read_new', 'write_new', 'read_old'], true)
             <h3>Environment Information</h3>
             <div><span class="info-label">PHP Version:</span> <span class="info-value"><?php echo PHP_VERSION; ?></span></div>
             <div><span class="info-label">Redis Extension:</span> <span class="info-value"><?php echo extension_loaded('redis') ? '✓ Loaded (v' . phpversion('redis') . ')' : '✗ Not Loaded'; ?></span></div>
+            <div><span class="info-label">Serializer:</span> <span class="info-value"><?php echo htmlspecialchars($serializer); ?></span></div>
             <div><span class="info-label">Action:</span> <span class="info-value"><?php echo htmlspecialchars($action); ?></span></div>
             <div><span class="info-label">Timestamp:</span> <span class="info-value"><?php echo date('Y-m-d H:i:s'); ?></span></div>
         </div>
@@ -147,11 +155,11 @@ if (!in_array($action, ['write_old', 'read_new', 'write_new', 'read_old'], true)
                     
                     ini_set('session.save_handler', 'redis');
                     ini_set('session.save_path', 'tcp://redis:6379?database=0');
-                    ini_set('session.serialize_handler', 'php_serialize');
+                    ini_set('session.serialize_handler', $serializer);
                     
                     echo '<div class="step-result">✓ Session handler: redis-ext</div>';
                     echo '<div class="step-result">✓ Session save path: tcp://redis:6379?database=0</div>';
-                    echo '<div class="step-result">✓ Serializer: php_serialize</div>';
+                    echo '<div class="step-result">✓ Serializer: ' . htmlspecialchars($serializer) . '</div>';
                     echo '</div>';
                     
                     echo '<div class="test-step">';
@@ -220,9 +228,13 @@ if (!in_array($action, ['write_old', 'read_new', 'write_new', 'read_old'], true)
                         'PHPREDIS_SESSION:'
                     );
                     
+                    $serializerInstance = $serializer === 'php_serialize' 
+                        ? new PhpSerializeSerializer() 
+                        : new PhpSerializer();
+                    
                     $sessionConfig = new SessionConfig(
                         $connectionConfig,
-                        new PhpSerializeSerializer(),
+                        $serializerInstance,
                         new DefaultSessionIdGenerator(),
                         1440,
                         new NullLogger()
@@ -233,13 +245,13 @@ if (!in_array($action, ['write_old', 'read_new', 'write_new', 'read_old'], true)
                     session_set_save_handler($handler, true);
                     
                     echo '<div class="step-result">✓ Session handler: enhanced-redis-session-handler</div>';
-                    echo '<div class="step-result">✓ Serializer: PhpSerializeSerializer</div>';
+                    echo '<div class="step-result">✓ Serializer: ' . htmlspecialchars($serializerInstance->getName()) . '</div>';
                     echo '</div>';
                     
                     echo '<div class="test-step">';
                     echo '<div class="step-title">Step 3: Configure Session Serializer and Start Session</div>';
                     
-                    ini_set('session.serialize_handler', 'php_serialize');
+                    ini_set('session.serialize_handler', $serializer);
                     session_start();
                     $sessionId = session_id();
                     
@@ -295,9 +307,13 @@ if (!in_array($action, ['write_old', 'read_new', 'write_new', 'read_old'], true)
                         'PHPREDIS_SESSION:'
                     );
                     
+                    $serializerInstance = $serializer === 'php_serialize' 
+                        ? new PhpSerializeSerializer() 
+                        : new PhpSerializer();
+                    
                     $sessionConfig = new SessionConfig(
                         $connectionConfig,
-                        new PhpSerializeSerializer(),
+                        $serializerInstance,
                         new DefaultSessionIdGenerator(),
                         1440,
                         new NullLogger()
@@ -308,13 +324,13 @@ if (!in_array($action, ['write_old', 'read_new', 'write_new', 'read_old'], true)
                     session_set_save_handler($handler, true);
                     
                     echo '<div class="step-result">✓ Session handler: enhanced-redis-session-handler</div>';
-                    echo '<div class="step-result">✓ Serializer: PhpSerializeSerializer</div>';
+                    echo '<div class="step-result">✓ Serializer: ' . htmlspecialchars($serializerInstance->getName()) . '</div>';
                     echo '</div>';
                     
                     echo '<div class="test-step">';
                     echo '<div class="step-title">Step 3: Configure Session Serializer and Start Session</div>';
                     
-                    ini_set('session.serialize_handler', 'php_serialize');
+                    ini_set('session.serialize_handler', $serializer);
                     session_start();
                     $sessionId = session_id();
                     
@@ -361,11 +377,11 @@ if (!in_array($action, ['write_old', 'read_new', 'write_new', 'read_old'], true)
                     
                     ini_set('session.save_handler', 'redis');
                     ini_set('session.save_path', 'tcp://redis:6379?database=0');
-                    ini_set('session.serialize_handler', 'php_serialize');
+                    ini_set('session.serialize_handler', $serializer);
                     
                     echo '<div class="step-result">✓ Session handler: redis-ext</div>';
                     echo '<div class="step-result">✓ Session save path: tcp://redis:6379?database=0</div>';
-                    echo '<div class="step-result">✓ Serializer: php_serialize</div>';
+                    echo '<div class="step-result">✓ Serializer: ' . htmlspecialchars($serializer) . '</div>';
                     echo '</div>';
                     
                     echo '<div class="test-step">';
