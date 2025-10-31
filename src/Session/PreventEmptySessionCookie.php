@@ -29,6 +29,19 @@ use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
 class PreventEmptySessionCookie
 {
     /**
+     * Time offset in seconds for setting cookie expiration in the past.
+     *
+     * This value is used when deleting session cookies by setting their expiration
+     * to a past time. The specific value (42000 seconds ≈ 11.6 hours) is conventional
+     * and follows PHP manual examples. Any sufficiently past time would work; the exact
+     * value is not critical as long as it's far enough in the past to ensure browsers
+     * delete the cookie.
+     *
+     * @var int
+     */
+    private const PAST_EXPIRATION_OFFSET_SECONDS = 42000;
+
+    /**
      * Tracks whether setup() has been called to prevent duplicate initialization.
      *
      * @var bool
@@ -109,7 +122,7 @@ class PreventEmptySessionCookie
                 setcookie(
                     $sessionName,
                     '',
-                    time() - 42000, // Past expiration time
+                    time() - self::PAST_EXPIRATION_OFFSET_SECONDS,
                     $params['path'],
                     $params['domain'],
                     $params['secure'],
