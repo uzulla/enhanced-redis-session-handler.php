@@ -4,8 +4,13 @@
 # Docker volumes
 volumes/
 
-# Composer dependencies (PHP 8.1 container only)
+# Composer dependencies
 public/vendor/
+vendor/
+composer.lock
+
+# Library directory (created by Docker)
+library/
 
 # IDE
 .idea/

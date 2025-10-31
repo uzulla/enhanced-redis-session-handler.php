@@ -1,0 +1,21 @@
+{
+    "name": "uzulla/migration-validation",
+    "description": "redis-ext と enhanced-redis-session-handler の相互運用性検証ツール",
+    "type": "project",
+    "require": {
+        "php": "^7.4 || ^8.0",
+        "ext-redis": "*",
+        "uzulla/enhanced-redis-session-handler": "@dev"
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "library",
+            "options": {
+                "symlink": true
+            }
+        }
+    ],
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

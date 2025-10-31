@@ -8,6 +8,10 @@ services:
       - "8074:80"
     volumes:
       - ./public:/var/www/html
+      - ./:/app
+      - app74_vendor:/app/vendor
+      - ../composer.json:/app/library/composer.json:ro
+      - ../src:/app/library/src:ro
     networks:
       - migration-net
     depends_on:
@@ -22,7 +26,10 @@ services:
       - "8081:80"
     volumes:
       - ./public:/var/www/html
-      - ..:/workspace:ro
+      - ./:/app
+      - app81_vendor:/app/vendor
+      - ../composer.json:/app/library/composer.json:ro
+      - ../src:/app/library/src:ro
     networks:
       - migration-net
     depends_on:
@@ -36,6 +43,10 @@ services:
     networks:
       - migration-net
     command: redis-server --port 6379
+
+volumes:
+  app74_vendor:
+  app81_vendor:
 
 networks:
   migration-net:
