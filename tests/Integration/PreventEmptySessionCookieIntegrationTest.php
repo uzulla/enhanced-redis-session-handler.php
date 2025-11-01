@@ -239,7 +239,9 @@ class PreventEmptySessionCookieIntegrationTest extends TestCase
         $records = $testHandler->getRecords();
         $cleanupHandlerRegistered = false;
         foreach ($records as $record) {
-            if (isset($record['message']) && is_string($record['message']) && str_contains($record['message'], 'Registered empty session cleanup handler')) {
+            $message = $record['message'];
+            assert(is_string($message));
+            if ($record['level_name'] === 'DEBUG' && strpos($message, 'Registered empty session cleanup handler') !== false) {
                 $cleanupHandlerRegistered = true;
                 break;
             }
@@ -272,7 +274,9 @@ class PreventEmptySessionCookieIntegrationTest extends TestCase
         $records = $testHandler->getRecords();
         $cleanupHandlerRegistered = false;
         foreach ($records as $record) {
-            if (isset($record['message']) && is_string($record['message']) && str_contains($record['message'], 'Registered empty session cleanup handler')) {
+            $message = $record['message'];
+            assert(is_string($message));
+            if ($record['level_name'] === 'DEBUG' && strpos($message, 'Registered empty session cleanup handler') !== false) {
                 $cleanupHandlerRegistered = true;
                 break;
             }
