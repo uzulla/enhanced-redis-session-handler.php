@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Integration;
 
 use Monolog\Handler\StreamHandler;
+use Monolog\Handler\TestHandler;
 use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
 use Redis;
@@ -131,12 +132,11 @@ class PreventEmptySessionCookieIntegrationTest extends TestCase
         self::assertNotFalse($sessionId, 'Session ID should be generated');
 
         session_write_close();
-        PreventEmptySessionCookie::checkAndCleanup();
 
         $dataInRedis = $this->connection->get($sessionId);
         self::assertFalse($dataInRedis, 'Empty session should not be written to Redis');
 
-        self::assertSame(PHP_SESSION_NONE, session_status(), 'Session should be destroyed after cleanup');
+        self::assertFalse(isset($_COOKIE[session_name()]), 'Cookie should not be set in $_COOKIE after cleanup');
     }
 
     /**
@@ -217,20 +217,71 @@ class PreventEmptySessionCookieIntegrationTest extends TestCase
     }
 
     /**
+     * Test that cleanup handler is registered for new sessions.
+     *
+     * @runInSeparateProcess
+     */
+    public function testCleanupHandlerRegisteredForNewSession(): void
+    {
+        $testHandler = new TestHandler(Logger::DEBUG);
+        $logger = new Logger('test');
+        $logger->pushHandler($testHandler);
+
+        $options = new RedisSessionHandlerOptions(null, null, $logger);
+        $handler = new RedisSessionHandler($this->connection, new PhpSerializeSerializer(), $options);
+
+        if (isset($_COOKIE[session_name()])) {
+            unset($_COOKIE[session_name()]);
+        }
+
+        PreventEmptySessionCookie::setup($handler, $logger);
+
+        $records = $testHandler->getRecords();
+        $cleanupHandlerRegistered = false;
+        foreach ($records as $record) {
+            if (isset($record['message']) && is_string($record['message']) && str_contains($record['message'], 'Registered empty session cleanup handler')) {
+                $cleanupHandlerRegistered = true;
+                break;
+            }
+        }
+
+        self::assertTrue(
+            $cleanupHandlerRegistered,
+            'Cleanup handler must be registered for new sessions without existing cookie'
+        );
+    }
+
+    /**
      * Test that cleanup handler is not registered when session cookie already exists.
      *
      * @runInSeparateProcess
      */
     public function testCleanupHandlerNotRegisteredForExistingCookie(): void
     {
-        $options = new RedisSessionHandlerOptions(null, null, $this->logger);
+        $testHandler = new TestHandler(Logger::DEBUG);
+        $logger = new Logger('test');
+        $logger->pushHandler($testHandler);
+
+        $options = new RedisSessionHandlerOptions(null, null, $logger);
         $handler = new RedisSessionHandler($this->connection, new PhpSerializeSerializer(), $options);
 
         $_COOKIE[session_name()] = 'existing_session_id_' . uniqid();
 
-        PreventEmptySessionCookie::setup($handler, $this->logger);
+        PreventEmptySessionCookie::setup($handler, $logger);
 
-        $this->addToAssertionCount(1);
+        $records = $testHandler->getRecords();
+        $cleanupHandlerRegistered = false;
+        foreach ($records as $record) {
+            if (isset($record['message']) && is_string($record['message']) && str_contains($record['message'], 'Registered empty session cleanup handler')) {
+                $cleanupHandlerRegistered = true;
+                break;
+            }
+        }
+
+        self::assertFalse(
+            $cleanupHandlerRegistered,
+            'Cleanup handler must not be registered when session cookie already exists'
+        );
     }
 
     /**
