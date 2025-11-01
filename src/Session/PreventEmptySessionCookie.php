@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler\Session;
 
+use LogicException;
 use Psr\Log\LoggerInterface;
 use Uzulla\EnhancedRedisSessionHandler\Hook\EmptySessionFilter;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
@@ -126,7 +127,7 @@ class PreventEmptySessionCookie
                 $params = session_get_cookie_params();
                 $sessionName = session_name();
                 if ($sessionName === false) {
-                    throw new \LogicException('session_name() returned false');
+                    throw new LogicException('session_name() returned false');
                 }
 
                 $options = [
