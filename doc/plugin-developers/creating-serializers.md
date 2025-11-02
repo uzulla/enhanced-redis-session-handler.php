@@ -209,13 +209,24 @@ class JsonSerializer implements SessionSerializerInterface
 **使用例**:
 
 ```php
-$handler = new RedisSessionHandler(
-    $connection,
+use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
+use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+
+// SessionConfigでカスタムSerializerを指定
+$config = new SessionConfig(
+    $connectionConfig,
+    new JsonSerializer(),  // カスタムSerializer
     $idGenerator,
-    $logger,
     $maxLifetime,
-    new JsonSerializer()  // カスタムSerializer
+    $logger
 );
+
+// SessionHandlerFactoryでハンドラを作成
+$factory = new SessionHandlerFactory($config);
+$handler = $factory->build();
+
+session_set_save_handler($handler, true);
+session_start();
 ```
 
 ### 例2: MessagePackSerializer
@@ -347,6 +358,9 @@ class CompressedSerializer implements SessionSerializerInterface
 **使用例**:
 
 ```php
+use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
+use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+
 // JSON + 圧縮
 $serializer = new CompressedSerializer(
     new JsonSerializer(),
@@ -354,13 +368,21 @@ $serializer = new CompressedSerializer(
     2048  // 2KB以上で圧縮
 );
 
-$handler = new RedisSessionHandler(
-    $connection,
+// SessionConfigでカスタムSerializerを指定
+$config = new SessionConfig(
+    $connectionConfig,
+    $serializer,  // カスタムSerializer
     $idGenerator,
-    $logger,
     $maxLifetime,
-    $serializer
+    $logger
 );
+
+// SessionHandlerFactoryでハンドラを作成
+$factory = new SessionHandlerFactory($config);
+$handler = $factory->build();
+
+session_set_save_handler($handler, true);
+session_start();
 ```
 
 ### 例4: 暗号化付きSerializer
@@ -459,6 +481,9 @@ class EncryptedSerializer implements SessionSerializerInterface
 **使用例**:
 
 ```php
+use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
+use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+
 $encryptionKey = getenv('SESSION_ENCRYPTION_KEY');
 
 $serializer = new EncryptedSerializer(
@@ -466,13 +491,21 @@ $serializer = new EncryptedSerializer(
     new JsonSerializer()
 );
 
-$handler = new RedisSessionHandler(
-    $connection,
+// SessionConfigでカスタムSerializerを指定
+$config = new SessionConfig(
+    $connectionConfig,
+    $serializer,  // カスタムSerializer
     $idGenerator,
-    $logger,
     $maxLifetime,
-    $serializer
+    $logger
 );
+
+// SessionHandlerFactoryでハンドラを作成
+$factory = new SessionHandlerFactory($config);
+$handler = $factory->build();
+
+session_set_save_handler($handler, true);
+session_start();
 ```
 
 ## ベストプラクティス

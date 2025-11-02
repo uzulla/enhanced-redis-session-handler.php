@@ -8,7 +8,7 @@
 
 ```bash
 cd migration-validation
-docker-compose up -d
+docker compose up -d
 ```
 
 ### 動作確認
@@ -26,7 +26,7 @@ docker-compose up -d
 ### 環境の停止
 
 ```bash
-docker-compose down
+docker compose down
 ```
 
 ## Session Serializer 相互運用性検証
@@ -44,7 +44,7 @@ docker-compose down
 2. PHP 8.1環境でComposerの依存関係がインストールされていること
 
 ```bash
-docker-compose exec php81-apache composer install
+docker compose exec php81-apache composer install
 ```
 
 ### 検証手順
@@ -292,12 +292,12 @@ redis-cli -p 16379 PING
 ### コンテナのログを確認
 
 ```bash
-docker-compose logs -f
+docker compose logs -f
 ```
 
 ### コンテナの再ビルド
 
 ```bash
-docker-compose build --no-cache
-docker-compose up -d
+docker compose build --no-cache
+docker compose up -d
 ```
