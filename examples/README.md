@@ -169,6 +169,44 @@ php examples/05-logging.php
 
 ---
 
+### 06. 空セッション時のCookie送信防止 / Empty Session Cookie Prevention
+**ファイル / File:** `06-empty-session-no-cookie.php`
+
+空のセッションデータの場合、Cookieを送信しない機能（PreventEmptySessionCookie）の使用方法を示します。
+
+Demonstrates how to use the PreventEmptySessionCookie feature to prevent sending cookies for empty sessions.
+
+**実行方法 / How to run:**
+```bash
+php examples/06-empty-session-no-cookie.php
+```
+
+**学べること / What you'll learn:**
+- `PreventEmptySessionCookie::setup()`の使用方法 / Using PreventEmptySessionCookie::setup()
+- 空セッション時の動作 / Behavior with empty sessions
+- データありセッション時の動作 / Behavior with sessions containing data
+- 既存セッションへの影響 / Impact on existing sessions
+- EmptySessionFilterの動作 / How EmptySessionFilter works
+
+**用途 / Use Cases:**
+- 空セッションによる無駄なRedis書き込みの削減 / Reducing unnecessary Redis writes for empty sessions
+- セッションCookieの不要な送信の防止 / Preventing unnecessary session cookie transmission
+- パフォーマンスの向上 / Improving performance
+- 匿名ユーザーが多いアプリケーション / Applications with many anonymous users
+
+**動作の仕組み / How it Works:**
+1. `PreventEmptySessionCookie::setup()`が`EmptySessionFilter`を登録
+2. セッション終了時にシャットダウン関数が実行される
+3. `$_SESSION`が空の場合、`session_destroy()`でセッションを破棄
+4. Set-Cookieヘッダーで過去の有効期限を設定してCookieを削除
+
+**注意事項 / Notes:**
+- この機能はオプトイン方式（明示的に有効化が必要）
+- 既存のアプリケーションコードは変更不要（`$_SESSION`の使用方法は同じ）
+- 既存セッション（Cookie既存）は通常通り動作
+
+---
+
 ## 実行順序の推奨 / Recommended Execution Order
 
 初めて使用する場合は、以下の順序でサンプルを実行することをお勧めします：
@@ -177,9 +215,10 @@ If you're new to the library, we recommend running the examples in this order:
 
 1. **01-basic-usage.php** - 基本を理解する / Understand the basics
 2. **02-custom-session-id.php** - セッションIDのカスタマイズを学ぶ / Learn ID customization
-3. **05-logging.php** - ロギングを学ぶ / Learn logging
-4. **03-double-write.php** - 冗長性を学ぶ / Learn redundancy
-5. **04-fallback-read.php** - 高可用性を学ぶ / Learn high availability
+3. **06-empty-session-no-cookie.php** - 空セッション管理を学ぶ / Learn empty session management
+4. **05-logging.php** - ロギングを学ぶ / Learn logging
+5. **03-double-write.php** - 冗長性を学ぶ / Learn redundancy
+6. **04-fallback-read.php** - 高可用性を学ぶ / Learn high availability
 
 ## トラブルシューティング / Troubleshooting
 
