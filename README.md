@@ -107,45 +107,29 @@ session_set_save_handler($handler, true);
 session_start();
 ```
 
-詳細な使用方法については、[doc/factory-usage.md](doc/factory-usage.md)を参照してください。
+詳細な使用方法については、[doc/users/factory-usage.md](doc/users/factory-usage.md)を参照してください。
 
 ## ドキュメント
 
 詳細なドキュメントは`doc/`ディレクトリに用意されています：
 
-- **[doc/factory-usage.md](doc/factory-usage.md)**: SessionHandlerFactory使用ガイド
-  - ファクトリーパターンによる簡単なインスタンス作成
-  - ビルダーパターンを使用した設定のカスタマイズ
-  - 実用的な使用例とベストプラクティス
+### 📚 対象者別ドキュメント
 
-- **[doc/architecture.md](doc/architecture.md)**: システムアーキテクチャ設計書
-  - プロジェクト概要と主要な特徴
-  - アーキテクチャ概要とレイヤー構成
-  - コアコンポーネント設計
-  - データフローとクラス構成図
-  - エラーハンドリング方針
-  - パフォーマンスとセキュリティ考慮事項
-  - 拡張ポイントとテスト戦略
+- **[doc/users/](doc/users/)** - **ライブラリ利用者向け**
+  - [SessionHandlerFactory使用ガイド](doc/users/factory-usage.md)
+  - [Redis/ValKey統合仕様](doc/users/redis-integration.md)
 
-- **[doc/specification.md](doc/specification.md)**: 機能仕様書
-  - SessionHandlerInterface実装の詳細
-  - セッションIDジェネレータ機能
-  - 読み込み時フック機能
-  - 書き込み時フック機能
-  - エラーハンドリング仕様
-  - 設定仕様とパフォーマンス仕様
-  - セキュリティ仕様とテスト仕様
-  - 実装例とコードサンプル
+- **[doc/plugin-developers/](doc/plugin-developers/)** - **プラグイン開発者向け**
+  - Hook、Filter、Serializerの作成ガイド（準備中）
 
-- **[doc/redis-integration.md](doc/redis-integration.md)**: Redis/ValKey統合仕様
-  - ext-redisの使用方法
-  - キー命名規則
-  - TTL（Time To Live）管理
-  - 接続管理とプーリング
-  - Redis操作の実装
-  - ValKey対応
-  - パフォーマンス最適化
-  - セキュリティと監視
+- **[doc/developers/](doc/developers/)** - **ライブラリ開発者・コラボレータ向け**
+  - [システムアーキテクチャ設計書](doc/developers/architecture.md)
+  - [実装詳細ドキュメント](doc/developers/implementation/)
+    - [Serializer機構](doc/developers/implementation/serializer.md)
+    - [Hook/Filter機構](doc/developers/implementation/hooks-and-filters.md)
+    - [PreventEmptySessionCookie機能](doc/developers/implementation/prevent-empty-cookie.md)
+
+詳しくは **[doc/README.md](doc/README.md)** をご覧ください。
 
 ## 開発環境のセットアップ
 
