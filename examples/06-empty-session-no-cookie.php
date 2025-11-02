@@ -49,6 +49,28 @@ if (php_sapi_name() === 'cli') {
     ini_set('session.cache_limiter', '');
 }
 
+/**
+ * Helper function to execute Redis operations with automatic connection cleanup
+ * Redis接続を自動的にクローズするヘルパー関数
+ *
+ * @param callable $fn Function that receives Redis instance
+ * @param string $host Redis host
+ * @param int $port Redis port
+ */
+function withRedis(callable $fn, string $host = 'localhost', int $port = 6379): void
+{
+    $redis = new Redis();
+    if (!$redis->connect($host, $port)) {
+        echo "   [WARN] Failed to connect to Redis at {$host}:{$port}, skipping verification.\n";
+        return;
+    }
+    try {
+        $fn($redis);
+    } finally {
+        $redis->close();
+    }
+}
+
 echo "=== Enhanced Redis Session Handler - Empty Session Cookie Prevention Example ===\n\n";
 
 /**
@@ -173,10 +195,10 @@ try {
     session_write_close();
 
     echo "\n5. Verifying that session was NOT written to Redis...\n";
-    $redis = new Redis();
-    $redis->connect('localhost', 6379);
-    $exists = $redis->exists('session:empty-test:' . $sessionId);
-    echo "   Session exists in Redis: " . ($exists ? 'Yes (unexpected!)' : 'No (correct!)') . "\n";
+    withRedis(function (Redis $redis) use ($sessionId) {
+        $exists = $redis->exists('session:empty-test:' . $sessionId);
+        echo "   Session exists in Redis: " . ($exists ? 'Yes (unexpected!)' : 'No (correct!)') . "\n";
+    });
 
     PreventEmptySessionCookie::reset();
 
@@ -246,19 +268,19 @@ try {
     session_write_close();
 
     echo "\n5. Verifying that session WAS written to Redis...\n";
-    $redis = new Redis();
-    $redis->connect('localhost', 6379);
-    $exists = $redis->exists('session:with-data:' . $sessionId);
-    echo "   Session exists in Redis: " . ($exists ? 'Yes (correct!)' : 'No (unexpected!)') . "\n";
+    withRedis(function (Redis $redis) use ($sessionId) {
+        $exists = $redis->exists('session:with-data:' . $sessionId);
+        echo "   Session exists in Redis: " . ($exists ? 'Yes (correct!)' : 'No (unexpected!)') . "\n";
 
-    if ($exists) {
-        echo "\n6. Reading session data from Redis to verify...\n";
-        $data = $redis->get('session:with-data:' . $sessionId);
-        echo "   Raw data from Redis: " . substr($data, 0, 100) . "...\n";
+        if ($exists) {
+            echo "\n6. Reading session data from Redis to verify...\n";
+            $data = $redis->get('session:with-data:' . $sessionId);
+            echo "   Raw data from Redis: " . substr($data, 0, 100) . "...\n";
 
-        echo "\n7. Cleaning up - destroying session...\n";
-        $redis->del('session:with-data:' . $sessionId);
-    }
+            echo "\n7. Cleaning up - destroying session...\n";
+            $redis->del('session:with-data:' . $sessionId);
+        }
+    });
 
     PreventEmptySessionCookie::reset();
 
@@ -336,9 +358,9 @@ try {
     session_write_close();
 
     echo "\n5. Cleaning up...\n";
-    $redis = new Redis();
-    $redis->connect('localhost', 6379);
-    $redis->del('session:existing:' . $sessionId);
+    withRedis(function (Redis $redis) use ($sessionId) {
+        $redis->del('session:existing:' . $sessionId);
+    });
 
     PreventEmptySessionCookie::reset();
 
