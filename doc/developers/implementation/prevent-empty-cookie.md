@@ -527,4 +527,3 @@ PreventEmptySessionCookie機能は、以下を実現します：
 
 - [hooks-and-filters.md](hooks-and-filters.md) - EmptySessionFilterの詳細
 - [../architecture.md](../architecture.md) - 全体設計
-- [../../doc/PreventEmptySessionCookie/discussion.md](../../PreventEmptySessionCookie/discussion.md) - 設計議論の記録（参考）

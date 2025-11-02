@@ -324,6 +324,7 @@ class SessionHandlerFactory
 ```php
 $config = new SessionConfig(
     new RedisConnectionConfig(),
+    new PhpSerializeSerializer(),
     new DefaultSessionIdGenerator(),
     (int)ini_get('session.gc_maxlifetime'),
     new NullLogger()
@@ -641,6 +642,7 @@ $connectionConfig = new RedisConnectionConfig(
 
 $config = new SessionConfig(
     $connectionConfig,
+    new PhpSerializeSerializer(),
     new DefaultSessionIdGenerator(),
     (int)ini_get('session.gc_maxlifetime'),
     new NullLogger()

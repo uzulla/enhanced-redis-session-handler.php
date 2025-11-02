@@ -504,22 +504,18 @@ class JsonSerializer implements SessionSerializerInterface
 ```php
 use MyApp\Serializer\JsonSerializer;
 
+// SessionConfigでカスタムSerializerを指定
 $config = new SessionConfig(
     $connectionConfig,
+    new JsonSerializer(),  // カスタムSerializer
     $idGenerator,
     $maxLifetime,
     $logger
 );
 
-// SessionHandlerFactoryでカスタムSerializerを設定
-// （注: 現在のFactoryは未対応、直接RedisSessionHandlerに渡す必要がある）
-$handler = new RedisSessionHandler(
-    $connection,
-    $idGenerator,
-    $logger,
-    $maxLifetime,
-    new JsonSerializer()  // カスタムSerializer
-);
+// SessionHandlerFactoryでハンドラを作成
+$factory = new SessionHandlerFactory($config);
+$handler = $factory->build();
 ```
 
 ## セキュリティ考慮事項

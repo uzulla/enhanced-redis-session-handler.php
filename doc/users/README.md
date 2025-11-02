@@ -23,12 +23,14 @@ composer require uzulla/enhanced-redis-session-handler
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Psr\Log\NullLogger;
 
 // 設定を作成
 $config = new SessionConfig(
     new RedisConnectionConfig(),
+    new PhpSerializeSerializer(),
     new DefaultSessionIdGenerator(),
     (int)ini_get('session.gc_maxlifetime'),
     new NullLogger()

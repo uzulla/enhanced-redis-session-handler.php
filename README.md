@@ -28,7 +28,7 @@ enhanced-redis-session-handler.phpは、PHPの標準セッションハンドラ�
 - **Redis**: 5.0以上（公式サポート）
 - **ValKey**: 7.2.5以上（テストはValKey 9.0.0で実施）
 
-詳細な互換性情報については、[doc/redis-integration.md](doc/redis-integration.md)を参照してください。
+詳細な互換性情報については、[doc/users/redis-integration.md](doc/users/redis-integration.md)を参照してください。
 
 ## インストール
 
@@ -46,12 +46,14 @@ composer require uzulla/enhanced-redis-session-handler
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Psr\Log\NullLogger;
 
 // 設定を作成
 $config = new SessionConfig(
     new RedisConnectionConfig(),
+    new PhpSerializeSerializer(),
     new DefaultSessionIdGenerator(),
     (int)ini_get('session.gc_maxlifetime'),
     new NullLogger()
@@ -74,6 +76,7 @@ session_start();
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Psr\Log\NullLogger;
 
@@ -94,6 +97,7 @@ $connectionConfig = new RedisConnectionConfig(
 // セッション設定を作成
 $config = new SessionConfig(
     $connectionConfig,
+    new PhpSerializeSerializer(),
     new DefaultSessionIdGenerator(),
     7200,
     new NullLogger()
