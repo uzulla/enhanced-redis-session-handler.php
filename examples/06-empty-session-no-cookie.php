@@ -162,7 +162,7 @@ try {
     echo "   Session ID: {$sessionId}\n";
 
     echo "\n3. NOT writing any data to \$_SESSION (keeping it empty)...\n";
-    echo "   \$_SESSION is empty: " . (isset($_SESSION) && count($_SESSION) === 0 ? 'Yes' : 'No (session not started)') . "\n";
+    echo "   \$_SESSION is empty: " . (count($_SESSION) === 0 ? 'Yes' : 'No') . "\n";
 
     echo "\n4. Ending request (session_write_close)...\n";
     echo "   Watch the logs below - the shutdown function will:\n";
