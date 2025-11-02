@@ -120,7 +120,10 @@ session_start();
   - [Redis/ValKey統合仕様](doc/users/redis-integration.md)
 
 - **[doc/plugin-developers/](doc/plugin-developers/)** - **プラグイン開発者向け**
-  - Hook、Filter、Serializerの作成ガイド（準備中）
+  - [Hook作成ガイド](doc/plugin-developers/creating-hooks.md)
+  - [Filter作成ガイド](doc/plugin-developers/creating-filters.md)
+  - [Serializer作成ガイド](doc/plugin-developers/creating-serializers.md)
+  - [SessionIdGenerator作成ガイド](doc/plugin-developers/creating-session-id-generators.md)
 
 - **[doc/developers/](doc/developers/)** - **ライブラリ開発者・コラボレータ向け**
   - [システムアーキテクチャ設計書](doc/developers/architecture.md)
