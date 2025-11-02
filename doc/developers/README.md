@@ -206,9 +206,3 @@ src/
    - [testing.md](testing.md)でテストを追加・実行
    - 該当コンポーネントの実装ドキュメントを参照
    - [code-style.md](code-style.md)に従ってコーディング
-
-## コミュニケーション
-
-- **Issue**: バグ報告や機能提案は[GitHubのIssue](https://github.com/uzulla/enhanced-redis-session-handler.php/issues)で
-- **Discussion**: 設計議論やアイディア共有も歓迎します
-- **PR**: プルリクエストは[contributing.md](contributing.md)のガイドラインに従ってください

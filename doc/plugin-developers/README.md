@@ -46,7 +46,6 @@ class MyCustomHook implements WriteHookInterface
     }
 }
 
-// 使用方法
 $handler->addWriteHook(new MyCustomHook());
 ```
 
@@ -67,7 +66,6 @@ class MyCustomFilter implements WriteFilterInterface
     }
 }
 
-// 使用方法
 $handler->addWriteFilter(new MyCustomFilter());
 ```
 
@@ -105,20 +103,23 @@ public function beforeWrite(string $sessionId, array $data): array
         // 何らかの処理
     } catch (Exception $e) {
         // ログに記録して、データはそのまま返す
-        $this->logger->error('Hook error', ['error' => $e->getMessage()]);
+        $this->logger->error('Hook error', [
+            'exception' => $e
+        ]);
         return $data; // 処理を継続
     }
 }
 ```
 
-### 3. セキュリティ
+### 3. セキュリティに関するポイント
 
-セッションIDをログに記録する場合は必ずマスキング：
+セッションIDをログに記録する場合はマスキングすることを推奨します：
 
 ```php
 use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 
 $this->logger->info('Processing session', [
+    'session_id' => $sessionId, // ✘ ログにセッションIDがのこされ、危険
     'session_id' => SessionIdMasker::mask($sessionId), // ✓ 正しい
 ]);
 ```
@@ -139,8 +140,3 @@ $this->logger->info('Processing session', [
 - `src/Hook/EmptySessionFilter.php` - WriteFilterの実装例
 - `src/Serializer/PhpSerializeSerializer.php` - Serializerの実装例
 - `src/SessionId/SecureSessionIdGenerator.php` - SessionIdGeneratorの実装例
-
-## コミュニティ
-
-- **Issue**: バグ報告や機能提案は[GitHubのIssue](https://github.com/uzulla/enhanced-redis-session-handler.php/issues)で
-- **PR**: プルリクエストは歓迎します。[contributing.md](../developers/contributing.md)を参照してください
