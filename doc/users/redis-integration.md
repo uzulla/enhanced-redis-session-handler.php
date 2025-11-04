@@ -61,7 +61,11 @@ if (extension_loaded('redis')) {
 
 ## 3. RedisConnection実装
 
+> **注意**: このセクションは内部実装の技術仕様を説明しています。実際のユーザーは`RedisConnectionConfig`クラスを使用して接続設定を行います。詳細は[factory-usage.md](factory-usage.md)を参照してください。
+
 ### 3.1 基本的な接続
+
+以下は、ライブラリ内部の`RedisConnection`クラスの実装例です：
 
 ```php
 class RedisConnection
@@ -173,13 +177,16 @@ class RedisConnection
 - 接続数の管理が必要
 - メモリ使用量の増加
 
-**使用例:**
+**ユーザーの使用例:**
 ```php
-$connection = new RedisConnection([
-    'host' => 'localhost',
-    'port' => 6379,
-    'persistent' => true,
-]);
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+
+// RedisConnectionConfigで永続的接続を設定
+$connectionConfig = new RedisConnectionConfig(
+    host: 'localhost',
+    port: 6379,
+    persistent: true
+);
 ```
 
 ## 4. キー命名規則
@@ -205,9 +212,12 @@ myapp:session:xyz789
 ### 4.3 プレフィックスの設定
 
 ```php
-$connection = new RedisConnection([
-    'prefix' => 'myapp:session:',
-]);
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+
+// RedisConnectionConfigでプレフィックスを設定
+$connectionConfig = new RedisConnectionConfig(
+    prefix: 'myapp:session:'
+);
 ```
 
 **注意:**
@@ -507,10 +517,13 @@ public function get(string $key): string|false
 ### 6.4 タイムアウト設定
 
 ```php
-$connection = new RedisConnection([
-    'timeout' => 2.5,
-    'read_timeout' => 2.5,
-]);
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+
+// RedisConnectionConfigでタイムアウトを設定
+$connectionConfig = new RedisConnectionConfig(
+    timeout: 2.5,
+    readTimeout: 2.5
+);
 ```
 
 | タイムアウト | 説明 | 推奨値 |
@@ -682,10 +695,13 @@ ValKeyは、Redisのフォークプロジェクトで、Redis互換のインメ�
 ### 8.2 ValKeyへの接続
 
 ```php
-$connection = new RedisConnection([
-    'host' => 'valkey.example.com',
-    'port' => 6379,
-]);
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+
+// RedisConnectionConfigでValKeyに接続
+$connectionConfig = new RedisConnectionConfig(
+    host: 'valkey.example.com',
+    port: 6379
+);
 ```
 
 **注意:**
@@ -734,25 +750,29 @@ echo "1000 SET operations: " . $elapsed . " seconds\n";
 ### 10.1 認証
 
 ```php
-$connection = new RedisConnection([
-    'host' => 'localhost',
-    'port' => 6379,
-    'password' => getenv('REDIS_PASSWORD'),
-]);
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+
+// RedisConnectionConfigで認証を設定
+$connectionConfig = new RedisConnectionConfig(
+    host: 'localhost',
+    port: 6379,
+    password: getenv('REDIS_PASSWORD')
+);
 ```
 
 ### 10.2 TLS/SSL接続（将来の拡張）
 
+> **注意**: TLS/SSL接続のサポートは将来の拡張機能として計画されています。
+
 ```php
-$connection = new RedisConnection([
-    'host' => 'tls://redis.example.com',
-    'port' => 6380,
-    'ssl' => [
-        'verify_peer' => true,
-        'verify_peer_name' => true,
-        'cafile' => '/path/to/ca.crt',
-    ],
-]);
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+
+// 将来的には以下のような設定が可能になる予定
+$connectionConfig = new RedisConnectionConfig(
+    host: 'tls://redis.example.com',
+    port: 6380
+    // SSL設定の詳細は今後追加予定
+);
 ```
 
 ### 10.3 アクセス制御

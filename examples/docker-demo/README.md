@@ -341,7 +341,7 @@ docker compose -f docker/docker-compose.yml down -v
 - [メインREADME / Main README](../../README.md)
 - [開発ドキュメント / Development Documentation](../../DEVELOPMENT.md)
 - [サンプル一覧 / Examples List](../README.md)
-- [アーキテクチャドキュメント / Architecture Documentation](../../doc/architecture.md)
+- [アーキテクチャドキュメント / Architecture Documentation](../../doc/developers/architecture.md)
 
 ## セキュリティに関する注意 / Security Notes
 

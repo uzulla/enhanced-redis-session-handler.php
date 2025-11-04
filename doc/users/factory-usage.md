@@ -16,12 +16,14 @@
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Psr\Log\NullLogger;
 
 // 設定を作成
 $config = new SessionConfig(
     new RedisConnectionConfig(),
+    new PhpSerializeSerializer(),
     new DefaultSessionIdGenerator(),
     (int)ini_get('session.gc_maxlifetime'),
     new NullLogger()
@@ -53,6 +55,7 @@ session_start();
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Psr\Log\NullLogger;
 
@@ -73,6 +76,7 @@ $connectionConfig = new RedisConnectionConfig(
 // セッション設定を作成
 $config = new SessionConfig(
     $connectionConfig,
+    new PhpSerializeSerializer(),
     new DefaultSessionIdGenerator(),
     7200,  // 最大ライフタイム（秒）
     new NullLogger()
@@ -130,6 +134,7 @@ Redis接続に関する設定を行います。コンストラクタのパラメ
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\Hook\LoggingHook;
 use Uzulla\EnhancedRedisSessionHandler\Hook\ReadTimestampHook;
@@ -157,6 +162,7 @@ $connectionConfig = new RedisConnectionConfig(
 // セッション設定
 $config = new SessionConfig(
     $connectionConfig,
+    new PhpSerializeSerializer(),
     new DefaultSessionIdGenerator(),
     3600,
     $logger
@@ -182,6 +188,7 @@ session_start();
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
@@ -207,6 +214,7 @@ $connectionConfig = new RedisConnectionConfig(
 // セッション設定
 $config = new SessionConfig(
     $connectionConfig,
+    new PhpSerializeSerializer(),
     new DefaultSessionIdGenerator(),
     86400,  // 24時間
     $logger
@@ -228,6 +236,7 @@ session_start();
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\Hook\ReadTimestampHook;
 use Uzulla\EnhancedRedisSessionHandler\Hook\FallbackReadHook;
@@ -252,6 +261,7 @@ $connectionConfig = new RedisConnectionConfig(
 // セッション設定
 $config = new SessionConfig(
     $connectionConfig,
+    new PhpSerializeSerializer(),
     new DefaultSessionIdGenerator(),
     3600,
     new NullLogger()
@@ -280,12 +290,15 @@ session_start();
 
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\SecureSessionIdGenerator;
+use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Psr\Log\NullLogger;
 
 // 初期設定
 $config = new SessionConfig(
     new RedisConnectionConfig(),
+    new PhpSerializeSerializer(),
     new DefaultSessionIdGenerator(),
     3600,
     new NullLogger()
@@ -319,6 +332,5 @@ $handler = $factory->build();
 
 詳細な仕様については、以下のドキュメントも参照してください：
 
-- [アーキテクチャ設計書](architecture.md)
-- [機能仕様書](specification.md)
+- [アーキテクチャ設計書](../developers/architecture.md)
 - [Redis統合仕様](redis-integration.md)
