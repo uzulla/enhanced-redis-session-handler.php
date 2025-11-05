@@ -207,11 +207,66 @@ php examples/06-empty-session-no-cookie.php
 
 ---
 
+## Login Form Example (Web Application)
+
+**ディレクトリ / Directory:** `login-form/`
+
+**前提環境 / Prerequisites:**
+- Apache + mod_php
+- Redis extension (php-redis)
+- PHP 7.4+
+
+このディレクトリには、Redis拡張とenhanced-redis-session-handlerの間でセッションデータが正しく引き継がれることを実証する、実用的なログインフォームアプリケーションが含まれています。
+
+This directory contains a practical login form application that demonstrates session data is correctly preserved when switching between Redis extension and enhanced-redis-session-handler.
+
+**主な機能 / Key Features:**
+- ログイン/ログアウト機能 / Login/Logout functionality
+- セッションハンドラーの動的切り替え / Dynamic session handler switching
+- Redis拡張とenhanced-redis-session-handlerの互換性テスト / Compatibility testing between Redis extension and enhanced handler
+- PreventEmptySessionCookie機能のデモ / PreventEmptySessionCookie feature demo
+
+**使用方法 / How to use:**
+
+詳細は [login-form/README.md](login-form/README.md) を参照してください。
+
+For details, see [login-form/README.md](login-form/README.md).
+
+```bash
+# Apache + mod_php環境でアクセス / Access in Apache + mod_php environment
+http://localhost/examples/login-form/
+
+# または Built-in PHP serverで / Or with Built-in PHP server
+cd examples/login-form
+php -S localhost:8000
+```
+
+**学べること / What you'll learn:**
+- Redis拡張からenhanced-redis-session-handlerへの切り替え / Switching from Redis extension to enhanced handler
+- セッションデータの互換性確保 / Ensuring session data compatibility
+- PHPシリアライザー（'php'形式）の使用 / Using PHP serializer ('php' format)
+- PreventEmptySessionCookie機能の実用例 / Practical use of PreventEmptySessionCookie feature
+- Webアプリケーションでの実装パターン / Implementation patterns in web applications
+
+**用途 / Use Cases:**
+- 既存のRedis拡張ベースのアプリケーションからの移行 / Migration from existing Redis extension-based applications
+- セッションハンドラーの切り替えテスト / Session handler switching tests
+- Apache + mod_php環境での実装例 / Implementation example in Apache + mod_php environment
+
+**テストシナリオ / Test Scenarios:**
+1. Redis拡張でログイン → enhanced-redis-session-handlerに切り替え → ログイン状態保持確認
+2. enhanced-redis-session-handlerでログイン → Redis拡張に切り替え → ログイン状態保持確認
+3. ログアウト時の空セッションCookie削除確認（enhanced-redis-session-handler使用時）
+
+---
+
 ## 実行順序の推奨 / Recommended Execution Order
 
 初めて使用する場合は、以下の順序でサンプルを実行することをお勧めします：
 
 If you're new to the library, we recommend running the examples in this order:
+
+### CLI環境で実行するサンプル / Samples for CLI Environment
 
 1. **01-basic-usage.php** - 基本を理解する / Understand the basics
 2. **02-custom-session-id.php** - セッションIDのカスタマイズを学ぶ / Learn ID customization
@@ -219,6 +274,12 @@ If you're new to the library, we recommend running the examples in this order:
 4. **05-logging.php** - ロギングを学ぶ / Learn logging
 5. **03-double-write.php** - 冗長性を学ぶ / Learn redundancy
 6. **04-fallback-read.php** - 高可用性を学ぶ / Learn high availability
+
+### Webアプリケーションサンプル / Web Application Sample
+
+7. **login-form/** - Webアプリケーションでの実装とセッションハンドラー互換性テスト / Web application implementation and session handler compatibility test
+   - Apache + mod_php環境で実行 / Run in Apache + mod_php environment
+   - ブラウザでアクセスして動作確認 / Access with browser to verify behavior
 
 ## トラブルシューティング / Troubleshooting
 
