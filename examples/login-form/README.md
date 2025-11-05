@@ -48,6 +48,55 @@ php -r "echo php_sapi_name();"  # Should return: apache2handler (when running vi
 
 ## 🚀 セットアップ / Setup
 
+### オプション1: Docker Compose を使用（推奨 / Recommended）
+
+Docker Composeを使用すると、2台のhttpdと1台のRedisサーバーを自動的にセットアップできます。
+
+Using Docker Compose, you can automatically set up 2 httpd servers and 1 Redis server.
+
+```bash
+cd examples/login-form/docker
+
+# 起動 / Start
+./start.sh
+
+# または / or
+docker-compose up -d --build
+```
+
+アクセス / Access:
+- **Redis拡張ハンドラー / Redis Extension Handler:** http://localhost:8080/
+- **Enhanced Redis Session Handler:** http://localhost:8081/
+- **共通Redisサーバー / Shared Redis Server:** localhost:6379
+
+停止 / Stop:
+```bash
+# 停止 / Stop
+./stop.sh
+
+# または / or
+docker-compose down
+
+# データも削除 / Remove data too
+docker-compose down -v
+```
+
+**Docker構成 / Docker Configuration:**
+- `httpd-redis-ext` (port 8080): Redis拡張を使用 / Uses Redis extension
+- `httpd-enhanced` (port 8081): enhanced-redis-session-handlerを使用 / Uses enhanced handler
+- `redis` (port 6379): 両方のhttpdから共有されるRedisサーバー / Shared Redis server
+
+**重要な動作 / Important Behavior:**
+各httpdサーバーでは、`auto_prepend_file`により自動的に適切なハンドラーが選択されます：
+- Port 8080: 常にRedis拡張を使用
+- Port 8081: 常にenhanced-redis-session-handlerを使用
+
+Each httpd server automatically selects the appropriate handler via `auto_prepend_file`:
+- Port 8080: Always uses Redis extension
+- Port 8081: Always uses enhanced-redis-session-handler
+
+### オプション2: ローカルApacheを使用 / Option 2: Use Local Apache
+
 ### 1. Composerパッケージのインストール / Install Composer Packages
 
 ```bash
@@ -113,7 +162,54 @@ examples/login-form/
 
 ## 🎮 使用方法 / How to Use
 
-### 基本的な使用 / Basic Usage
+### Docker Composeを使用した互換性テスト（推奨）
+
+Docker Composeを使用すると、2つの異なるhttpdサーバーを同時に使用してセッションハンドラーの互換性をテストできます。
+
+Using Docker Compose, you can test session handler compatibility using two different httpd servers simultaneously.
+
+#### テストシナリオ1: Redis拡張でログイン → Enhanced handlerで継続
+
+1. **Redis拡張でログイン / Login with Redis extension**
+   ```
+   http://localhost:8080/
+   ```
+   - デモアカウントでログイン (例: `admin` / `admin123`)
+   - ブラウザの開発者ツールでセッションCookieをコピー
+
+2. **同じセッションIDでEnhanced handlerにアクセス**
+   ```
+   http://localhost:8081/
+   ```
+   - 同じセッションCookieが使用される
+   - ログイン状態が保持されていることを確認
+   - ユーザー情報が正しく表示されることを確認
+
+3. **セッション情報の確認**
+   - ダッシュボードで「Current Handler」が変わっていることを確認
+   - セッションIDは同じまま
+   - `_SESSION`データが完全に引き継がれている
+
+#### テストシナリオ2: Enhanced handlerでログイン → Redis拡張で継続
+
+1. **Enhanced handlerでログイン**
+   ```
+   http://localhost:8081/
+   ```
+   - デモアカウントでログイン
+
+2. **同じセッションIDでRedis拡張にアクセス**
+   ```
+   http://localhost:8080/
+   ```
+   - ログイン状態が保持されていることを確認
+
+3. **PreventEmptySessionCookie機能のテスト**
+   - Enhanced handlerでログアウト: `http://localhost:8081/logout.php`
+   - 空セッションのCookieが削除されることを確認
+   - Redis拡張でログアウトした場合と比較
+
+### ローカルApacheを使用した基本的な使用 / Basic Usage with Local Apache
 
 1. ブラウザで `http://session-example.local/login-form/` にアクセス
 2. デモアカウントでログイン:
@@ -121,7 +217,7 @@ examples/login-form/
    - **Username:** `user1` / **Password:** `password1`
    - **Username:** `user2` / **Password:** `password2`
 
-### セッションハンドラー切り替えテスト / Session Handler Switching Test
+### セッションハンドラー切り替えテスト（ローカルApache） / Session Handler Switching Test (Local Apache)
 
 このサンプルの最大の特徴は、セッションハンドラーを動的に切り替えてセッションデータの互換性をテストできることです。
 

@@ -1,0 +1,32 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Docker
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies (will be installed in container)
+vendor/
+node_modules/
+
+# Logs
+*.log
+
+# Cache
+.php-cs-fixer.cache
+.phpunit.result.cache
+coverage/

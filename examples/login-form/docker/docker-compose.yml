@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # Apache + mod_php with Redis extension
+  # Redis拡張を使用するhttpd
+  httpd-redis-ext:
+    build:
+      context: ../../..
+      dockerfile: examples/login-form/docker/Dockerfile
+    container_name: login-form-redis-ext
+    ports:
+      - "8080:80"
+    volumes:
+      - ../../..:/var/www/html
+      - ./apache-redis-ext.conf:/etc/apache2/sites-available/000-default.conf
+      - ./php.ini:/usr/local/etc/php/conf.d/custom.ini
+    environment:
+      - SESSION_REDIS_HOST=redis
+      - SESSION_REDIS_PORT=6379
+      - HANDLER_TYPE=redis-ext
+    depends_on:
+      - redis
+    networks:
+      - login-form-network
+
+  # Apache + mod_php with Enhanced Redis Session Handler
+  # enhanced-redis-session-handlerを使用するhttpd
+  httpd-enhanced:
+    build:
+      context: ../../..
+      dockerfile: examples/login-form/docker/Dockerfile
+    container_name: login-form-enhanced
+    ports:
+      - "8081:80"
+    volumes:
+      - ../../..:/var/www/html
+      - ./apache-enhanced.conf:/etc/apache2/sites-available/000-default.conf
+      - ./php.ini:/usr/local/etc/php/conf.d/custom.ini
+    environment:
+      - SESSION_REDIS_HOST=redis
+      - SESSION_REDIS_PORT=6379
+      - HANDLER_TYPE=enhanced
+    depends_on:
+      - redis
+    networks:
+      - login-form-network
+
+  # Shared Redis server
+  # 共通のRedisサーバー
+  redis:
+    image: redis:7-alpine
+    container_name: login-form-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - login-form-network
+    command: redis-server --appendonly yes
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  login-form-network:
+    driver: bridge
