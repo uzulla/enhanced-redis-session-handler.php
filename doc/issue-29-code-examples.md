@@ -1,896 +1,411 @@
-# Issue #29: 設計案のコード例
+# Issue #29: コード例とクイックリファレンス
 
-このドキュメントでは、提案されたCompositeRedisConnection設計の具体的なコード例を示します。
+このドキュメントでは、CompositeRedisConnection設計の最小限のコード例を示します。
 
-## RedisConnectionInterface
+詳細な設計思想や比較分析は `issue-29-redis-wrapper-design.md` を参照してください。
+
+---
+
+## 1. 核心となるインターフェース
+
+### RedisConnectionInterface (新規)
 
 ```php
-<?php
-
-declare(strict_types=1);
-
 namespace Uzulla\EnhancedRedisSessionHandler;
 
 /**
- * Interface for Redis connection operations.
- *
- * This interface allows both single Redis connections (RedisConnection)
- * and composite connections (FailoverRedisConnection, MultiWriteRedisConnection)
- * to be used interchangeably.
+ * Redis操作の共通インターフェース
+ * 単一Redis (RedisConnection) と複数Redis (Composite) の両方が実装
  */
 interface RedisConnectionInterface
 {
-    /**
-     * Connect to Redis.
-     *
-     * @return bool True on success, throws exception on failure
-     * @throws \Uzulla\EnhancedRedisSessionHandler\Exception\ConnectionException
-     */
     public function connect(): bool;
-
-    /**
-     * Disconnect from Redis.
-     */
     public function disconnect(): void;
-
-    /**
-     * Get a value from Redis by key.
-     *
-     * @param string $key The key to retrieve
-     * @return string|false Returns the value as string if found, false if not found or on error
-     */
     public function get(string $key);
-
-    /**
-     * Set a value in Redis with TTL.
-     *
-     * @param string $key The key to set
-     * @param string $value The value to store
-     * @param int $ttl Time to live in seconds
-     * @return bool True on success, false on failure
-     */
     public function set(string $key, string $value, int $ttl): bool;
-
-    /**
-     * Delete a key from Redis.
-     *
-     * @param string $key The key to delete
-     * @return bool True if key was deleted, false otherwise
-     */
     public function delete(string $key): bool;
-
-    /**
-     * Check if a key exists in Redis.
-     *
-     * @param string $key The key to check
-     * @return bool True if key exists, false otherwise
-     */
     public function exists(string $key): bool;
-
-    /**
-     * Set expiration time for a key.
-     *
-     * @param string $key The key to set expiration for
-     * @param int $ttl Time to live in seconds
-     * @return bool True on success, false on failure
-     */
     public function expire(string $key, int $ttl): bool;
-
-    /**
-     * Get keys matching a pattern.
-     *
-     * @param string $pattern The pattern to match (e.g., 'session:*')
-     * @return array<string> Array of matching keys
-     */
     public function keys(string $pattern): array;
-
-    /**
-     * Check if connected to Redis.
-     *
-     * @return bool True if connected, false otherwise
-     */
     public function isConnected(): bool;
 }
 ```
 
-## CompositeRedisConnection 基底クラス
+### 既存クラスの変更
 
 ```php
-<?php
+// RedisConnection.php
+// Before:
+class RedisConnection implements LoggerAwareInterface
+{...}
 
-declare(strict_types=1);
+// After:
+class RedisConnection implements RedisConnectionInterface, LoggerAwareInterface
+{...}
+```
 
+---
+
+## 2. Composite基底クラス (概念)
+
+```php
 namespace Uzulla\EnhancedRedisSessionHandler\Composite;
 
-use InvalidArgumentException;
-use Psr\Log\LoggerAwareInterface;
-use Psr\Log\LoggerInterface;
-use Psr\Log\NullLogger;
-use Uzulla\EnhancedRedisSessionHandler\RedisConnectionInterface;
-
 /**
- * Abstract base class for composite Redis connections.
- *
- * A composite connection manages multiple RedisConnectionInterface instances
- * and delegates operations to them according to specific strategies
- * (failover, multi-write, etc.).
+ * 複数RedisConnectionを管理する基底クラス
  */
-abstract class CompositeRedisConnection implements RedisConnectionInterface, LoggerAwareInterface
+abstract class CompositeRedisConnection implements RedisConnectionInterface
 {
     /** @var array<RedisConnectionInterface> */
     protected array $connections;
 
-    protected LoggerInterface $logger;
-
-    /**
-     * @param array<RedisConnectionInterface> $connections Array of Redis connections to manage
-     * @param LoggerInterface|null $logger Optional logger instance
-     * @throws InvalidArgumentException If connections array is empty
-     */
-    public function __construct(array $connections, ?LoggerInterface $logger = null)
-    {
-        if (count($connections) === 0) {
-            throw new InvalidArgumentException('At least one connection is required');
-        }
-
-        $this->connections = $connections;
-        $this->logger = $logger ?? new NullLogger();
-
-        // Propagate logger to child connections
-        foreach ($this->connections as $connection) {
-            if ($connection instanceof LoggerAwareInterface) {
-                $connection->setLogger($this->logger);
-            }
-        }
-    }
-
-    /**
-     * Connect to all Redis instances.
-     *
-     * @return bool True if at least one connection succeeds
-     */
-    public function connect(): bool
-    {
-        $results = [];
-
-        foreach ($this->connections as $index => $connection) {
-            try {
-                $result = $connection->connect();
-                $results[] = $result;
-
-                if ($result) {
-                    $this->logger->debug('Composite: Connection succeeded', [
-                        'connection_index' => $index,
-                    ]);
-                }
-            } catch (\Throwable $e) {
-                $this->logger->warning('Composite: Connection failed', [
-                    'connection_index' => $index,
-                    'exception' => $e,
-                ]);
-                $results[] = false;
-            }
-        }
-
-        // Success if at least one connection succeeded
-        return in_array(true, $results, true);
-    }
-
-    /**
-     * Disconnect from all Redis instances.
-     */
-    public function disconnect(): void
-    {
-        foreach ($this->connections as $index => $connection) {
-            try {
-                $connection->disconnect();
-            } catch (\Throwable $e) {
-                $this->logger->error('Composite: Disconnect failed', [
-                    'connection_index' => $index,
-                    'exception' => $e,
-                ]);
-            }
-        }
-    }
-
-    /**
-     * Check if at least one connection is active.
-     *
-     * @return bool True if at least one connection is connected
-     */
-    public function isConnected(): bool
-    {
-        foreach ($this->connections as $connection) {
-            if ($connection->isConnected()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Sets a logger instance on the object.
-     *
-     * @param LoggerInterface $logger
-     * @return void
-     */
-    public function setLogger(LoggerInterface $logger): void
-    {
-        $this->logger = $logger;
-
-        // Propagate to all child connections
-        foreach ($this->connections as $connection) {
-            if ($connection instanceof LoggerAwareInterface) {
-                $connection->setLogger($logger);
-            }
-        }
-    }
-
-    /**
-     * Get count of managed connections.
-     *
-     * @return int Number of connections
-     */
-    public function getConnectionCount(): int
-    {
-        return count($this->connections);
-    }
-
-    // Abstract methods to be implemented by concrete classes
-    abstract public function get(string $key);
-    abstract public function set(string $key, string $value, int $ttl): bool;
-    abstract public function delete(string $key): bool;
-    abstract public function exists(string $key): bool;
-    abstract public function expire(string $key, int $ttl): bool;
-    abstract public function keys(string $pattern): array;
+    // connect/disconnect/isConnectedは共通実装
+    // get/set/delete等は具象クラスで実装
 }
 ```
 
-## FailoverRedisConnection 実装例
+**ポイント:**
+- 複数の`RedisConnectionInterface`を保持
+- 接続管理などの共通処理を実装
+- 具体的な操作（get/set等）は具象クラスに委譲
+
+---
+
+## 3. Failover実装 (概念)
 
 ```php
-<?php
-
-declare(strict_types=1);
-
 namespace Uzulla\EnhancedRedisSessionHandler\Composite;
 
 /**
- * Failover Redis connection that tries connections in order.
- *
- * Operations are attempted on the first connection (primary).
- * If it fails, the next connection is tried (failover), and so on.
- *
- * This is useful for high availability scenarios where you have
- * a primary Redis and one or more backup Redis instances.
+ * フォールバック機能を提供
+ * Primary失敗時に順次Fallbackを試行
  */
 class FailoverRedisConnection extends CompositeRedisConnection
 {
-    /**
-     * Get value from Redis with failover.
-     *
-     * Tries each connection in order until one succeeds or all fail.
-     *
-     * @param string $key
-     * @return string|false
-     */
     public function get(string $key)
     {
-        foreach ($this->connections as $index => $connection) {
-            try {
-                $result = $connection->get($key);
-
-                if ($result !== false) {
-                    if ($index > 0) {
-                        $this->logger->warning('Failover: Used backup connection for GET', [
-                            'key' => $key,
-                            'connection_index' => $index,
-                        ]);
-                    }
-                    return $result;
-                }
-            } catch (\Throwable $e) {
-                $this->logger->warning('Failover: GET failed, trying next connection', [
-                    'key' => $key,
-                    'connection_index' => $index,
-                    'exception' => $e,
-                ]);
-                continue;
-            }
-        }
-
-        $this->logger->error('Failover: All connections failed for GET', [
-            'key' => $key,
-        ]);
-
-        return false;
-    }
-
-    /**
-     * Set value to Redis with failover.
-     *
-     * Tries each connection in order until one succeeds.
-     *
-     * @param string $key
-     * @param string $value
-     * @param int $ttl
-     * @return bool
-     */
-    public function set(string $key, string $value, int $ttl): bool
-    {
-        foreach ($this->connections as $index => $connection) {
-            try {
-                $result = $connection->set($key, $value, $ttl);
-
-                if ($result) {
-                    if ($index > 0) {
-                        $this->logger->warning('Failover: Used backup connection for SET', [
-                            'key' => $key,
-                            'connection_index' => $index,
-                        ]);
-                    }
-                    return true;
-                }
-            } catch (\Throwable $e) {
-                $this->logger->warning('Failover: SET failed, trying next connection', [
-                    'key' => $key,
-                    'connection_index' => $index,
-                    'exception' => $e,
-                ]);
-                continue;
-            }
-        }
-
-        $this->logger->error('Failover: All connections failed for SET', [
-            'key' => $key,
-        ]);
-
-        return false;
-    }
-
-    /**
-     * Delete key from Redis with failover.
-     *
-     * @param string $key
-     * @return bool
-     */
-    public function delete(string $key): bool
-    {
-        foreach ($this->connections as $index => $connection) {
-            try {
-                $result = $connection->delete($key);
-
-                if ($result) {
-                    if ($index > 0) {
-                        $this->logger->warning('Failover: Used backup connection for DELETE', [
-                            'key' => $key,
-                            'connection_index' => $index,
-                        ]);
-                    }
-                    return true;
-                }
-            } catch (\Throwable $e) {
-                $this->logger->warning('Failover: DELETE failed, trying next connection', [
-                    'key' => $key,
-                    'connection_index' => $index,
-                    'exception' => $e,
-                ]);
-                continue;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Check if key exists in Redis with failover.
-     *
-     * @param string $key
-     * @return bool
-     */
-    public function exists(string $key): bool
-    {
         foreach ($this->connections as $connection) {
-            try {
-                if ($connection->exists($key)) {
-                    return true;
-                }
-            } catch (\Throwable $e) {
-                continue;
+            $result = $connection->get($key);
+            if ($result !== false) {
+                return $result;  // 最初に成功した結果を返す
             }
         }
-
         return false;
     }
 
-    /**
-     * Set expiration for key with failover.
-     *
-     * @param string $key
-     * @param int $ttl
-     * @return bool
-     */
-    public function expire(string $key, int $ttl): bool
-    {
-        foreach ($this->connections as $connection) {
-            try {
-                if ($connection->expire($key, $ttl)) {
-                    return true;
-                }
-            } catch (\Throwable $e) {
-                continue;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Get keys matching pattern with failover.
-     *
-     * Returns keys from the first connection that responds successfully.
-     *
-     * @param string $pattern
-     * @return array<string>
-     */
-    public function keys(string $pattern): array
-    {
-        foreach ($this->connections as $connection) {
-            try {
-                $keys = $connection->keys($pattern);
-                if (!empty($keys)) {
-                    return $keys;
-                }
-            } catch (\Throwable $e) {
-                continue;
-            }
-        }
-
-        return [];
-    }
+    // set, delete等も同様のロジック
 }
 ```
 
-## MultiWriteRedisConnection 実装例
+**動作フロー:**
+```
+get(key):
+  Redis A → 失敗 → Redis B → 成功 → 返却
+```
+
+---
+
+## 4. MultiWrite実装 (概念)
 
 ```php
-<?php
-
-declare(strict_types=1);
-
 namespace Uzulla\EnhancedRedisSessionHandler\Composite;
 
 /**
- * Multi-write Redis connection that writes to all connections.
- *
- * Write operations are performed on all connections (primary and replicas).
- * Read operations are performed on the first connection (primary) only.
- *
- * This is useful for replication scenarios where you want to write
- * to multiple Redis instances simultaneously.
+ * 複数Redisへの同時書き込み
+ * 読み取りはPrimaryのみ
  */
 class MultiWriteRedisConnection extends CompositeRedisConnection
 {
     private bool $requireAllWrites;
 
-    /**
-     * @param array<RedisConnectionInterface> $connections Array of Redis connections
-     * @param bool $requireAllWrites If true, all writes must succeed; if false, partial success is OK
-     * @param LoggerInterface|null $logger Optional logger instance
-     */
-    public function __construct(
-        array $connections,
-        bool $requireAllWrites = true,
-        ?LoggerInterface $logger = null
-    ) {
-        parent::__construct($connections, $logger);
-        $this->requireAllWrites = $requireAllWrites;
-    }
-
-    /**
-     * Get value from primary Redis only.
-     *
-     * @param string $key
-     * @return string|false
-     */
     public function get(string $key)
     {
-        // Read from primary (first connection) only
-        try {
-            return $this->connections[0]->get($key);
-        } catch (\Throwable $e) {
-            $this->logger->error('MultiWrite: Primary GET failed', [
-                'key' => $key,
-                'exception' => $e,
-            ]);
-            return false;
-        }
+        // Primaryからのみ読み取り
+        return $this->connections[0]->get($key);
     }
 
-    /**
-     * Set value to all Redis instances.
-     *
-     * @param string $key
-     * @param string $value
-     * @param int $ttl
-     * @return bool
-     */
     public function set(string $key, string $value, int $ttl): bool
     {
         $results = [];
-        $errors = [];
-
-        foreach ($this->connections as $index => $connection) {
-            try {
-                $result = $connection->set($key, $value, $ttl);
-                $results[] = $result;
-
-                if (!$result) {
-                    $errors[] = $index;
-                }
-            } catch (\Throwable $e) {
-                $this->logger->error('MultiWrite: SET failed on connection', [
-                    'key' => $key,
-                    'connection_index' => $index,
-                    'exception' => $e,
-                ]);
-                $results[] = false;
-                $errors[] = $index;
-            }
-        }
-
-        if (!empty($errors)) {
-            $this->logger->warning('MultiWrite: SET failed on some connections', [
-                'key' => $key,
-                'failed_connections' => $errors,
-            ]);
-        }
-
-        if ($this->requireAllWrites) {
-            // All writes must succeed
-            return !in_array(false, $results, true);
-        } else {
-            // At least one write must succeed
-            return in_array(true, $results, true);
-        }
-    }
-
-    /**
-     * Delete key from all Redis instances.
-     *
-     * @param string $key
-     * @return bool
-     */
-    public function delete(string $key): bool
-    {
-        $results = [];
-
         foreach ($this->connections as $connection) {
-            try {
-                $results[] = $connection->delete($key);
-            } catch (\Throwable $e) {
-                $results[] = false;
-            }
+            $results[] = $connection->set($key, $value, $ttl);
         }
 
+        // requireAllWrites設定に応じて判定
         if ($this->requireAllWrites) {
-            return !in_array(false, $results, true);
+            return !in_array(false, $results, true);  // 全て成功
         } else {
-            return in_array(true, $results, true);
+            return in_array(true, $results, true);   // 1つでも成功
         }
-    }
-
-    /**
-     * Check if key exists in primary Redis.
-     *
-     * @param string $key
-     * @return bool
-     */
-    public function exists(string $key): bool
-    {
-        try {
-            return $this->connections[0]->exists($key);
-        } catch (\Throwable $e) {
-            return false;
-        }
-    }
-
-    /**
-     * Set expiration for key in all Redis instances.
-     *
-     * @param string $key
-     * @param int $ttl
-     * @return bool
-     */
-    public function expire(string $key, int $ttl): bool
-    {
-        $results = [];
-
-        foreach ($this->connections as $connection) {
-            try {
-                $results[] = $connection->expire($key, $ttl);
-            } catch (\Throwable $e) {
-                $results[] = false;
-            }
-        }
-
-        if ($this->requireAllWrites) {
-            return !in_array(false, $results, true);
-        } else {
-            return in_array(true, $results, true);
-        }
-    }
-
-    /**
-     * Get keys matching pattern from all Redis instances and merge.
-     *
-     * @param string $pattern
-     * @return array<string>
-     */
-    public function keys(string $pattern): array
-    {
-        $allKeys = [];
-
-        foreach ($this->connections as $connection) {
-            try {
-                $keys = $connection->keys($pattern);
-                $allKeys = array_merge($allKeys, $keys);
-            } catch (\Throwable $e) {
-                // Log and continue
-            }
-        }
-
-        // Remove duplicates and return
-        return array_unique($allKeys);
     }
 }
 ```
 
-## 使用例
+**動作フロー:**
+```
+get(key):
+  Redis A のみ → 返却
 
-### 例1: フォールバック構成でのReadTimestampHook
+set(key, val):
+  Redis A → 書き込み
+  Redis B → 書き込み
+  Redis C → 書き込み
+  → 全て成功 or 一部成功で判定
+```
+
+---
+
+## 5. 使用例
+
+### 5-1. 基本的なFailover構成
 
 ```php
-<?php
-
-use Psr\Log\NullLogger;
-use Redis;
 use Uzulla\EnhancedRedisSessionHandler\Composite\FailoverRedisConnection;
-use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
-use Uzulla\EnhancedRedisSessionHandler\Hook\ReadTimestampHook;
-use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 
 // Primary Redis
-$primaryRedis = new Redis();
-$primaryConfig = new RedisConnectionConfig(host: '192.168.1.1', port: 6379);
-$primaryConnection = new RedisConnection($primaryRedis, $primaryConfig, new NullLogger());
-
-// Fallback Redis
-$fallbackRedis = new Redis();
-$fallbackConfig = new RedisConnectionConfig(host: '192.168.1.2', port: 6379);
-$fallbackConnection = new RedisConnection($fallbackRedis, $fallbackConfig, new NullLogger());
-
-// Create failover composite
-$failoverConnection = new FailoverRedisConnection(
-    [$primaryConnection, $fallbackConnection],
-    new NullLogger()
-);
-
-// Use failover connection in ReadTimestampHook
-$hook = new ReadTimestampHook($failoverConnection, new NullLogger());
-
-// Now, if primary fails, timestamp will be written to fallback Redis!
-```
-
-### 例2: ダブルライト構成でのDoubleWriteHook
-
-```php
-<?php
-
-use Psr\Log\NullLogger;
-use Redis;
-use Uzulla\EnhancedRedisSessionHandler\Composite\MultiWriteRedisConnection;
-use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
-use Uzulla\EnhancedRedisSessionHandler\Hook\DoubleWriteHook;
-use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
-
-// Primary Redis
-$primaryRedis = new Redis();
-$primaryConfig = new RedisConnectionConfig(host: '192.168.1.1', port: 6379);
-$primaryConnection = new RedisConnection($primaryRedis, $primaryConfig, new NullLogger());
-
-// Secondary Redis 1
-$secondary1Redis = new Redis();
-$secondary1Config = new RedisConnectionConfig(host: '192.168.1.2', port: 6379);
-$secondary1Connection = new RedisConnection($secondary1Redis, $secondary1Config, new NullLogger());
-
-// Secondary Redis 2
-$secondary2Redis = new Redis();
-$secondary2Config = new RedisConnectionConfig(host: '192.168.1.3', port: 6379);
-$secondary2Connection = new RedisConnection($secondary2Redis, $secondary2Config, new NullLogger());
-
-// Create multi-write composite for all three Redis instances
-$multiWriteConnection = new MultiWriteRedisConnection(
-    [$primaryConnection, $secondary1Connection, $secondary2Connection],
-    requireAllWrites: false,  // Allow partial success
-    logger: new NullLogger()
-);
-
-// Now DoubleWriteHook (if used for additional logic) can benefit from multi-write
-// Or, simply use multiWriteConnection directly in RedisSessionHandler
-$handler = new RedisSessionHandler($multiWriteConnection, $serializer, $options);
-
-// All session data AND hook data (like timestamps) will be written to all 3 Redis!
-```
-
-### 例3: Composite同士のネスト
-
-```php
-<?php
-
-// You can even nest composites!
-
-// DC1: Primary + Fallback
-$dc1Failover = new FailoverRedisConnection([$dc1Primary, $dc1Fallback]);
-
-// DC2: Primary + Fallback
-$dc2Failover = new FailoverRedisConnection([$dc2Primary, $dc2Fallback]);
-
-// Multi-datacenter replication
-$multiDC = new MultiWriteRedisConnection(
-    [$dc1Failover, $dc2Failover],
-    requireAllWrites: false
-);
-
-// Now you have:
-// - Writes go to both DC1 and DC2
-// - Within each DC, if primary fails, fallback is used
-// - Reads come from DC1 primary (or fallback if primary is down)
-```
-
-## 移行ガイド
-
-### Before (現状)
-
-```php
 $primary = new RedisConnection($redis1, $config1, $logger);
 
-$handler = new RedisSessionHandler($primary, $serializer);
-$handler->addReadHook(new FallbackReadHook([$fallback1, $fallback2], $logger));
-$handler->addReadHook(new ReadTimestampHook($primary, $logger));  // ← Problem!
+// Fallback Redis
+$fallback = new RedisConnection($redis2, $config2, $logger);
+
+// Failover Composite作成
+$failover = new FailoverRedisConnection([$primary, $fallback], $logger);
+
+// セッションハンドラに渡す
+$handler = new RedisSessionHandler($failover, $serializer, $options);
+
+// Hookにも同じCompositeを渡す
+$handler->addReadHook(new ReadTimestampHook($failover, $logger));
+
+// これで、セッションデータもタイムスタンプも同じフォールバック戦略を使用！
 ```
 
-**問題点:**
-- `FallbackReadHook`はセッションデータのフォールバックを提供
-- しかし、`ReadTimestampHook`は常に`$primary`にしか書き込めない
-- `$primary`がダウンすると、タイムスタンプが記録されない
-
-### After (Composite使用)
+### 5-2. MultiWrite構成
 
 ```php
-$failover = new FailoverRedisConnection([$primary, $fallback1, $fallback2], $logger);
+use Uzulla\EnhancedRedisSessionHandler\Composite\MultiWriteRedisConnection;
 
+// 3台のRedis
+$conn1 = new RedisConnection($redis1, $config1, $logger);
+$conn2 = new RedisConnection($redis2, $config2, $logger);
+$conn3 = new RedisConnection($redis3, $config3, $logger);
+
+// MultiWrite Composite作成
+$multiWrite = new MultiWriteRedisConnection(
+    [$conn1, $conn2, $conn3],
+    requireAllWrites: false,  // 1台でも成功すればOK
+    logger: $logger
+);
+
+// セッションハンドラに渡す
+$handler = new RedisSessionHandler($multiWrite, $serializer, $options);
+
+// Hookにも同じCompositeを渡す
+$handler->addWriteHook(new DoubleWriteHook($secondaryConn, 1440, false, $logger));
+
+// これで、全てのデータが3台のRedisに書き込まれる！
+```
+
+### 5-3. Compositeのネスト (高度な構成)
+
+```php
+// DC1: Primary + Fallback
+$dc1Primary = new RedisConnection($redis1a, $config1a, $logger);
+$dc1Fallback = new RedisConnection($redis1b, $config1b, $logger);
+$dc1 = new FailoverRedisConnection([$dc1Primary, $dc1Fallback], $logger);
+
+// DC2: Primary + Fallback
+$dc2Primary = new RedisConnection($redis2a, $config2a, $logger);
+$dc2Fallback = new RedisConnection($redis2b, $config2b, $logger);
+$dc2 = new FailoverRedisConnection([$dc2Primary, $dc2Fallback], $logger);
+
+// Multi-DC構成
+$multiDC = new MultiWriteRedisConnection(
+    [$dc1, $dc2],
+    requireAllWrites: false,
+    logger: $logger
+);
+
+// これで:
+// - 両DCに書き込み
+// - 各DC内ではフォールバック
+// - 読み取りはDC1優先
+```
+
+---
+
+## 6. 移行パターン
+
+### パターン1: 既存コードをそのまま使う
+
+```php
+// 変更前
+$primary = new RedisConnection($redis1, $config1, $logger);
+$handler = new RedisSessionHandler($primary, $serializer);
+
+// 変更後 (Compositeを使わない場合)
+$primary = new RedisConnection($redis1, $config1, $logger);
+$handler = new RedisSessionHandler($primary, $serializer);
+// ↑ 既存コードはそのまま動作（RedisConnectionもRedisConnectionInterfaceを実装）
+```
+
+### パターン2: Failoverを追加
+
+```php
+// 変更前
+$primary = new RedisConnection($redis1, $config1, $logger);
+$handler = new RedisSessionHandler($primary, $serializer);
+$handler->addReadHook(new FallbackReadHook([$fallback], $logger));  // Hookでフォールバック
+$handler->addReadHook(new ReadTimestampHook($primary, $logger));    // ← primaryにしか書けない
+
+// 変更後
+$failover = new FailoverRedisConnection([$primary, $fallback], $logger);
 $handler = new RedisSessionHandler($failover, $serializer);
 // FallbackReadHook不要（Composite層で対応）
-$handler->addReadHook(new ReadTimestampHook($failover, $logger));  // ← Solution!
+$handler->addReadHook(new ReadTimestampHook($failover, $logger));  // ← フォールバック対応！
 ```
 
-**改善点:**
-- セッションデータもタイムスタンプも同じフォールバック戦略を使用
-- `FallbackReadHook`が不要（Composite層で統一的に処理）
-- Hookの実装コードは一切変更不要
+---
 
-## テスト例
+## 7. テストの書き方
+
+### ユニットテスト (モック使用)
 
 ```php
-<?php
-
-use PHPUnit\Framework\TestCase;
-use Uzulla\EnhancedRedisSessionHandler\Composite\FailoverRedisConnection;
-use Uzulla\EnhancedRedisSessionHandler\RedisConnectionInterface;
-
 class FailoverRedisConnectionTest extends TestCase
 {
     public function testFailoverOnPrimaryFailure(): void
     {
-        // Mock primary connection that fails
         $primary = $this->createMock(RedisConnectionInterface::class);
-        $primary->expects($this->once())
-            ->method('get')
-            ->with('test_key')
-            ->willReturn(false);  // Simulate failure
+        $primary->method('get')->willReturn(false);  // Primary失敗
 
-        // Mock fallback connection that succeeds
         $fallback = $this->createMock(RedisConnectionInterface::class);
-        $fallback->expects($this->once())
-            ->method('get')
-            ->with('test_key')
-            ->willReturn('fallback_data');
+        $fallback->method('get')->willReturn('data');  // Fallback成功
 
-        // Create failover composite
         $composite = new FailoverRedisConnection([$primary, $fallback]);
 
-        // Test
-        $result = $composite->get('test_key');
-
-        // Assert fallback data was returned
-        $this->assertSame('fallback_data', $result);
-    }
-
-    public function testSetWithFailover(): void
-    {
-        // Mock primary connection that throws exception
-        $primary = $this->createMock(RedisConnectionInterface::class);
-        $primary->expects($this->once())
-            ->method('set')
-            ->willThrowException(new \RuntimeException('Connection lost'));
-
-        // Mock fallback connection that succeeds
-        $fallback = $this->createMock(RedisConnectionInterface::class);
-        $fallback->expects($this->once())
-            ->method('set')
-            ->with('test_key', 'test_value', 100)
-            ->willReturn(true);
-
-        // Create failover composite
-        $composite = new FailoverRedisConnection([$primary, $fallback]);
-
-        // Test
-        $result = $composite->set('test_key', 'test_value', 100);
-
-        // Assert fallback succeeded
-        $this->assertTrue($result);
+        $this->assertSame('data', $composite->get('key'));
     }
 }
 ```
 
-## パフォーマンスベンチマーク例
+### 統合テスト (実Redis使用)
 
 ```php
-<?php
+class FailoverRedisConnectionIntegrationTest extends TestCase
+{
+    public function testRealRedisFailover(): void
+    {
+        $redis1 = new Redis();
+        $redis1->connect('localhost', 6379);
 
-// Benchmark: Single Redis vs MultiWrite vs Failover
+        $redis2 = new Redis();
+        $redis2->connect('localhost', 6380);
 
-$iterations = 1000;
+        $conn1 = new RedisConnection($redis1, $config1, new NullLogger());
+        $conn2 = new RedisConnection($redis2, $config2, new NullLogger());
 
-// Single Redis
-$start = microtime(true);
-for ($i = 0; $i < $iterations; $i++) {
-    $singleConnection->set("key_$i", "value_$i", 100);
+        $failover = new FailoverRedisConnection([$conn1, $conn2]);
+
+        // データ書き込み
+        $this->assertTrue($failover->set('test', 'value', 100));
+
+        // 両方から読める
+        $this->assertSame('value', $failover->get('test'));
+    }
 }
-$singleTime = microtime(true) - $start;
-
-// MultiWrite (2 Redis)
-$start = microtime(true);
-for ($i = 0; $i < $iterations; $i++) {
-    $multiWrite->set("key_$i", "value_$i", 100);
-}
-$multiWriteTime = microtime(true) - $start;
-
-// Failover (primary healthy)
-$start = microtime(true);
-for ($i = 0; $i < $iterations; $i++) {
-    $failover->set("key_$i", "value_$i", 100);
-}
-$failoverTime = microtime(true) - $start;
-
-echo "Single:     {$singleTime}s\n";
-echo "MultiWrite: {$multiWriteTime}s (overhead: " . ($multiWriteTime / $singleTime) . "x)\n";
-echo "Failover:   {$failoverTime}s (overhead: " . ($failoverTime / $singleTime) . "x)\n";
-
-// Expected output:
-// Single:     0.5s
-// MultiWrite: 1.0s (overhead: 2x)  ← 2台への書き込みなので約2倍
-// Failover:   0.5s (overhead: 1x)  ← Primary健全時はほぼ同じ
 ```
 
-## まとめ
+---
 
-この設計により：
+## 8. よくある質問
 
-1. **既存コードとの互換性**: `RedisConnectionInterface`を実装するため、Hookやハンドラのコード変更不要
-2. **透過的な複数Redis対応**: Composite層で複数Redisを管理、アプリケーション層は意識不要
-3. **柔軟な構成**: Failover、MultiWrite、カスタム戦略など、要件に応じて選択可能
-4. **段階的導入**: 既存コードはそのまま、必要な箇所だけCompositeを使用
+### Q1: 既存のFallbackReadHookはどうなる？
 
-これにより、Issue #29で指摘された「Hook内部のRedis操作が他のHookの恩恵を受けない」問題が解決されます。
+**A:** 後方互換性のため残します。ただし、Composite使用時は不要になります。
+
+```
+推奨: Composite層でフォールバック管理
+代替: 既存のFallbackReadHookも引き続き使用可能
+```
+
+### Q2: パフォーマンスへの影響は？
+
+**A:**
+- **Failover**: Primary正常時はオーバーヘッドほぼなし
+- **MultiWrite**: 台数分のレイテンシ増加（直列実行のため）
+
+```
+単一Redis:     1ms
+2台MultiWrite: 2ms (2倍)
+3台MultiWrite: 3ms (3倍)
+```
+
+### Q3: 循環依存は発生しない？
+
+**A:** 発生しません。Composite自体はHookを意識せず、単にRedis操作を委譲するだけです。
+
+```
+✗ HookAware案: Hook → Composite → Hook → ... (循環)
+✓ Composite案: Hook → Composite → Redis (循環なし)
+```
+
+### Q4: カスタムCompositeは作れる？
+
+**A:** はい、CompositeRedisConnectionを継承してカスタム実装が可能です。
+
+```php
+class CustomRedisConnection extends CompositeRedisConnection
+{
+    // 独自のロジックを実装
+    public function get(string $key) { ... }
+    public function set(string $key, string $value, int $ttl): bool { ... }
+}
+```
+
+---
+
+## 9. まとめ
+
+### 最小限の変更で実現
+
+```
+必要な変更:
+  1. RedisConnectionInterface の追加
+  2. RedisConnection implements RedisConnectionInterface
+  3. CompositeRedisConnection 実装
+  4. 具象Composite (Failover, MultiWrite) 実装
+
+既存コードへの影響:
+  - Hookのコード変更: 不要
+  - RedisSessionHandlerの変更: 不要
+  - 既存のRedisConnection使用箇所: そのまま動作
+```
+
+### 期待される効果
+
+```
+Before:
+  セッションデータ    → フォールバック ✓
+  タイムスタンプ      → フォールバック ✗
+  カスタムHookデータ  → フォールバック ✗
+
+After:
+  セッションデータ    → フォールバック ✓
+  タイムスタンプ      → フォールバック ✓
+  カスタムHookデータ  → フォールバック ✓
+```
+
+### 次のステップ
+
+1. `issue-29-redis-wrapper-design.md` で設計思想を理解
+2. このドキュメントでコード構造を把握
+3. PoC実装で動作確認
+4. 段階的に本実装へ
+
+---
+
+**関連ドキュメント:**
+- `doc/issue-29-redis-wrapper-design.md` - 詳細設計と比較分析
+- `doc/architecture.md` - プロジェクト全体のアーキテクチャ
+- `doc/specification.md` - 機能仕様書

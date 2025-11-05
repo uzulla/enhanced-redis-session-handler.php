@@ -1,424 +1,400 @@
 # Issue #29: RedisConnection Wrapper設計案
 
-## 問題の概要
+## 問題の概要（視覚的理解）
 
-### 現状の問題
-
-現在のアーキテクチャでは、Hook内部でRedis操作を行う場合、その操作は他のHookの影響を受けません。
-
-**具体例:**
-
-```php
-// ReadTimestampHook.php (71行目)
-$this->connection->set($timestampKey, $timestamp, $this->timestampTtl);
-
-// DoubleWriteHook.php (80行目)
-$secondarySuccess = $this->secondaryConnection->set($sessionId, $serializedData, $this->ttl);
-```
-
-これらのHook内部のRedis操作は、`FallbackReadHook`などの他のHookのロジックを経由しません。
-
-### 問題のシナリオ
-
-**シナリオ1: FallbackReadHookとReadTimestampHookの組み合わせ**
+### 現状の問題を図で理解する
 
 ```
+現在のアーキテクチャ:
+
+  ┌─────────────────────────────────────┐
+  │   RedisSessionHandler               │
+  │                                     │
+  │   ┌───────────────────────┐         │
+  │   │ Session Read/Write    │         │
+  │   │   ↓                   │         │
+  │   │ Hook Pipeline         │         │
+  │   │   ↓                   │         │
+  │   │ Redis A (Primary)     │  ✓ OK  │
+  │   └───────────────────────┘         │
+  │                                     │
+  │   ┌───────────────────────┐         │
+  │   │ ReadTimestampHook     │         │
+  │   │   ↓                   │         │
+  │   │ Redis A (Primary)     │  ✗ NG  │ ← Hook内部の操作は
+  │   │     直接アクセス       │         │    他のHookを経由しない！
+  │   └───────────────────────┘         │
+  └─────────────────────────────────────┘
+```
+
+### 問題シナリオ: プライマリRedisダウン時
+
+```
+┌──────────────────────────────────────────────────┐
+│ シナリオ: Redis Aがダウン                        │
+└──────────────────────────────────────────────────┘
+
 構成:
-- プライマリRedis: 192.168.1.1
-- フォールバックRedis: 192.168.1.2
-- 使用Hook: FallbackReadHook, ReadTimestampHook
+  [Redis A] ✗ ダウン
+  [Redis B] ✓ 正常 (フォールバック用)
 
 動作:
-1. プライマリRedisがダウン
-2. セッション読み込み → FallbackReadHookがフォールバックRedisから正常に読み込み ✓
-3. タイムスタンプ記録 → ReadTimestampHookは常にプライマリに書き込み → 失敗 ✗
+  1. セッション読み込み:
+     RedisSessionHandler → FallbackReadHook
+     → Redis A (失敗) → Redis B (成功) ✓
 
-期待動作:
-- タイムスタンプもフォールバックRedisに書き込まれるべき
+  2. タイムスタンプ記録:
+     ReadTimestampHook → Redis A (失敗) ✗
+
+     ┌─────────────────────────────────┐
+     │ 問題: タイムスタンプが          │
+     │ フォールバックされない！        │
+     └─────────────────────────────────┘
 ```
 
-**シナリオ2: 複数Redisへのダブルライト**
+### 根本原因の視覚化
 
 ```
-構成:
-- プライマリRedis: A
-- セカンダリRedis: B, C (ダブルライト用)
-- 使用Hook: DoubleWriteHook (B向け)
+     セッションデータの流れ        vs    Hook内部のRedis操作
 
-問題:
-- セッションデータはA + Bに書き込まれる
-- しかし、ReadTimestampHookのタイムスタンプはAにのみ書き込まれる
-- Bにフェイルオーバーした場合、タイムスタンプ情報が欠落
+┌─────────────────────┐         ┌─────────────────────┐
+│  RedisSessionHandler│         │  ReadTimestampHook  │
+└──────────┬──────────┘         └──────────┬──────────┘
+           │                               │
+           ↓                               ↓
+    ┌─────────────┐                  ┌─────────────┐
+    │ Hook Pipeline│                  │  直接Redis  │
+    └──────┬──────┘                  │   アクセス  │
+           │                          └──────┬──────┘
+           ↓                                 │
+    ┌─────────────┐                         │
+    │ Fallback?   │                         ↓
+    │ MultiWrite? │              ┌──────────────────┐
+    └──────┬──────┘              │ Redis A のみ     │
+           │                     │                  │
+           ↓                     │ Hookの恩恵を     │
+    ┌─────────────┐              │ 受けられない！   │
+    │  Redis群    │              └──────────────────┘
+    └─────────────┘
+
+    ✓ フォールバック OK            ✗ フォールバック NG
+    ✓ ダブルライト OK              ✗ ダブルライト NG
 ```
 
-### 根本原因
+## 設計案の比較
 
-- **RedisSessionHandler** は単一の`RedisConnection`を持ち、Hookパイプラインを通して操作する
-- **Hook内部** で直接`RedisConnection`を使用する場合、Hookパイプラインを経由しない
-- 結果として、Hook内のRedis操作は他のHook（フォールバック、ダブルライトなど）の恩恵を受けられない
+### 3つのアプローチ
 
-## 設計案
+```
+┌──────────────────────────────────────────────────────────────┐
+│ Option 1: HookAware      │ Hook内でもHookを実行              │
+│ Option 2: Pool           │ 複数Redisを一元管理               │
+│ Option 3: Composite ✓    │ Redisを透過的にラップ (推奨)     │
+└──────────────────────────────────────────────────────────────┘
+```
+
+---
 
 ### オプション1: HookAwareRedisConnection
 
-**概要:**
-`RedisConnection`をラップして、内部の操作も同じHookパイプラインを通すようにする。
+```
+┌──────────────────────────────────┐
+│  HookAwareRedisConnection        │
+│  ┌────────────────────────┐      │
+│  │ Hook Pipeline          │      │
+│  │   ↓                    │      │
+│  │ Inner RedisConnection  │      │
+│  │   ↓                    │      │
+│  │ Hook Pipeline (再度)   │ ← 循環！
+│  └────────────────────────┘      │
+└──────────────────────────────────┘
 
-**設計:**
-
-```php
-class HookAwareRedisConnection extends RedisConnection
-{
-    private RedisConnection $innerConnection;
-    /** @var array<ReadHookInterface> */
-    private array $readHooks;
-    /** @var array<WriteHookInterface> */
-    private array $writeHooks;
-
-    public function get(string $key)
-    {
-        // beforeRead hookを実行
-        $result = $this->innerConnection->get($key);
-        // afterRead hookを実行
-        return $result;
-    }
-
-    public function set(string $key, string $value, int $ttl): bool
-    {
-        // beforeWrite hookを実行
-        $result = $this->innerConnection->set($key, $value, $ttl);
-        // afterWrite hookを実行
-        return $result;
-    }
-}
+概念: Redis操作のたびにHookを実行
 ```
 
-**メリット:**
-- Hook内部の操作も自動的にHookパイプラインを通る
-- 既存のHookコードを変更不要
+**評価:**
+- ✗ 循環依存リスク（HookがHookを呼ぶ）
+- ✗ 無限ループの危険性
+- ✗ デバッグが困難
 
-**デメリット:**
-- 循環依存のリスク（HookがHookを呼ぶ）
-- デバッグが困難（Hookの呼び出しが深くネストする）
-- 無限ループの可能性
-
-**評価:** ❌ 推奨しない（循環依存リスクが高い）
+**結論:** ❌ 推奨しない
 
 ---
 
 ### オプション2: RedisConnectionPool
 
-**概要:**
-複数のRedisConnectionを管理するプールを導入し、自動的に適切なRedisへルーティングする。
+```
+┌──────────────────────────────────┐
+│  RedisConnectionPool             │
+│  ┌────────────────────────┐      │
+│  │ Policy: FAILOVER       │      │
+│  │         DOUBLE_WRITE   │      │
+│  └────────┬───────────────┘      │
+│           ↓                      │
+│     ┌─────┴─────┐                │
+│     ↓           ↓                │
+│ [Redis A]   [Redis B]            │
+└──────────────────────────────────┘
 
-**設計:**
-
-```php
-class RedisConnectionPool
-{
-    private RedisConnection $primary;
-    /** @var array<RedisConnection> */
-    private array $secondaries;
-    private PoolPolicy $policy; // FAILOVER, DOUBLE_WRITE, etc.
-
-    public function get(string $key)
-    {
-        if ($this->policy === PoolPolicy::FAILOVER) {
-            try {
-                return $this->primary->get($key);
-            } catch (Throwable $e) {
-                return $this->trySecondaries('get', [$key]);
-            }
-        }
-        // ... other policies
-    }
-
-    public function set(string $key, string $value, int $ttl): bool
-    {
-        if ($this->policy === PoolPolicy::DOUBLE_WRITE) {
-            $results = [];
-            $results[] = $this->primary->set($key, $value, $ttl);
-            foreach ($this->secondaries as $secondary) {
-                $results[] = $secondary->set($key, $value, $ttl);
-            }
-            return !in_array(false, $results, true);
-        }
-        // ... other policies
-    }
-}
+概念: ポリシーベースでRedis操作を振り分け
 ```
 
-**メリット:**
-- 複数Redisの管理を一元化
-- ポリシーベースで動作を切り替え可能
+**評価:**
+- △ 既存のHook（FallbackReadHook等）と機能重複
+- △ アーキテクチャの大幅変更が必要
+- ○ 複数Redis管理は一元化できる
 
-**デメリット:**
-- 既存のHookロジック（FallbackReadHook, DoubleWriteHookなど）と重複
-- Hookの存在意義が薄れる
-- アーキテクチャの大幅な変更が必要
-
-**評価:** △ 可能だが、既存設計と相反する
+**結論:** △ 可能だが、既存設計と相反
 
 ---
 
 ### オプション3: CompositeRedisConnection (推奨)
 
-**概要:**
-複数のRedisConnectionを組み合わせて、単一のRedisConnectionインターフェースとして扱う。
-Decorator/Compositeパターンを使用。
+```
+┌───────────────────────────────────────────────────────────┐
+│  RedisConnectionInterface (共通インターフェース)          │
+└───────────────┬───────────────────────────────────────────┘
+                │
+        ┌───────┴─────────┐
+        ↓                 ↓
+┌───────────────┐   ┌─────────────────────────────┐
+│ RedisConnection│   │ CompositeRedisConnection    │
+│ (既存)        │   │ (新規・複数Redisをラップ)    │
+└───────────────┘   └────────┬────────────────────┘
+                             │
+                    ┌────────┴────────┐
+                    ↓                 ↓
+            ┌───────────────┐  ┌──────────────┐
+            │ Failover版    │  │ MultiWrite版 │
+            └───────────────┘  └──────────────┘
 
-**設計:**
-
-```php
-/**
- * Interface for Redis connection operations.
- * Both RedisConnection and CompositeRedisConnection implement this.
- */
-interface RedisConnectionInterface
-{
-    public function connect(): bool;
-    public function disconnect(): void;
-    public function get(string $key);
-    public function set(string $key, string $value, int $ttl): bool;
-    public function delete(string $key): bool;
-    public function exists(string $key): bool;
-    public function expire(string $key, int $ttl): bool;
-    public function keys(string $pattern): array;
-    public function isConnected(): bool;
-}
-
-/**
- * Existing RedisConnection implements the interface.
- */
-class RedisConnection implements RedisConnectionInterface, LoggerAwareInterface
-{
-    // ... existing implementation
-}
-
-/**
- * Composite that delegates to multiple Redis connections.
- */
-abstract class CompositeRedisConnection implements RedisConnectionInterface
-{
-    /** @var array<RedisConnectionInterface> */
-    protected array $connections;
-
-    /**
-     * @param array<RedisConnectionInterface> $connections
-     */
-    public function __construct(array $connections)
-    {
-        if (count($connections) === 0) {
-            throw new InvalidArgumentException('At least one connection is required');
-        }
-        $this->connections = $connections;
-    }
-
-    // 各操作は具象クラスで実装
-    abstract public function get(string $key);
-    abstract public function set(string $key, string $value, int $ttl): bool;
-    // ... other operations
-}
-
-/**
- * Failover: Primary優先、失敗時に順次フォールバック.
- */
-class FailoverRedisConnection extends CompositeRedisConnection
-{
-    public function get(string $key)
-    {
-        foreach ($this->connections as $connection) {
-            try {
-                $result = $connection->get($key);
-                if ($result !== false) {
-                    return $result;
-                }
-            } catch (Throwable $e) {
-                // Try next connection
-                continue;
-            }
-        }
-        return false;
-    }
-
-    public function set(string $key, string $value, int $ttl): bool
-    {
-        foreach ($this->connections as $connection) {
-            try {
-                return $connection->set($key, $value, $ttl);
-            } catch (Throwable $e) {
-                // Try next connection
-                continue;
-            }
-        }
-        return false;
-    }
-
-    // ... other operations with failover logic
-}
-
-/**
- * MultiWrite: 全てのRedisに書き込み、読み込みはPrimaryから.
- */
-class MultiWriteRedisConnection extends CompositeRedisConnection
-{
-    public function get(string $key)
-    {
-        // Read from primary (first connection)
-        return $this->connections[0]->get($key);
-    }
-
-    public function set(string $key, string $value, int $ttl): bool
-    {
-        $results = [];
-        foreach ($this->connections as $connection) {
-            try {
-                $results[] = $connection->set($key, $value, $ttl);
-            } catch (Throwable $e) {
-                $results[] = false;
-            }
-        }
-        // All writes must succeed
-        return !in_array(false, $results, true);
-    }
-
-    // ... other operations with multi-write logic
-}
+概念: 複数RedisをCompositeパターンで透過的にラップ
 ```
 
-**使用例:**
+#### Failover版の動作イメージ
 
-```php
-// 従来のシングルRedis構成
-$primary = new RedisConnection($redis1, $config1, $logger);
+```
+FailoverRedisConnection
+├─ Redis A (Primary)
+├─ Redis B (Fallback 1)
+└─ Redis C (Fallback 2)
 
-// フォールバック構成
-$failover = new FailoverRedisConnection([
-    new RedisConnection($redis1, $config1, $logger),  // Primary
-    new RedisConnection($redis2, $config2, $logger),  // Fallback
-]);
+get(key) の動作:
+┌────────────────┐
+│ get(key) 呼出  │
+└────────┬───────┘
+         ↓
+    ┌─────────┐
+    │ Redis A │ → 失敗 ✗
+    └─────────┘
+         ↓
+    ┌─────────┐
+    │ Redis B │ → 成功！✓ (返却)
+    └─────────┘
 
-// ダブルライト構成
-$multiWrite = new MultiWriteRedisConnection([
-    new RedisConnection($redis1, $config1, $logger),  // Primary
-    new RedisConnection($redis2, $config2, $logger),  // Secondary
-]);
-
-// Hookに渡す場合
-$hook = new ReadTimestampHook($failover, $logger);
-// → タイムスタンプもフォールバック可能に！
-
-// セッションハンドラに渡す場合
-$handler = new RedisSessionHandler($failover, $serializer, $options);
-// → セッション本体もタイムスタンプも同じフォールバック戦略を使用
+set(key, val) の動作:
+┌────────────────┐
+│ set(key) 呼出  │
+└────────┬───────┘
+         ↓
+    ┌─────────┐
+    │ Redis A │ → 失敗 ✗
+    └─────────┘
+         ↓
+    ┌─────────┐
+    │ Redis B │ → 成功！✓ (終了)
+    └─────────┘
 ```
 
-**メリット:**
+#### MultiWrite版の動作イメージ
 
-1. **既存コードとの互換性**: `RedisConnectionInterface`を実装するため、既存のHookやハンドラをそのまま使用可能
-2. **Hookの変更不要**: `ReadTimestampHook`などのコードを一切変更せずに、複数Redis対応が可能
-3. **柔軟な組み合わせ**: Failover、MultiWrite、カスタム戦略など、用途に応じて選択可能
-4. **循環依存なし**: Composite自体はHookを意識しないため、安全
-5. **テスタビリティ**: 各Compositeを独立してテスト可能
-6. **段階的導入**: 既存コードはそのまま（単一RedisConnection使用）、必要な箇所だけCompositeを使用
+```
+MultiWriteRedisConnection
+├─ Redis A (Primary)
+├─ Redis B (Replica 1)
+└─ Redis C (Replica 2)
 
-**デメリット:**
+get(key) の動作:
+┌────────────────┐
+│ get(key) 呼出  │
+└────────┬───────┘
+         ↓
+    ┌─────────┐
+    │ Redis A │ ← Primaryからのみ読む
+    └─────────┘
 
-1. **新しいインターフェース導入**: `RedisConnectionInterface`の追加が必要
-2. **既存コードの型変更**: `RedisConnection`型を使っている箇所を`RedisConnectionInterface`型に変更
-3. **複雑性の増加**: Composite層が追加されることで、アーキテクチャが若干複雑化
+set(key, val) の動作:
+┌────────────────┐
+│ set(key) 呼出  │
+└────────┬───────┘
+         │
+    ┌────┼─────┐
+    ↓    ↓     ↓
+┌───────┐┌───────┐┌───────┐
+│Redis A││Redis B││Redis C│ ← 全てに書き込み
+└───────┘└───────┘└───────┘
+```
 
-**評価:** ✅ **推奨** （柔軟性と既存コードとの互換性のバランスが最良）
+#### 使用例（概念）
+
+```
+Before (問題あり):
+  ReadTimestampHook
+    → Redis A のみ (フォールバックしない)
+
+After (解決):
+  ReadTimestampHook
+    → FailoverRedisConnection
+       ├─ Redis A (失敗)
+       └─ Redis B (成功) ✓
+```
+
+**評価:**
+
+✅ **既存コードとの互換性**
+- インターフェースを実装するため、Hookのコード変更不要
+- `ReadTimestampHook`などはそのまま使える
+
+✅ **循環依存なし**
+- Composite自体はHookを意識しない
+- 安全な設計
+
+✅ **柔軟性**
+- Failover、MultiWrite、カスタム戦略を自由に選択
+- Composite同士のネストも可能
+
+△ **若干の複雑性増加**
+- 新しいインターフェースと抽象クラスの追加
+- ただし、既存コードへの影響は最小限
+
+**結論:** ✅ **推奨** （最もバランスが良い）
 
 ---
 
 ## 推奨設計の詳細
 
-### アーキテクチャ図
+### 全体アーキテクチャ
 
 ```
-┌─────────────────────────────────────────┐
-│    RedisSessionHandler                  │
-│    (既存コード - 変更最小)              │
-└────────────────┬────────────────────────┘
-                 │ RedisConnectionInterface
-                 ↓
-        ┌────────┴────────┐
-        │                 │
-┌───────┴──────┐  ┌──────┴─────────────┐
-│ RedisConn    │  │ CompositeRedisConn │
-│ (既存)       │  │ (新規・抽象)       │
-└──────────────┘  └──────┬─────────────┘
-                         │
-         ┌───────────────┼───────────────┐
-         │               │               │
-  ┌──────┴──────┐ ┌─────┴──────┐ ┌─────┴────────┐
-  │ Failover    │ │ MultiWrite │ │ Custom...    │
-  │ RedisCon    │ │ RedisCon   │ │ RedisCon     │
-  └─────────────┘ └────────────┘ └──────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  アプリケーション層                                          │
+│  ┌──────────────────────────────────────────────┐           │
+│  │  RedisSessionHandler                         │           │
+│  │  ┌────────────────────────────────┐          │           │
+│  │  │  ReadTimestampHook             │          │           │
+│  │  │  DoubleWriteHook               │          │           │
+│  │  │  その他のHook...               │          │           │
+│  │  └────────────────────────────────┘          │           │
+│  └────────────────┬─────────────────────────────┘           │
+│                   │ RedisConnectionInterface                │
+│                   │ (共通インターフェース)                  │
+└───────────────────┼─────────────────────────────────────────┘
+                    ↓
+┌───────────────────┴─────────────────────────────────────────┐
+│  接続管理層                                                  │
+│  ┌──────────────┐        ┌───────────────────────┐          │
+│  │ RedisConn    │        │ CompositeRedisConn    │          │
+│  │ (単一Redis)  │        │ (複数Redisラップ)     │          │
+│  └──────────────┘        └───────┬───────────────┘          │
+│                                  │                          │
+│                         ┌────────┼────────┐                 │
+│                         ↓        ↓        ↓                 │
+│                  ┌──────────┐┌──────────┐┌──────────┐      │
+│                  │ Failover ││MultiWrite││ Custom.. │      │
+│                  └──────────┘└──────────┘└──────────┘      │
+└───────────────────┬────────────┬───────────┬────────────────┘
+                    ↓            ↓           ↓
+┌───────────────────┴────────────┴───────────┴────────────────┐
+│  Redis/ValKey 実体                                           │
+│  [Redis A]    [Redis B]    [Redis C]    [Redis D]...        │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-### 既存Hookとの統合
+### Before / After の視覚的比較
 
-**Before (現状):**
+#### Before (現状の問題)
 
-```php
-// FallbackReadHookが必要
-$handler = new RedisSessionHandler($primary, $serializer);
-$handler->addReadHook(new FallbackReadHook([$fallback1, $fallback2], $logger));
-$handler->addReadHook(new ReadTimestampHook($primary, $logger));  // ← primaryにしか書けない！
+```
+┌─────────────────────────────────────────────────┐
+│ RedisSessionHandler                             │
+│  ↓                                              │
+│ [Primary Redis]  ← セッションデータ            │
+│                                                 │
+│ ReadTimestampHook                               │
+│  ↓                                              │
+│ [Primary Redis]  ← タイムスタンプ (固定)       │
+│                                                 │
+│ FallbackReadHook (Primaryダウン時のみ)         │
+│  ↓                                              │
+│ [Fallback Redis] ← セッションデータのみ        │
+└─────────────────────────────────────────────────┘
+
+問題: タイムスタンプは常にPrimaryにしか書けない
+      → Primaryダウン時、タイムスタンプ記録失敗
 ```
 
-**After (提案設計):**
+#### After (Composite使用)
 
-```php
-// Composite層でフォールバック管理
-$failover = new FailoverRedisConnection([$primary, $fallback1, $fallback2]);
-
-$handler = new RedisSessionHandler($failover, $serializer);
-// FallbackReadHook不要（Composite層で対応）
-$handler->addReadHook(new ReadTimestampHook($failover, $logger));  // ← フォールバック対応！
 ```
+┌─────────────────────────────────────────────────┐
+│ RedisSessionHandler                             │
+│  ↓                                              │
+│ FailoverRedisConnection                         │
+│  ├─ [Primary Redis]                             │
+│  └─ [Fallback Redis] ← 自動フォールバック       │
+│                                                 │
+│ ReadTimestampHook                               │
+│  ↓                                              │
+│ FailoverRedisConnection (同じ戦略)              │
+│  ├─ [Primary Redis]                             │
+│  └─ [Fallback Redis] ← 自動フォールバック       │
+└─────────────────────────────────────────────────┘
 
-または、**既存のHookをそのまま使う場合:**
-
-```php
-// Hook用に専用のCompositeを用意
-$sessionFailover = new FailoverRedisConnection([$primary, $fallback1, $fallback2]);
-$timestampFailover = new FailoverRedisConnection([$primary, $fallback1, $fallback2]);
-
-$handler = new RedisSessionHandler($sessionFailover, $serializer);
-$handler->addReadHook(new FallbackReadHook([$fallback1, $fallback2], $logger));  // 既存Hook
-$handler->addReadHook(new ReadTimestampHook($timestampFailover, $logger));  // フォールバック対応！
+解決: セッションもタイムスタンプも同じフォールバック戦略
+      → Primaryダウン時、全てFallbackに自動切替
 ```
 
 ### 段階的な移行パス
 
-**Phase 1: インターフェース導入**
-- `RedisConnectionInterface`を定義
-- `RedisConnection`に`implements RedisConnectionInterface`を追加
-- 既存コードの型ヒント変更（`RedisConnection` → `RedisConnectionInterface`）
-- **テストを実行して既存機能の動作確認**
+```
+Phase 1: インターフェース導入
+┌──────────────────────────────┐
+│ RedisConnectionInterface     │ ← 新規追加
+│ RedisConnection implements   │ ← 既存クラスに追加
+└──────────────────────────────┘
+         ↓
+   ✓ 既存機能テスト
 
-**Phase 2: Composite基底クラス実装**
-- `CompositeRedisConnection`抽象クラスを実装
-- 基本的なヘルパーメソッド（connect all, disconnect allなど）を実装
-- **テストケース作成**
+Phase 2: Composite基底クラス
+┌──────────────────────────────┐
+│ CompositeRedisConnection     │ ← 抽象クラス追加
+│ (connect/disconnect等の共通) │
+└──────────────────────────────┘
+         ↓
+   ✓ ユニットテスト作成
 
-**Phase 3: 具象Composite実装**
-- `FailoverRedisConnection`実装
-- `MultiWriteRedisConnection`実装
-- **統合テストで動作確認**
+Phase 3: 具象Composite実装
+┌──────────────────────────────┐
+│ FailoverRedisConnection      │ ← 具象クラス実装
+│ MultiWriteRedisConnection    │
+└──────────────────────────────┘
+         ↓
+   ✓ 統合テスト・動作確認
 
-**Phase 4: ドキュメントとサンプル**
-- 使用例のドキュメント作成
-- `examples/`配下にサンプルコード追加
-- CLAUDE.mdに設計パターンを追加
+Phase 4: ドキュメント整備
+┌──────────────────────────────┐
+│ 使用例・サンプルコード       │
+│ CLAUDE.mdに設計パターン追記  │
+└──────────────────────────────┘
+         ↓
+   ✓ レビュー・フィードバック
 
-**Phase 5: 既存Hookの非推奨化（オプション）**
-- `FallbackReadHook`: Composite層で代替可能
-- `DoubleWriteHook`: Composite層で代替可能
-- ただし、後方互換性のため残しておくことも検討
+Phase 5: 既存Hookの扱い（オプション）
+┌──────────────────────────────┐
+│ FallbackReadHook → 非推奨？  │ ← Compositeで代替可能
+│ DoubleWriteHook  → 非推奨？  │    (後方互換性は維持)
+└──────────────────────────────┘
+```
 
 ## 代替案の比較
 
@@ -436,304 +412,326 @@ $handler->addReadHook(new ReadTimestampHook($timestampFailover, $logger));  // �
 
 ### 1. connect/disconnect操作
 
-Compositeの場合、複数のRedisConnectionを管理するため：
+```
+複数Redis接続管理の方針:
 
-```php
-class CompositeRedisConnection implements RedisConnectionInterface
-{
-    public function connect(): bool
-    {
-        $results = [];
-        foreach ($this->connections as $connection) {
-            try {
-                $results[] = $connection->connect();
-            } catch (Throwable $e) {
-                $results[] = false;
-            }
-        }
-        // 少なくとも1つ成功すればOK
-        return in_array(true, $results, true);
-    }
+connect():
+  ┌────┐  ┌────┐  ┌────┐
+  │ A  │  │ B  │  │ C  │  ← 全てに接続試行
+  └─┬──┘  └─┬──┘  └─┬──┘
+    ✓       ✗       ✓
+    └───────┴───────┘
+    少なくとも1つ成功 → true
 
-    public function disconnect(): void
-    {
-        foreach ($this->connections as $connection) {
-            try {
-                $connection->disconnect();
-            } catch (Throwable $e) {
-                // Log and continue
-            }
-        }
-    }
+disconnect():
+  全ての接続をクローズ（エラーは無視）
 
-    public function isConnected(): bool
-    {
-        // 少なくとも1つが接続中ならtrue
-        foreach ($this->connections as $connection) {
-            if ($connection->isConnected()) {
-                return true;
-            }
-        }
-        return false;
-    }
-}
+isConnected():
+  少なくとも1つ接続中 → true
 ```
 
-### 2. keys()操作のマージ
+### 2. keys()操作の戦略
 
-複数Redisから`keys()`を呼ぶ場合、結果のマージが必要：
+```
+Failover版:
+  Primary優先、失敗時はフォールバック
+  [Redis A].keys() → 失敗
+  [Redis B].keys() → 成功 (この結果を返す)
 
-```php
-class FailoverRedisConnection extends CompositeRedisConnection
-{
-    public function keys(string $pattern): array
-    {
-        // Primary優先、失敗時にフォールバック
-        foreach ($this->connections as $connection) {
-            try {
-                return $connection->keys($pattern);
-            } catch (Throwable $e) {
-                continue;
-            }
-        }
-        return [];
-    }
-}
-
-class MultiWriteRedisConnection extends CompositeRedisConnection
-{
-    public function keys(string $pattern): array
-    {
-        // 全Redisから取得してマージ（重複削除）
-        $allKeys = [];
-        foreach ($this->connections as $connection) {
-            try {
-                $keys = $connection->keys($pattern);
-                $allKeys = array_merge($allKeys, $keys);
-            } catch (Throwable $e) {
-                // Log and continue
-            }
-        }
-        return array_unique($allKeys);
-    }
-}
+MultiWrite版:
+  全Redisから取得してマージ
+  [Redis A].keys() → [key1, key2]
+  [Redis B].keys() → [key2, key3]
+  → マージ: [key1, key2, key3] (重複削除)
 ```
 
-### 3. LoggerAwareInterfaceの扱い
+### 3. ログ出力の設計
 
-```php
-class CompositeRedisConnection implements RedisConnectionInterface, LoggerAwareInterface
-{
-    private ?LoggerInterface $logger = null;
+```
+┌─────────────────────────────────┐
+│ Composite.setLogger(logger)     │ ← Loggerを設定
+└────────┬────────────────────────┘
+         │ 伝播
+    ┌────┼────┐
+    ↓    ↓    ↓
+  [A]  [B]  [C]  ← 全子接続にも設定
 
-    public function setLogger(LoggerInterface $logger): void
-    {
-        $this->logger = $logger;
-
-        // 全てのRedisConnectionにもloggerを設定
-        foreach ($this->connections as $connection) {
-            if ($connection instanceof LoggerAwareInterface) {
-                $connection->setLogger($logger);
-            }
-        }
-    }
-}
+ログレベルの使い分け:
+  info:     Primary以外が使われた場合
+  warning:  Fallback成功、一部失敗
+  error:    特定接続の失敗
+  critical: 全接続失敗
 ```
 
-### 4. エラーハンドリング戦略
+### 4. エラーハンドリング方針
 
-```php
-class FailoverRedisConnection extends CompositeRedisConnection
-{
-    private LoggerInterface $logger;
+```
+Failover版:
+  ┌────────┐
+  │ try A  │ → 失敗 (ログ: error)
+  └────────┘
+       ↓
+  ┌────────┐
+  │ try B  │ → 成功 (ログ: warning)
+  └────────┘
+       ↓
+    return OK
 
-    public function set(string $key, string $value, int $ttl): bool
-    {
-        foreach ($this->connections as $index => $connection) {
-            try {
-                $result = $connection->set($key, $value, $ttl);
-
-                if ($result && $index > 0) {
-                    // フォールバック成功時にログ
-                    $this->logger->warning('Used fallback Redis for SET operation', [
-                        'key' => $key,
-                        'fallback_index' => $index,
-                    ]);
-                }
-
-                if ($result) {
-                    return true;
-                }
-            } catch (Throwable $e) {
-                $this->logger->error('Redis SET failed, trying next connection', [
-                    'key' => $key,
-                    'connection_index' => $index,
-                    'exception' => $e,
-                ]);
-                continue;
-            }
-        }
-
-        // All failed
-        $this->logger->critical('All Redis connections failed for SET operation', [
-            'key' => $key,
-        ]);
-
-        return false;
-    }
-}
+MultiWrite版:
+  ┌────────┐
+  │ try A  │ → 成功
+  └────────┘
+  ┌────────┐
+  │ try B  │ → 失敗 (ログ: error)
+  └────────┘
+  ┌────────┐
+  │ try C  │ → 成功
+  └────────┘
+       ↓
+  requireAllWrites = true  → return false
+  requireAllWrites = false → return true
 ```
 
 ## セキュリティ考慮事項
 
-### セッションIDのマスキング
-
-Composite内でもセッションIDをログ出力する際は必ずマスキング：
-
-```php
-use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
-
-$this->logger->debug('Failover operation', [
-    'session_id' => SessionIdMasker::mask($sessionId),
-    'fallback_index' => $index,
-]);
 ```
+┌─────────────────────────────────────────────┐
+│ セッションIDのマスキング (必須)             │
+├─────────────────────────────────────────────┤
+│                                             │
+│ ✗ NG: session_id => 'abc123xyz789'         │
+│ ✓ OK: session_id => '...x789'              │
+│       (末尾4文字のみ表示)                   │
+│                                             │
+│ 理由: ログ漏洩時のセッションハイジャック    │
+│       リスクを最小化                        │
+└─────────────────────────────────────────────┘
 
-### 接続情報のログ出力
-
-複数Redis構成の場合、どのRedisへ接続したかの情報は有用だが、パスワードなどは出力しない：
-
-```php
-$this->logger->info('Connected to Redis', [
-    'host' => $config->getHost(),
-    'port' => $config->getPort(),
-    'database' => $config->getDatabase(),
-    // password は出力しない
-]);
+┌─────────────────────────────────────────────┐
+│ 接続情報のログ出力 (注意)                   │
+├─────────────────────────────────────────────┤
+│                                             │
+│ ✓ OK: host, port, database                 │
+│ ✗ NG: password, auth情報                   │
+│                                             │
+│ 複数Redis構成では、どのRedisを使用したか   │
+│ の情報は有用だが、認証情報は出力しない      │
+└─────────────────────────────────────────────┘
 ```
 
 ## テスト戦略
 
-### ユニットテスト
-
-各Compositeクラスを独立してテスト：
-
-```php
-class FailoverRedisConnectionTest extends TestCase
-{
-    public function testFailoverOnPrimaryFailure(): void
-    {
-        $primary = $this->createMock(RedisConnectionInterface::class);
-        $fallback = $this->createMock(RedisConnectionInterface::class);
-
-        $primary->expects($this->once())
-            ->method('get')
-            ->willThrowException(new ConnectionException());
-
-        $fallback->expects($this->once())
-            ->method('get')
-            ->willReturn('session_data');
-
-        $composite = new FailoverRedisConnection([$primary, $fallback]);
-        $result = $composite->get('session_id');
-
-        $this->assertSame('session_data', $result);
-    }
-}
 ```
+┌──────────────────────────────────────────────────┐
+│ ユニットテスト: Compositeクラス単体             │
+├──────────────────────────────────────────────────┤
+│                                                  │
+│ テスト対象: FailoverRedisConnection              │
+│ モック使用: RedisConnectionInterface             │
+│                                                  │
+│ テストケース:                                    │
+│  ✓ Primary失敗時にFallbackが使われる            │
+│  ✓ 全接続失敗時にfalseを返す                    │
+│  ✓ Loggerに適切にログ出力される                 │
+│  ✓ 接続・切断が正しく伝播する                   │
+└──────────────────────────────────────────────────┘
 
-### 統合テスト
+┌──────────────────────────────────────────────────┐
+│ 統合テスト: 実際のRedis/ValKeyを使用            │
+├──────────────────────────────────────────────────┤
+│                                                  │
+│ テスト対象: 実際の複数Redis構成                  │
+│ 環境: docker-compose (Redis 2台以上)            │
+│                                                  │
+│ テストケース:                                    │
+│  ✓ MultiWrite: 全Redisに書き込まれる           │
+│  ✓ Failover: Primary停止時にFallbackで動作     │
+│  ✓ セッションハンドラとの統合                   │
+│  ✓ Hook(ReadTimestamp等)との統合                │
+└──────────────────────────────────────────────────┘
 
-実際のRedis/ValKeyを使った統合テスト：
-
-```php
-class CompositeRedisConnectionIntegrationTest extends TestCase
-{
-    public function testMultiWriteToTwoRedisInstances(): void
-    {
-        $redis1 = new Redis();
-        $redis1->connect('localhost', 6379);
-
-        $redis2 = new Redis();
-        $redis2->connect('localhost', 6380);
-
-        $conn1 = new RedisConnection($redis1, $config1, $logger);
-        $conn2 = new RedisConnection($redis2, $config2, $logger);
-
-        $multiWrite = new MultiWriteRedisConnection([$conn1, $conn2]);
-
-        $result = $multiWrite->set('test_key', 'test_value', 100);
-        $this->assertTrue($result);
-
-        // 両方のRedisに書き込まれていることを確認
-        $this->assertSame('test_value', $redis1->get('test_key'));
-        $this->assertSame('test_value', $redis2->get('test_key'));
-    }
-}
+┌──────────────────────────────────────────────────┐
+│ E2Eテスト: 実際のユースケースを検証             │
+├──────────────────────────────────────────────────┤
+│                                                  │
+│ シナリオ1: Primaryダウン時のフォールバック      │
+│  1. セッション作成 (Primary正常)                │
+│  2. Primaryを停止                               │
+│  3. セッション読み込み (Fallbackから成功)       │
+│  4. タイムスタンプも記録される (Fallback)       │
+│                                                  │
+│ シナリオ2: ダブルライト構成での整合性           │
+│  1. セッション作成 (両Redisに書込)             │
+│  2. 一方のRedisから読み込み                     │
+│  3. もう一方のRedisから読み込み                 │
+│  4. 両方で同じデータが取得できる                │
+└──────────────────────────────────────────────────┘
 ```
 
 ## パフォーマンス考慮事項
 
-### MultiWriteのオーバーヘッド
-
-複数Redisへの書き込みは直列実行されるため、レイテンシが増加：
-
 ```
-単一Redis: 1ms
-2台へのMultiWrite: 2ms (2倍)
-3台へのMultiWrite: 3ms (3倍)
+┌──────────────────────────────────────────────────┐
+│ MultiWriteのオーバーヘッド                       │
+├──────────────────────────────────────────────────┤
+│                                                  │
+│ 直列書き込みによるレイテンシ増加:                │
+│                                                  │
+│  単一Redis:     1ms  ████                        │
+│  2台MultiWrite: 2ms  ████████  (2倍)            │
+│  3台MultiWrite: 3ms  ████████████  (3倍)        │
+│                                                  │
+│ 対策案 (将来的な拡張):                           │
+│  • 並列書き込み (非同期・マルチプロセス)         │
+│  • Write-behindキャッシュパターン                │
+└──────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────┐
+│ Failoverのレイテンシ                             │
+├──────────────────────────────────────────────────┤
+│                                                  │
+│ Primary正常時:                                   │
+│  ┌─────┐                                         │
+│  │  A  │ → 1ms  ████                             │
+│  └─────┘                                         │
+│                                                  │
+│ Primary障害時:                                   │
+│  ┌─────┐                                         │
+│  │  A  │ → タイムアウト (数秒) ████████████      │
+│  └─────┘                                         │
+│     ↓                                            │
+│  ┌─────┐                                         │
+│  │  B  │ → 1ms                                   │
+│  └─────┘                                         │
+│                                                  │
+│ 対策案:                                          │
+│  • ヘルスチェック機能 (事前に障害検知)           │
+│  • Circuit Breakerパターン (高速フェイル)        │
+│  • タイムアウト値の調整                          │
+└──────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────┐
+│ 推奨構成                                         │
+├──────────────────────────────────────────────────┤
+│                                                  │
+│ 読み取り重視:                                    │
+│   → FailoverRedisConnection                      │
+│       (Primary高速、Fallbackは緊急時のみ)       │
+│                                                  │
+│ 可用性重視:                                      │
+│   → MultiWriteRedisConnection                    │
+│       (レイテンシ増加を許容、データ保全優先)    │
+│                                                  │
+│ バランス型:                                      │
+│   → FailoverRedisConnection (読み取り)           │
+│   + 非同期レプリケーション (書き込み)            │
+└──────────────────────────────────────────────────┘
 ```
-
-**対策案（将来的な拡張）:**
-- 並列書き込みの実装（非同期・マルチプロセス）
-- Write-behindキャッシュパターン
-
-### Failoverのレイテンシ
-
-Primary失敗時のフォールバックには遅延が発生：
-
-```
-Primary成功: 1ms
-Primary失敗 → Fallback成功: タイムアウト + リトライ + 1ms = 数秒
-```
-
-**対策案:**
-- ヘルスチェック機能の追加
-- Circuit Breakerパターンの導入
 
 ## まとめ
 
-### 推奨事項
+### 推奨設計
 
-**Option 3: CompositeRedisConnection** を推奨します。
+```
+┌────────────────────────────────────────────────────────┐
+│ ✅ CompositeRedisConnection (推奨)                     │
+├────────────────────────────────────────────────────────┤
+│                                                        │
+│ 選定理由:                                              │
+│  1. 既存Hookコードを変更不要                           │
+│  2. 循環依存のリスクなし                               │
+│  3. 段階的に導入可能                                   │
+│  4. 柔軟な拡張性 (カスタムComposite実装可能)           │
+│  5. テスト・保守が容易                                 │
+│                                                        │
+│ 効果:                                                  │
+│  • Hook内のRedis操作も複数Redis対応                   │
+│  • セッションデータとHookデータで統一的な戦略          │
+│  • アーキテクチャの一貫性向上                          │
+└────────────────────────────────────────────────────────┘
+```
 
-**理由:**
-1. 既存のHookコードを変更せずに、複数Redis対応が可能
-2. 段階的に導入できる（既存コードとの互換性維持）
-3. テストが容易で、保守性が高い
-4. 循環依存のリスクがない
-5. 柔軟な拡張が可能（カスタムComposite実装）
+### 実装ロードマップ
 
-### 実装の優先度
+```
+┌─────────────────────────────────────────────────────┐
+│ Issue #29は「低優先度」のため、段階的に進める        │
+└─────────────────────────────────────────────────────┘
 
-Issue #29は「低優先度」とマークされているため、以下の順序で検討を推奨：
+Step 1: 設計レビュー (1-2週間)
+  │
+  ├─ このドキュメントをチーム/コミュニティでレビュー
+  ├─ フィードバック収集
+  └─ 設計の最終調整
+       ↓
+Step 2: PoC実装 (1週間)
+  │
+  ├─ RedisConnectionInterfaceの定義
+  ├─ FailoverRedisConnectionの実装
+  └─ 基本的な動作確認
+       ↓
+Step 3: ドキュメント整備 (数日)
+  │
+  ├─ 使用例・サンプルコード作成
+  ├─ CLAUDE.mdに設計パターン追記
+  └─ APIドキュメント生成
+       ↓
+Step 4: 本実装 (2-3週間)
+  │
+  ├─ Phase 1: インターフェース導入
+  ├─ Phase 2: Composite基底クラス
+  ├─ Phase 3: 具象Composite実装
+  └─ Phase 4: テスト・検証
+       ↓
+Step 5: 運用フィードバック (継続的)
+  │
+  ├─ 実際の使用事例の収集
+  ├─ パフォーマンス測定
+  └─ 必要に応じて改善
+```
 
-1. **設計レビュー**: この設計案をレビューし、フィードバックを収集
-2. **PoC実装**: `RedisConnectionInterface`と1つのComposite実装でPoC
-3. **ドキュメント整備**: 設計パターンと使用例のドキュメント作成
-4. **段階的実装**: Phase 1〜4を順次実装
-5. **実運用でのフィードバック**: 実際の使用事例からのフィードバック収集
+### 期待される効果の視覚化
 
-### 次のステップ
+```
+Before (現状):
+┌────────────────┐
+│ セッション     │ → [Redis A] ✓ フォールバック可
+│ タイムスタンプ │ → [Redis A] ✗ フォールバック不可
+│ カスタムHook   │ → [Redis A] ✗ フォールバック不可
+└────────────────┘
 
-1. このドキュメントをチーム/コミュニティでレビュー
-2. 設計の承認
-3. Issue #29に設計案をコメント
-4. 実装の開始（低優先度のため、他の重要なタスク後）
+After (Composite導入後):
+┌────────────────┐      ┌─────────────────┐
+│ セッション     │ →─┐  │ Failover        │
+│ タイムスタンプ │ →─┼─→│  ├─ Redis A     │
+│ カスタムHook   │ →─┘  │  └─ Redis B     │
+└────────────────┘      └─────────────────┘
+                         ✓ 全て統一的にフォールバック
+```
 
-## 参考資料
+### 次のアクション
 
-- [Composite Pattern (GoF Design Patterns)](https://en.wikipedia.org/wiki/Composite_pattern)
-- [Decorator Pattern (GoF Design Patterns)](https://en.wikipedia.org/wiki/Decorator_pattern)
-- [Redis Sentinel (High Availability)](https://redis.io/docs/management/sentinel/)
-- [Redis Cluster Specification](https://redis.io/docs/reference/cluster-spec/)
+```
+□ 1. このドキュメントをGitHub Issue #29にリンク
+□ 2. レビュー依頼 (@メンテナー宛)
+□ 3. フィードバック期間を設定 (例: 2週間)
+□ 4. フィードバックを元に設計を最終化
+□ 5. 実装着手の判断 (優先度と他タスクとのバランス)
+```
+
+---
+
+### 参考資料
+
+- **デザインパターン**
+  - [Composite Pattern](https://en.wikipedia.org/wiki/Composite_pattern) - 複数オブジェクトを透過的に扱う
+  - [Decorator Pattern](https://en.wikipedia.org/wiki/Decorator_pattern) - 機能を動的に追加
+
+- **Redis高可用性**
+  - [Redis Sentinel](https://redis.io/docs/management/sentinel/) - Redis公式のHA機能
+  - [Redis Cluster](https://redis.io/docs/reference/cluster-spec/) - Redis公式のクラスタ機能
+
+- **このプロジェクトの関連ドキュメント**
+  - `doc/architecture.md` - アーキテクチャ設計書
+  - `doc/specification.md` - 機能仕様書
+  - `doc/redis-integration.md` - Redis統合仕様
