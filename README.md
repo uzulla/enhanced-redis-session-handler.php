@@ -47,15 +47,17 @@ composer require uzulla/enhanced-redis-session-handler
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Psr\Log\NullLogger;
 
 // 設定を作成
 $config = new SessionConfig(
     new RedisConnectionConfig(),
+    new PhpSerializeSerializer(),
     new DefaultSessionIdGenerator(),
     (int)ini_get('session.gc_maxlifetime'),
-    new NullLogger()
+    new NullLogger()  // 注: NullLoggerは開発・テスト用です。本番環境では適切なロガー（Monologなど）を使用してください
 );
 
 // ファクトリーでハンドラを作成
@@ -75,6 +77,7 @@ session_start();
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Psr\Log\NullLogger;
 
@@ -95,9 +98,10 @@ $connectionConfig = new RedisConnectionConfig(
 // セッション設定を作成
 $config = new SessionConfig(
     $connectionConfig,
+    new PhpSerializeSerializer(),
     new DefaultSessionIdGenerator(),
     7200,
-    new NullLogger()
+    new NullLogger()  // 注: NullLoggerは開発・テスト用です。本番環境では適切なロガー（Monologなど）を使用してください
 );
 
 // ファクトリーでハンドラを作成
@@ -107,6 +111,8 @@ $handler = $factory->build();
 session_set_save_handler($handler, true);
 session_start();
 ```
+
+**ロガーについて**: 上記の例では`NullLogger`を使用していますが、これは開発環境やテスト環境向けです。本番環境では、Monologなどの適切なロガーを使用して、セッション関連のエラーや警告を記録することを強く推奨します。詳細は下記の「空セッション最適化機能」セクションの実用例を参照してください。
 
 詳細な使用方法については、[doc/factory-usage.md](doc/factory-usage.md)を参照してください。
 
@@ -130,6 +136,7 @@ PreventEmptySessionCookie機能は、空のセッション（データが設定�
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\Session\PreventEmptySessionCookie;
 use Psr\Log\NullLogger;
@@ -137,9 +144,10 @@ use Psr\Log\NullLogger;
 // 設定を作成
 $config = new SessionConfig(
     new RedisConnectionConfig(),
+    new PhpSerializeSerializer(),
     new DefaultSessionIdGenerator(),
     (int)ini_get('session.gc_maxlifetime'),
-    new NullLogger()
+    new NullLogger()  // 注: 本番環境では適切なロガー（Monologなど）を使用してください
 );
 
 // ファクトリーでハンドラを作成
@@ -147,7 +155,7 @@ $factory = new SessionHandlerFactory($config);
 $handler = $factory->build();
 
 // PreventEmptySessionCookie機能を有効化（この1行を追加するだけ）
-PreventEmptySessionCookie::setup($handler, new NullLogger());
+PreventEmptySessionCookie::setup($handler, new NullLogger());  // 注: 本番環境では適切なロガーを使用してください
 
 // 通常通りセッションを開始
 session_start();
@@ -177,12 +185,13 @@ session_start();
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\Session\PreventEmptySessionCookie;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 
-// ロガーの設定
+// ロガーの設定（本番環境では適切なロガー設定を使用してください）
 $logger = new Logger('session');
 $logger->pushHandler(new StreamHandler('/var/log/session.log', Logger::INFO));
 
@@ -196,6 +205,7 @@ $connectionConfig = new RedisConnectionConfig(
 // セッション設定
 $config = new SessionConfig(
     $connectionConfig,
+    new PhpSerializeSerializer(),
     new DefaultSessionIdGenerator(),
     3600,
     $logger

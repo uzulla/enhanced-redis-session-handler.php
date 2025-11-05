@@ -238,7 +238,7 @@ $factory = new SessionHandlerFactory($config);
 $handler = $factory->build();
 ```
 
-詳細な使用方法については、[doc/factory-usage.md](factory-usage.md)を参照してください。
+詳細な使用方法については、[factory-usage.md](factory-usage.md)を参照してください。
 
 ### 3.5 SessionIdMasker
 
@@ -309,6 +309,7 @@ Facadeパターンを採用し、複雑な設定を単一の`setup()`メソッ�
 ```php
 $config = new SessionConfig(
     new RedisConnectionConfig(),
+    new PhpSerializeSerializer(),
     new DefaultSessionIdGenerator(),
     3600,
     new NullLogger()
@@ -365,7 +366,7 @@ PreventEmptySessionCookie (Facade)
 - ニュースサイトやブログなど、匿名閲覧が主な場合
 - APIサーバーで未認証リクエストが多い場合
 
-詳細な使用方法については、[examples/06-empty-session-no-cookie.php](../examples/06-empty-session-no-cookie.php)および[doc/factory-usage.md](factory-usage.md)を参照してください。
+詳細な使用方法については、[06-empty-session-no-cookie.php](../examples/06-empty-session-no-cookie.php)および[factory-usage.md](factory-usage.md)を参照してください。
 
 ## 4. データフロー
 

@@ -281,6 +281,7 @@ PreventEmptySessionCookie機能とファクトリーパターンを組み合わ�
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
 use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\Session\PreventEmptySessionCookie;
 use Monolog\Logger;
@@ -307,6 +308,7 @@ $connectionConfig = new RedisConnectionConfig(
 // セッション設定
 $config = new SessionConfig(
     $connectionConfig,
+    new PhpSerializeSerializer(),
     new DefaultSessionIdGenerator(),
     3600,
     $logger
