@@ -46,18 +46,61 @@ class RedisConnection implements RedisConnectionInterface, LoggerAwareInterface
 
 ---
 
-## 2. Composite基底クラス (概念)
+## 2. クラス継承関係の明確化
+
+### 重要: RedisConnectionを継承しない！
+
+```
+RedisConnectionInterface ← 共通インターフェース
+  │
+  ├─ RedisConnection          (既存、単一Redis管理)
+  │   └─ $redis: Redis       ← PHP Redis extension instance
+  │
+  └─ CompositeRedisConnection (新規、複数Redis管理)
+      └─ $connections: array<RedisConnectionInterface>
+           │
+           ├─ FailoverRedisConnection   ← extends CompositeRedisConnection
+           └─ MultiWriteRedisConnection ← extends CompositeRedisConnection
+```
+
+**なぜRedisConnectionを継承しないのか:**
+
+```php
+// ✗ こうはしない（間違い）
+class FailoverRedisConnection extends RedisConnection
+{
+    // RedisConnectionは $redis (単一) を持つ
+    // 継承すると単一Redisの制約を引き継ぐ
+}
+
+// ✓ こうする（正しい）
+class FailoverRedisConnection extends CompositeRedisConnection
+{
+    // CompositeRedisConnectionは $connections (複数) を持つ
+    // 複数のRedisを管理できる
+}
+```
+
+---
+
+## 3. Composite基底クラス (概念)
 
 ```php
 namespace Uzulla\EnhancedRedisSessionHandler\Composite;
 
 /**
  * 複数RedisConnectionを管理する基底クラス
+ * RedisConnectionとは兄弟関係（両方ともinterfaceを実装）
  */
 abstract class CompositeRedisConnection implements RedisConnectionInterface
 {
     /** @var array<RedisConnectionInterface> */
     protected array $connections;
+
+    public function __construct(array $connections)
+    {
+        $this->connections = $connections;
+    }
 
     // connect/disconnect/isConnectedは共通実装
     // get/set/delete等は具象クラスで実装
@@ -65,13 +108,14 @@ abstract class CompositeRedisConnection implements RedisConnectionInterface
 ```
 
 **ポイント:**
+- RedisConnectionを継承しない（兄弟関係）
 - 複数の`RedisConnectionInterface`を保持
 - 接続管理などの共通処理を実装
 - 具体的な操作（get/set等）は具象クラスに委譲
 
 ---
 
-## 3. Failover実装 (概念)
+## 4. Failover実装 (概念)
 
 ```php
 namespace Uzulla\EnhancedRedisSessionHandler\Composite;
@@ -105,7 +149,7 @@ get(key):
 
 ---
 
-## 4. MultiWrite実装 (概念)
+## 5. MultiWrite実装 (概念)
 
 ```php
 namespace Uzulla\EnhancedRedisSessionHandler\Composite;
@@ -155,21 +199,29 @@ set(key, val):
 
 ---
 
-## 5. 使用例
+## 6. 使用例
 
-### 5-1. 基本的なFailover構成
+### 6-1. 基本的なFailover構成
 
 ```php
 use Uzulla\EnhancedRedisSessionHandler\Composite\FailoverRedisConnection;
 
-// Primary Redis
+// Primary Redis (RedisConnection = 単一Redis管理)
 $primary = new RedisConnection($redis1, $config1, $logger);
 
-// Fallback Redis
+// Fallback Redis (RedisConnection = 単一Redis管理)
 $fallback = new RedisConnection($redis2, $config2, $logger);
 
-// Failover Composite作成
+// Failover Composite作成 (CompositeRedisConnection = 複数Redis管理)
+// $primary と $fallback を「配列」で渡す ← ここが重要！
 $failover = new FailoverRedisConnection([$primary, $fallback], $logger);
+
+// オブジェクト構造:
+// $failover (FailoverRedisConnection)
+//   └─ $connections = [
+//        $primary (RedisConnection),   ← 単一Redisを管理
+//        $fallback (RedisConnection)   ← 単一Redisを管理
+//      ]
 
 // セッションハンドラに渡す
 $handler = new RedisSessionHandler($failover, $serializer, $options);
@@ -180,7 +232,7 @@ $handler->addReadHook(new ReadTimestampHook($failover, $logger));
 // これで、セッションデータもタイムスタンプも同じフォールバック戦略を使用！
 ```
 
-### 5-2. MultiWrite構成
+### 6-2. MultiWrite構成
 
 ```php
 use Uzulla\EnhancedRedisSessionHandler\Composite\MultiWriteRedisConnection;
@@ -206,7 +258,7 @@ $handler->addWriteHook(new DoubleWriteHook($secondaryConn, 1440, false, $logger)
 // これで、全てのデータが3台のRedisに書き込まれる！
 ```
 
-### 5-3. Compositeのネスト (高度な構成)
+### 6-3. Compositeのネスト (高度な構成)
 
 ```php
 // DC1: Primary + Fallback
@@ -234,7 +286,7 @@ $multiDC = new MultiWriteRedisConnection(
 
 ---
 
-## 6. 移行パターン
+## 7. 移行パターン
 
 ### パターン1: 既存コードをそのまま使う
 
@@ -267,7 +319,7 @@ $handler->addReadHook(new ReadTimestampHook($failover, $logger));  // ← フォ
 
 ---
 
-## 7. テストの書き方
+## 8. テストの書き方
 
 ### ユニットテスト (モック使用)
 
@@ -318,7 +370,7 @@ class FailoverRedisConnectionIntegrationTest extends TestCase
 
 ---
 
-## 8. よくある質問
+## 9. よくある質問
 
 ### Q1: 既存のFallbackReadHookはどうなる？
 
@@ -365,7 +417,7 @@ class CustomRedisConnection extends CompositeRedisConnection
 
 ---
 
-## 9. まとめ
+## 10. まとめ
 
 ### 最小限の変更で実現
 
