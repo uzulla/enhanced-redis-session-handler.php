@@ -271,6 +271,84 @@ session_set_save_handler($handler, true);
 session_start();
 ```
 
+### 空セッション最適化を使用する例
+
+PreventEmptySessionCookie機能とファクトリーパターンを組み合わせることで、空のセッションによる不要なRedis書き込みとCookie送信を防止できます：
+
+```php
+<?php
+
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
+use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
+use Uzulla\EnhancedRedisSessionHandler\Session\PreventEmptySessionCookie;
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
+
+// ロガーの設定
+$logger = new Logger('session');
+$logger->pushHandler(new StreamHandler('/var/log/session.log', Logger::INFO));
+
+// Redis接続設定
+$connectionConfig = new RedisConnectionConfig(
+    host: getenv('REDIS_HOST') ?: 'localhost',
+    port: (int)(getenv('REDIS_PORT') ?: 6379),
+    timeout: 2.5,
+    password: getenv('REDIS_PASSWORD') ?: null,
+    database: 1,
+    prefix: 'app:session:',
+    persistent: true,
+    retryInterval: 100,
+    readTimeout: 2.5,
+    maxRetries: 5
+);
+
+// セッション設定
+$config = new SessionConfig(
+    $connectionConfig,
+    new DefaultSessionIdGenerator(),
+    3600,
+    $logger
+);
+
+// ハンドラの作成
+$factory = new SessionHandlerFactory($config);
+$handler = $factory->build();
+
+// PreventEmptySessionCookie機能を有効化
+// これにより、$_SESSIONが空の場合はCookieが送信されず、Redisへの書き込みも行われません
+PreventEmptySessionCookie::setup($handler, $logger);
+
+// セッション開始
+session_start();
+
+// ビジネスロジック
+// ログインユーザーのみセッションにデータを設定
+if (isset($_POST['login'])) {
+    $_SESSION['user_id'] = authenticateUser($_POST['username'], $_POST['password']);
+    $_SESSION['login_time'] = time();
+}
+
+// ゲストユーザーの場合、$_SESSIONは空のまま
+// → 自動的にCookieが削除され、Redisへの書き込みも行われない
+```
+
+**この機能の利点：**
+
+1. **パフォーマンス向上**: 匿名ユーザーやゲストユーザーが多いアプリケーションで、不要なRedis書き込みを削減
+2. **コスト削減**: Redisへのアクセス回数が減り、インフラコストを削減
+3. **最小限の変更**: 既存コードへの影響は最小限（`PreventEmptySessionCookie::setup()`の呼び出しのみ）
+4. **互換性**: 既存のセッション（Cookie既存）には影響せず、通常通り動作
+
+**使用例：**
+
+- ECサイトでログイン前のブラウジング時にセッションを作成しない
+- ニュースサイトで未ログインユーザーのページ閲覧時にセッションを作成しない
+- APIサーバーで認証されていないリクエストにセッションを作成しない
+
+詳細な動作例については、[examples/06-empty-session-no-cookie.php](../examples/06-empty-session-no-cookie.php)を参照してください。
+
 ## 設定の変更
 
 設定を後から変更する必要がある場合は、`SessionConfig`のセッターメソッドを使用できます：

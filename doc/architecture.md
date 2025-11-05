@@ -275,6 +275,98 @@ $logger->info('Session read', [
 
 すべての組み込みフック（LoggingHook、DoubleWriteHook、ReadTimestampHook等）は、自動的に`SessionIdMasker`を使用してセッションIDをマスキングします。
 
+### 3.6 PreventEmptySessionCookie（空セッション最適化）
+
+#### 3.6.1 責務
+- 空のセッション（データが設定されていないセッション）の検出
+- 空セッションの場合のRedis書き込み防止
+- 空セッションの場合のCookie送信防止
+- shutdown関数による自動クリーンアップ
+
+#### 3.6.2 主要メソッド
+
+```php
+class PreventEmptySessionCookie
+{
+    public static function setup(RedisSessionHandler $handler, LoggerInterface $logger): void;
+    public static function checkAndCleanup(): void;
+    public static function reset(): void;
+}
+```
+
+**設計パターン:**
+Facadeパターンを採用し、複雑な設定を単一の`setup()`メソッドに集約します。これにより、ユーザーコードからの利用が極めてシンプルになります。
+
+**動作メカニズム:**
+
+1. **EmptySessionFilterの登録**: `EmptySessionFilter`（WriteFilterInterface実装）をハンドラに追加し、書き込み時にセッションデータが空かどうかを判定
+2. **session_set_save_handler()の呼び出し**: ハンドラをPHPのセッション機構に登録
+3. **shutdown関数の登録**: 新規セッション（Cookie未存在）の場合のみ、`register_shutdown_function()`で`checkAndCleanup()`を登録
+4. **クリーンアップ処理**: リクエスト終了時に、セッションが空の場合は`session_destroy()`を呼び出し、Set-Cookieヘッダーで過去の日付を送信してCookieを削除
+
+**使用例:**
+
+```php
+$config = new SessionConfig(
+    new RedisConnectionConfig(),
+    new DefaultSessionIdGenerator(),
+    3600,
+    new NullLogger()
+);
+
+$factory = new SessionHandlerFactory($config);
+$handler = $factory->build();
+
+// この1行で空セッション最適化を有効化
+PreventEmptySessionCookie::setup($handler, $logger);
+
+session_start();
+// $_SESSIONが空の場合、自動的にCookieが削除され、Redisへの書き込みも防止される
+```
+
+#### 3.6.3 アーキテクチャ上の位置づけ
+
+PreventEmptySessionCookie機能は、以下のコンポーネントと連携します：
+
+```
+PreventEmptySessionCookie (Facade)
+    ↓
+    ├─ EmptySessionFilter (WriteFilterInterface実装)
+    │   └→ RedisSessionHandler::addWriteFilter()
+    │
+    ├─ session_set_save_handler() (PHP組み込み関数)
+    │
+    └─ register_shutdown_function() (PHP組み込み関数)
+         └→ checkAndCleanup()
+              ├→ session_destroy() (PHP組み込み関数)
+              └→ setcookie() (PHP組み込み関数)
+```
+
+**設計上の利点:**
+
+1. **疎結合**: `PreventEmptySessionCookie`は`RedisSessionHandler`のpublicなAPIのみを使用し、内部実装に依存しない
+2. **単一責任**: 空セッション検出（`EmptySessionFilter`）とクリーンアップ処理（`PreventEmptySessionCookie`）が分離
+3. **テスタビリティ**: 各コンポーネントが独立してテスト可能
+4. **拡張性**: 他の最適化機能も同様のFacadeパターンで追加可能
+
+#### 3.6.4 パフォーマンスへの影響
+
+**メリット:**
+- 空セッションのRedis書き込みを完全に防止（SETEX操作が不要）
+- 不要なCookie送信を防止（帯域幅削減）
+- 匿名ユーザーが多いアプリケーションでのRedis負荷を大幅に軽減
+
+**オーバーヘッド:**
+- `EmptySessionFilter::shouldWrite()`での空判定（O(1)操作、`count($data) === 0`のみ）
+- shutdown関数の登録とクリーンアップ処理（新規セッションのみ、ごく軽微）
+
+**推奨される使用シーン:**
+- ECサイトでログイン前のブラウジングが多い場合
+- ニュースサイトやブログなど、匿名閲覧が主な場合
+- APIサーバーで未認証リクエストが多い場合
+
+詳細な使用方法については、[examples/06-empty-session-no-cookie.php](../examples/06-empty-session-no-cookie.php)および[doc/factory-usage.md](factory-usage.md)を参照してください。
+
 ## 4. データフロー
 
 ### 4.1 セッション読み込みフロー

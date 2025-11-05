@@ -14,6 +14,7 @@ enhanced-redis-session-handler.phpは、PHPの標準セッションハンドラ�
 - **Redis/ValKey対応**: ext-redisを使用した高速なセッションストレージ
 - **拡張性**: 新しい機能を容易に追加できる設計
 - **水平スケーリング対応**: 複数のWebサーバーでセッションを共有可能
+- **空セッション最適化**: 空のセッションのCookie送信とRedis書き込みを防止してパフォーマンス向上
 
 ## 対象ユーザー
 
@@ -108,6 +109,119 @@ session_start();
 ```
 
 詳細な使用方法については、[doc/factory-usage.md](doc/factory-usage.md)を参照してください。
+
+## 空セッション最適化機能
+
+### 概要
+
+PreventEmptySessionCookie機能は、空のセッション（データが設定されていないセッション）の場合に、Cookieの送信とRedisへの書き込みを防止します。これにより、以下のメリットが得られます：
+
+- **パフォーマンス向上**: 不要なRedis書き込み操作を削減
+- **トラフィック削減**: 不要なCookie送信を防止
+- **リソース効率化**: 匿名ユーザーやゲストユーザーが多いアプリケーションでの負荷軽減
+
+### 使用方法
+
+既存のコードに対して最小限の変更で利用できます。`PreventEmptySessionCookie::setup()`を呼び出すだけです：
+
+```php
+<?php
+
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
+use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
+use Uzulla\EnhancedRedisSessionHandler\Session\PreventEmptySessionCookie;
+use Psr\Log\NullLogger;
+
+// 設定を作成
+$config = new SessionConfig(
+    new RedisConnectionConfig(),
+    new DefaultSessionIdGenerator(),
+    (int)ini_get('session.gc_maxlifetime'),
+    new NullLogger()
+);
+
+// ファクトリーでハンドラを作成
+$factory = new SessionHandlerFactory($config);
+$handler = $factory->build();
+
+// PreventEmptySessionCookie機能を有効化（この1行を追加するだけ）
+PreventEmptySessionCookie::setup($handler, new NullLogger());
+
+// 通常通りセッションを開始
+session_start();
+
+// $_SESSIONを通常通り使用
+// データが設定されない場合、自動的にCookieが削除されます
+```
+
+### 動作の仕組み
+
+1. **EmptySessionFilterの登録**: セッションデータが空かどうかを検出するフィルターを登録
+2. **Shutdown関数の登録**: 新規セッション（Cookie未存在）の場合、リクエスト終了時に実行される関数を登録
+3. **空セッションの検出**: セッション終了時に`$_SESSION`が空の場合を検出
+4. **自動クリーンアップ**: 空の場合、`session_destroy()`を呼び出してRedis書き込みを防止し、Set-Cookieヘッダーで過去の日付を送信してCookieを削除
+
+### 対応環境
+
+- PHP 7.4以上
+- 既存のセッションには影響しません（Cookie既存の場合は通常通り動作）
+- 既存のコードへの変更は最小限（`setup()`の呼び出しのみ）
+
+### 実用例
+
+```php
+<?php
+
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
+use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\SessionId\DefaultSessionIdGenerator;
+use Uzulla\EnhancedRedisSessionHandler\Session\PreventEmptySessionCookie;
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
+
+// ロガーの設定
+$logger = new Logger('session');
+$logger->pushHandler(new StreamHandler('/var/log/session.log', Logger::INFO));
+
+// Redis接続設定
+$connectionConfig = new RedisConnectionConfig(
+    host: getenv('REDIS_HOST') ?: 'localhost',
+    port: (int)(getenv('REDIS_PORT') ?: 6379),
+    prefix: 'myapp:session:'
+);
+
+// セッション設定
+$config = new SessionConfig(
+    $connectionConfig,
+    new DefaultSessionIdGenerator(),
+    3600,
+    $logger
+);
+
+// ハンドラの作成と設定
+$factory = new SessionHandlerFactory($config);
+$handler = $factory->build();
+
+// 空セッション最適化を有効化
+PreventEmptySessionCookie::setup($handler, $logger);
+
+// セッション開始
+session_start();
+
+// ビジネスロジック
+// ログインしているユーザーのみセッションにデータを設定
+if (isUserLoggedIn()) {
+    $_SESSION['user_id'] = getUserId();
+    $_SESSION['username'] = getUsername();
+}
+// ログインしていない場合、$_SESSIONは空のまま
+// → 自動的にCookieが削除され、Redisへの書き込みも行われない
+```
+
+詳細な使用例については、[examples/06-empty-session-no-cookie.php](examples/06-empty-session-no-cookie.php)を参照してください。
 
 ## ドキュメント
 
