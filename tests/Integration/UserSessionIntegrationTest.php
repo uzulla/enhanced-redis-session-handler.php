@@ -113,12 +113,12 @@ class UserSessionIntegrationTest extends TestCase
 
     public function testGetUserSessionsReturnsCorrectData(): void
     {
-        $userId = '789';
+        $userId = '999';
 
-        $sessionId1 = 'user789_abc';
-        $sessionId2 = 'user789_def';
-        $data1 = 'session_data_for_user_789_session_1';
-        $data2 = 'session_data_for_user_789_session_2';
+        $sessionId1 = 'user999_abc';
+        $sessionId2 = 'user999_def';
+        $data1 = 'session_data_for_user_999_session_1';
+        $data2 = 'session_data_for_user_999_session_2';
 
         $this->connection->set($sessionId1, $data1, 3600);
         $this->connection->set($sessionId2, $data2, 3600);
