@@ -1,0 +1,193 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Uzulla\EnhancedRedisSessionHandler;
+
+use InvalidArgumentException;
+use Psr\Log\LoggerInterface;
+use Uzulla\EnhancedRedisSessionHandler\SessionId\UserSessionIdGenerator;
+use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
+
+/**
+ * ユーザーセッション管理ヘルパークラス
+ *
+ * UserSessionIdGeneratorと連携して、ユーザー単位のセッション管理機能を提供：
+ * - ログイン時のセッションID再生成
+ * - 強制ログアウト機能
+ * - セッション監査機能
+ *
+ * 使用例:
+ * ```php
+ * // ログイン成功後
+ * $helper->setUserIdAndRegenerate('123');
+ *
+ * // 管理機能: 特定ユーザーの全セッションを削除
+ * $deletedCount = $helper->forceLogoutUser('123');
+ *
+ * // セッション監査
+ * $sessions = $helper->getUserSessions('123');
+ * ```
+ */
+class UserSessionHelper
+{
+    private UserSessionIdGenerator $generator;
+    private RedisConnection $connection;
+    private LoggerInterface $logger;
+
+    /**
+     * コンストラクタ
+     *
+     * @param UserSessionIdGenerator $generator セッションIDジェネレータ
+     * @param RedisConnection $connection Redis接続
+     * @param LoggerInterface $logger ロガー
+     */
+    public function __construct(
+        UserSessionIdGenerator $generator,
+        RedisConnection $connection,
+        LoggerInterface $logger
+    ) {
+        $this->generator = $generator;
+        $this->connection = $connection;
+        $this->logger = $logger;
+    }
+
+    /**
+     * ユーザーIDを設定し、セッションIDを再生成
+     *
+     * この1つのメソッドで以下を実行：
+     * 1. ユーザーIDをジェネレータに設定
+     * 2. session_regenerate_id(true)を実行
+     * 3. ログ記録
+     *
+     * @param string $userId ユーザーID
+     * @return bool 成功した場合true
+     * @throws InvalidArgumentException ユーザーIDが無効な場合
+     */
+    public function setUserIdAndRegenerate(string $userId): bool
+    {
+        $oldSessionId = session_id();
+        if ($oldSessionId === false) {
+            $this->logger->error('Session ID not available', [
+                'user_id' => $userId,
+            ]);
+            return false;
+        }
+
+        // ユーザーIDを設定（バリデーションはジェネレータ内で実施）
+        $this->generator->setUserId($userId);
+
+        // セッションIDを再生成（古いセッションを削除）
+        if (!session_regenerate_id(true)) {
+            $this->logger->error('Failed to regenerate session ID', [
+                'user_id' => $userId,
+            ]);
+            return false;
+        }
+
+        $newSessionId = session_id();
+        if ($newSessionId === false) {
+            $this->logger->error('New session ID not available', [
+                'user_id' => $userId,
+            ]);
+            return false;
+        }
+
+        $this->logger->info('User session regenerated', [
+            'user_id' => $userId,
+            'old_session_id' => SessionIdMasker::mask($oldSessionId),
+            'new_session_id' => SessionIdMasker::mask($newSessionId),
+        ]);
+
+        return true;
+    }
+
+    /**
+     * 特定ユーザーの全セッションを強制削除
+     *
+     * user{userId}_* パターンのRedisキーを全て削除
+     *
+     * @param string $userId ユーザーID
+     * @return int 削除されたセッション数
+     */
+    public function forceLogoutUser(string $userId): int
+    {
+        $pattern = 'user' . $userId . '_*';
+        $sessionKeys = $this->connection->keys($pattern);
+
+        if (count($sessionKeys) === 0) {
+            $this->logger->info('No active sessions found for user', [
+                'user_id' => $userId,
+            ]);
+            return 0;
+        }
+
+        $deletedCount = 0;
+        foreach ($sessionKeys as $key) {
+            if ($this->connection->delete($key)) {
+                $deletedCount++;
+                $this->logger->debug('Session deleted', [
+                    'user_id' => $userId,
+                    'session_id' => SessionIdMasker::mask($key),
+                ]);
+            }
+        }
+
+        $this->logger->info('User sessions force logged out', [
+            'user_id' => $userId,
+            'deleted_count' => $deletedCount,
+            'total_found' => count($sessionKeys),
+        ]);
+
+        return $deletedCount;
+    }
+
+    /**
+     * 特定ユーザーのアクティブセッション一覧を取得
+     *
+     * @param string $userId ユーザーID
+     * @return array<string, array{
+     *     session_id: string,
+     *     data_size: int
+     * }>
+     */
+    public function getUserSessions(string $userId): array
+    {
+        $pattern = 'user' . $userId . '_*';
+        $sessionKeys = $this->connection->keys($pattern);
+
+        $sessions = [];
+        foreach ($sessionKeys as $key) {
+            $data = $this->connection->get($key);
+            if ($data === false) {
+                continue;
+            }
+
+            $sessions[$key] = [
+                'session_id' => SessionIdMasker::mask($key),
+                'data_size' => strlen($data),
+            ];
+        }
+
+        $this->logger->debug('Retrieved user sessions', [
+            'user_id' => $userId,
+            'session_count' => count($sessions),
+        ]);
+
+        return $sessions;
+    }
+
+    /**
+     * 特定ユーザーのアクティブセッション数を取得
+     *
+     * @param string $userId ユーザーID
+     * @return int セッション数
+     */
+    public function countUserSessions(string $userId): int
+    {
+        $pattern = 'user' . $userId . '_*';
+        $sessionKeys = $this->connection->keys($pattern);
+
+        return count($sessionKeys);
+    }
+}
