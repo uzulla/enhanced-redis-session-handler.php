@@ -176,9 +176,11 @@ class UserSessionIdGenerator implements SessionIdGeneratorInterface
             );
         }
 
-        if (preg_match('/^(anon|user)/', $userId) === 1) {
+        // 予約語（完全一致）のチェック
+        // "anon" と "user" のみを拒否し、"username" や "user123" などは許可
+        if ($userId === 'anon' || $userId === 'user') {
             throw new InvalidArgumentException(
-                'User ID cannot start with reserved prefix (anon, user)'
+                'User ID cannot be a reserved word (anon, user)'
             );
         }
     }

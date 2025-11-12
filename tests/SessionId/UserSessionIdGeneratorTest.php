@@ -131,22 +131,54 @@ class UserSessionIdGeneratorTest extends TestCase
         $generator->setUserId('user 123');
     }
 
-    public function testSetUserIdStartingWithAnon(): void
+    public function testSetUserIdWithReservedWordAnon(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('User ID cannot start with reserved prefix');
+        $this->expectExceptionMessage('User ID cannot be a reserved word');
 
         $generator = new UserSessionIdGenerator();
-        $generator->setUserId('anon123');
+        $generator->setUserId('anon');
     }
 
-    public function testSetUserIdStartingWithUser(): void
+    public function testSetUserIdWithReservedWordUser(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('User ID cannot start with reserved prefix');
+        $this->expectExceptionMessage('User ID cannot be a reserved word');
 
         $generator = new UserSessionIdGenerator();
+        $generator->setUserId('user');
+    }
+
+    public function testSetUserIdWithUsernameIsAllowed(): void
+    {
+        $generator = new UserSessionIdGenerator();
+        $generator->setUserId('username');
+
+        self::assertSame('username', $generator->getUserId());
+    }
+
+    public function testSetUserIdWithUser123IsAllowed(): void
+    {
+        $generator = new UserSessionIdGenerator();
         $generator->setUserId('user123');
+
+        self::assertSame('user123', $generator->getUserId());
+    }
+
+    public function testSetUserIdWithAnonymousIsAllowed(): void
+    {
+        $generator = new UserSessionIdGenerator();
+        $generator->setUserId('anonymous');
+
+        self::assertSame('anonymous', $generator->getUserId());
+    }
+
+    public function testSetUserIdWithAnonUserIsAllowed(): void
+    {
+        $generator = new UserSessionIdGenerator();
+        $generator->setUserId('anon-user');
+
+        self::assertSame('anon-user', $generator->getUserId());
     }
 
     public function testSetUserIdWithHyphen(): void
