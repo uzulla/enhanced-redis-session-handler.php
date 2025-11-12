@@ -308,6 +308,136 @@ $factory = new SessionHandlerFactory($config);
 $handler = $factory->build();
 ```
 
+## ユーザーセッション管理の使用
+
+`UserSessionIdGenerator`と`UserSessionHelper`を使用して、ユーザー単位のセッション管理を実現できます：
+
+```php
+<?php
+
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+use Uzulla\EnhancedRedisSessionHandler\Config\SessionConfig;
+use Uzulla\EnhancedRedisSessionHandler\SessionHandlerFactory;
+use Uzulla\EnhancedRedisSessionHandler\SessionId\UserSessionIdGenerator;
+use Uzulla\EnhancedRedisSessionHandler\UserSessionHelper;
+use Psr\Log\NullLogger;
+
+// 1. UserSessionIdGeneratorを作成
+$generator = new UserSessionIdGenerator();
+
+// 2. SessionConfigにUserSessionIdGeneratorを設定
+$connectionConfig = new RedisConnectionConfig();
+$config = new SessionConfig(
+    $connectionConfig,
+    $generator,  // UserSessionIdGeneratorを指定
+    3600,
+    new NullLogger()
+);
+
+// 3. セッションハンドラを作成
+$factory = new SessionHandlerFactory($config);
+$handler = $factory->build();
+
+// 4. UserSessionHelperを作成
+$helper = new UserSessionHelper(
+    $generator,
+    $handler->getConnection(),  // RedisConnectionを取得
+    new NullLogger()
+);
+
+// 5. セッションハンドラを設定
+session_set_save_handler($handler, true);
+
+// === 匿名セッション（ログイン前） ===
+session_start();
+// セッションID: anon_abc123...
+
+$_SESSION['cart_items'] = 2;
+$_SESSION['visited_pages'] = ['home', 'products'];
+
+// === ログイン処理 ===
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // 認証処理
+    if (authenticate($_POST['username'], $_POST['password'])) {
+        $userId = getUserIdByUsername($_POST['username']);
+
+        // ユーザーIDを設定してセッションID再生成
+        // （セッションフィクセーション攻撃対策）
+        $helper->setUserIdAndRegenerate($userId);
+        // セッションID: user123_def456...
+
+        $_SESSION['user_id'] = $userId;
+        $_SESSION['username'] = $_POST['username'];
+
+        // セッションデータは自動的に新しいセッションIDに移行される
+        // $_SESSION['cart_items'] と $_SESSION['visited_pages'] は保持される
+
+        header('Location: /dashboard');
+        exit;
+    }
+}
+```
+
+### 管理機能の使用例
+
+```php
+<?php
+
+// 管理者ページでの使用例
+
+// 1. 特定ユーザーのアクティブセッション数を確認
+$userId = '123';
+$sessionCount = $helper->countUserSessions($userId);
+echo "アクティブセッション数: {$sessionCount}\n";
+
+// 2. アクティブセッション一覧を取得
+$sessions = $helper->getUserSessions($userId);
+foreach ($sessions as $sessionKey => $info) {
+    echo "セッションID: {$info['session_id']}\n";  // マスキング済み
+    echo "データサイズ: {$info['data_size']} bytes\n";
+}
+
+// 3. 特定ユーザーの全セッションを強制ログアウト
+// （セキュリティインシデント発生時、パスワード変更時など）
+if ($currentUser->isAdmin()) {
+    $targetUserId = $_POST['target_user_id'];
+
+    // 権限チェック（必須！）
+    if (!canForceLogout($currentUser, $targetUserId)) {
+        throw new UnauthorizedException();
+    }
+
+    // 全セッションを削除
+    $deletedCount = $helper->forceLogoutUser($targetUserId);
+    echo "削除されたセッション数: {$deletedCount}\n";
+}
+```
+
+### ログアウト処理
+
+```php
+<?php
+
+// 通常のログアウト
+session_start();
+
+// オプション1: セッション破棄
+session_destroy();
+
+// オプション2: ユーザーIDをクリアして匿名セッションに戻す
+$generator->clearUserId();
+session_regenerate_id(true);
+// セッションID: anon_xxxxx に戻る
+```
+
+**重要な注意事項:**
+
+1. **セッションフィクセーション対策**: ログイン成功時は必ず`setUserIdAndRegenerate()`を呼び出すこと
+2. **権限チェック**: `forceLogoutUser()`呼び出し前に必ず権限チェックを実施すること
+3. **セキュリティ**: 管理機能はアクセス制御を適切に実装すること
+
+**詳細設計:** `doc/UserSessionIdGenerator/design.md` を参照
+
 ## まとめ
 
 `SessionHandlerFactory`を使用することで：

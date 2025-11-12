@@ -421,6 +421,226 @@ class UuidSessionIdGenerator implements SessionIdGeneratorInterface
 }
 ```
 
+### 3.6 UserSessionIdGenerator
+
+**目的:** ユーザーIDをプレフィックスとしたセッションID生成により、ユーザー単位のセッション管理を実現します。
+
+**実装:**
+```php
+class UserSessionIdGenerator implements SessionIdGeneratorInterface
+{
+    private ?string $userId = null;
+    private int $randomLength;
+    private string $anonymousPrefix;
+
+    public function __construct(int $randomLength = 32, string $anonymousPrefix = 'anon')
+    {
+        // バリデーションロジック
+        $this->randomLength = $randomLength;
+        $this->anonymousPrefix = $anonymousPrefix;
+    }
+
+    public function generate(): string
+    {
+        $randomPart = bin2hex(random_bytes($this->randomLength / 2));
+
+        if ($this->userId !== null) {
+            return 'user' . $this->userId . '_' . $randomPart;
+        }
+
+        return $this->anonymousPrefix . '_' . $randomPart;
+    }
+
+    public function setUserId(string $userId): void;
+    public function getUserId(): ?string;
+    public function hasUserId(): bool;
+    public function clearUserId(): void;
+}
+```
+
+**特徴:**
+- **匿名セッション**: ユーザーID未設定時は `anon_{random}` 形式
+- **ユーザーセッション**: ユーザーID設定後は `user{userId}_{random}` 形式
+- **セッションフィクセーション対策**: ログイン時にsetUserId()とsession_regenerate_id()を実行
+- **ユーザー単位の管理**: セッションIDパターンでユーザーのセッションを特定可能
+
+**セキュリティレベル:** 高（ログイン時のセッションID再生成必須）
+
+**バリデーション:**
+- `$userId`: 英数字、ハイフン、アンダースコアのみ、64文字以下
+- `$userId`: 予約語（`anon`, `user`）で始まらない
+- `$randomLength`: 16以上256以下の偶数
+- `$anonymousPrefix`: 英数字とハイフンのみ、64文字以下
+
+**使用例:**
+```php
+use Uzulla\EnhancedRedisSessionHandler\SessionId\UserSessionIdGenerator;
+use Uzulla\EnhancedRedisSessionHandler\UserSessionHelper;
+
+// 1. セッションハンドラの設定
+$generator = new UserSessionIdGenerator();
+$handler = new RedisSessionHandler($connection, [
+    'id_generator' => $generator,
+]);
+session_set_save_handler($handler, true);
+
+// 2. 匿名セッション開始
+session_start();
+// セッションID: anon_abc123...
+
+// 3. ログイン時にユーザーIDを設定
+$helper = new UserSessionHelper($generator, $connection, $logger);
+$helper->setUserIdAndRegenerate('123');
+// セッションID: user123_def456... (自動的に再生成)
+
+// 4. 管理機能: 特定ユーザーの全セッション削除
+$deletedCount = $helper->forceLogoutUser('123');
+
+// 5. セッション監査
+$sessions = $helper->getUserSessions('123');
+$count = $helper->countUserSessions('123');
+```
+
+**詳細仕様:** `doc/UserSessionIdGenerator/design.md` を参照
+
+## 3.7 ユーザーセッション管理機能（UserSessionHelper）
+
+**目的:** UserSessionIdGeneratorと連携して、ユーザー単位のセッション管理機能を提供します。
+
+**クラス定義:**
+```php
+namespace Uzulla\EnhancedRedisSessionHandler;
+
+class UserSessionHelper
+{
+    public function __construct(
+        UserSessionIdGenerator $generator,
+        RedisConnection $connection,
+        LoggerInterface $logger
+    );
+
+    public function setUserIdAndRegenerate(string $userId): bool;
+    public function forceLogoutUser(string $userId): int;
+    public function getUserSessions(string $userId): array;
+    public function countUserSessions(string $userId): int;
+}
+```
+
+### 3.7.1 setUserIdAndRegenerate()
+
+**目的:** ログイン時にユーザーIDを設定し、セッションIDを再生成します。
+
+**シグネチャ:**
+```php
+public function setUserIdAndRegenerate(string $userId): bool
+```
+
+**動作:**
+1. 現在のセッションIDを取得
+2. `UserSessionIdGenerator::setUserId()`でユーザーIDを設定
+3. `session_regenerate_id(true)`でセッションIDを再生成
+4. 新旧セッションIDをログに記録（マスキング済み）
+
+**戻り値:**
+- `true`: 成功
+- `false`: 失敗（セッションIDが取得できない、再生成失敗）
+
+**セキュリティ上の重要性:**
+- セッションフィクセーション攻撃を防ぐため、ログイン成功時に必ず実行すること
+- 古いセッションID（anon_xxx）は自動的に削除される
+- 新しいセッションID（user123_xxx）は予測不可能
+
+### 3.7.2 forceLogoutUser()
+
+**目的:** 特定ユーザーの全セッションを強制削除します。
+
+**シグネチャ:**
+```php
+public function forceLogoutUser(string $userId): int
+```
+
+**動作:**
+1. `user{userId}_*` パターンでRedisキーを検索（SCAN使用）
+2. 検出された全セッションキーを削除
+3. 削除数をログに記録
+
+**戻り値:** 削除されたセッション数
+
+**用途:**
+- セキュリティインシデント発生時の緊急対応
+- パスワード変更時の他デバイスからのログアウト
+- 管理者による強制ログアウト
+
+**注意事項:**
+- 本番環境でのブロッキングを避けるため、KEYSコマンドではなくSCANコマンドを使用
+- 呼び出し前に必ず権限チェックを実施すること
+
+### 3.7.3 getUserSessions()
+
+**目的:** 特定ユーザーのアクティブセッション一覧を取得します。
+
+**シグネチャ:**
+```php
+public function getUserSessions(string $userId): array
+```
+
+**戻り値:**
+```php
+[
+    'user123_abc...' => [
+        'session_id' => '..._abc',  // マスキング済み
+        'data_size' => 256          // バイト数
+    ],
+    // ...
+]
+```
+
+**用途:**
+- セッション監査
+- アクティブデバイスの確認
+- セキュリティダッシュボード
+
+### 3.7.4 countUserSessions()
+
+**目的:** 特定ユーザーのアクティブセッション数を取得します。
+
+**シグネチャ:**
+```php
+public function countUserSessions(string $userId): int
+```
+
+**戻り値:** セッション数
+
+**用途:**
+- セッション数制限の実装
+- 統計情報の収集
+- 不正アクセス検知
+
+### 3.7.5 セキュリティ考慮事項
+
+1. **権限チェック必須**
+   ```php
+   // 悪い例
+   $helper->forceLogoutUser($_GET['user_id']); // 危険！
+
+   // 良い例
+   if (!$currentUser->isAdmin()) {
+       throw new UnauthorizedException();
+   }
+   $helper->forceLogoutUser($targetUserId);
+   ```
+
+2. **セッションIDのマスキング**
+   - 全てのログ出力でSessionIdMasker::mask()を自動適用
+   - getUserSessions()の戻り値も自動的にマスキング済み
+
+3. **タイミング攻撃対策**
+   - forceLogoutUser()は存在しないユーザーでも同じ処理時間
+
+4. **Redis SCAN使用**
+   - 本番環境でのブロッキングを避けるため、KEYSではなくSCANを使用
+   - デフォルトのバッチサイズ: 100
+
 ## 4. 読み込み時フック機能
 
 ### 4.1 ReadHookInterface
