@@ -1,0 +1,235 @@
+<?php
+
+namespace Uzulla\EnhancedRedisSessionHandler\Tests;
+
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
+use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
+use Uzulla\EnhancedRedisSessionHandler\SessionId\UserSessionIdGenerator;
+use Uzulla\EnhancedRedisSessionHandler\UserSessionHelper;
+
+class UserSessionHelperTest extends TestCase
+{
+    /** @var UserSessionIdGenerator */
+    private $generator;
+
+    /** @var RedisConnection&MockObject */
+    private $connection;
+
+    /** @var LoggerInterface&MockObject */
+    private $logger;
+
+    /** @var UserSessionHelper */
+    private $helper;
+
+    protected function setUp(): void
+    {
+        $this->generator = new UserSessionIdGenerator();
+        $this->connection = $this->createMock(RedisConnection::class);
+        $this->logger = $this->createMock(LoggerInterface::class);
+
+        $this->helper = new UserSessionHelper(
+            $this->generator,
+            $this->connection,
+            $this->logger
+        );
+    }
+
+    public function testForceLogoutUser(): void
+    {
+        $userId = '123';
+        $sessionKeys = ['user123_abc', 'user123_def', 'user123_ghi'];
+
+        $this->connection->expects(static::once())
+            ->method('keys')
+            ->with('user123_*')
+            ->willReturn($sessionKeys);
+
+        $this->connection->expects(static::exactly(3))
+            ->method('delete')
+            ->willReturn(true);
+
+        $deletedCount = $this->helper->forceLogoutUser($userId);
+
+        self::assertSame(3, $deletedCount);
+    }
+
+    public function testForceLogoutUserWithNoSessions(): void
+    {
+        $userId = '123';
+
+        $this->connection->expects(static::once())
+            ->method('keys')
+            ->with('user123_*')
+            ->willReturn([]);
+
+        $this->connection->expects(static::never())
+            ->method('delete');
+
+        $deletedCount = $this->helper->forceLogoutUser($userId);
+
+        self::assertSame(0, $deletedCount);
+    }
+
+    public function testForceLogoutUserWithPartialFailure(): void
+    {
+        $userId = '123';
+        $sessionKeys = ['user123_abc', 'user123_def', 'user123_ghi'];
+
+        $this->connection->expects(static::once())
+            ->method('keys')
+            ->with('user123_*')
+            ->willReturn($sessionKeys);
+
+        // 2つ成功、1つ失敗
+        $this->connection->expects(static::exactly(3))
+            ->method('delete')
+            ->willReturnOnConsecutiveCalls(true, false, true);
+
+        $deletedCount = $this->helper->forceLogoutUser($userId);
+
+        self::assertSame(2, $deletedCount);
+    }
+
+    public function testGetUserSessions(): void
+    {
+        $userId = '123';
+        $sessionKeys = ['user123_abc', 'user123_def'];
+        $sessionData1 = 'session_data_1';
+        $sessionData2 = 'session_data_2';
+
+        $this->connection->expects(static::once())
+            ->method('keys')
+            ->with('user123_*')
+            ->willReturn($sessionKeys);
+
+        $this->connection->expects(static::exactly(2))
+            ->method('get')
+            ->willReturnOnConsecutiveCalls($sessionData1, $sessionData2);
+
+        $sessions = $this->helper->getUserSessions($userId);
+
+        self::assertCount(2, $sessions);
+        self::assertArrayHasKey('user123_abc', $sessions);
+        self::assertArrayHasKey('user123_def', $sessions);
+
+        self::assertSame('..._abc', $sessions['user123_abc']['session_id']);
+        self::assertSame(strlen($sessionData1), $sessions['user123_abc']['data_size']);
+
+        self::assertSame('..._def', $sessions['user123_def']['session_id']);
+        self::assertSame(strlen($sessionData2), $sessions['user123_def']['data_size']);
+    }
+
+    public function testGetUserSessionsWithNoSessions(): void
+    {
+        $userId = '123';
+
+        $this->connection->expects(static::once())
+            ->method('keys')
+            ->with('user123_*')
+            ->willReturn([]);
+
+        $this->connection->expects(static::never())
+            ->method('get');
+
+        $sessions = $this->helper->getUserSessions($userId);
+
+        self::assertCount(0, $sessions);
+        self::assertSame([], $sessions);
+    }
+
+    public function testGetUserSessionsWithFailedGet(): void
+    {
+        $userId = '123';
+        $sessionKeys = ['user123_abc', 'user123_def'];
+        $sessionData = 'session_data';
+
+        $this->connection->expects(static::once())
+            ->method('keys')
+            ->with('user123_*')
+            ->willReturn($sessionKeys);
+
+        // 最初のgetは成功、2つ目は失敗
+        $this->connection->expects(static::exactly(2))
+            ->method('get')
+            ->willReturnOnConsecutiveCalls($sessionData, false);
+
+        $sessions = $this->helper->getUserSessions($userId);
+
+        // 失敗したセッションは含まれない
+        self::assertCount(1, $sessions);
+        self::assertArrayHasKey('user123_abc', $sessions);
+        self::assertArrayNotHasKey('user123_def', $sessions);
+    }
+
+    public function testCountUserSessions(): void
+    {
+        $userId = '123';
+        $sessionKeys = ['user123_abc', 'user123_def', 'user123_ghi'];
+
+        $this->connection->expects(static::once())
+            ->method('keys')
+            ->with('user123_*')
+            ->willReturn($sessionKeys);
+
+        $count = $this->helper->countUserSessions($userId);
+
+        self::assertSame(3, $count);
+    }
+
+    public function testCountUserSessionsWithNoSessions(): void
+    {
+        $userId = '123';
+
+        $this->connection->expects(static::once())
+            ->method('keys')
+            ->with('user123_*')
+            ->willReturn([]);
+
+        $count = $this->helper->countUserSessions($userId);
+
+        self::assertSame(0, $count);
+    }
+
+    public function testForceLogoutUserWithDifferentUserId(): void
+    {
+        $userId = 'abc-123';
+        $sessionKeys = ['userabc-123_xyz'];
+
+        $this->connection->expects(static::once())
+            ->method('keys')
+            ->with('userabc-123_*')
+            ->willReturn($sessionKeys);
+
+        $this->connection->expects(static::once())
+            ->method('delete')
+            ->with('userabc-123_xyz')
+            ->willReturn(true);
+
+        $deletedCount = $this->helper->forceLogoutUser($userId);
+
+        self::assertSame(1, $deletedCount);
+    }
+
+    public function testGetUserSessionsReturnsCorrectStructure(): void
+    {
+        $userId = '123';
+        $sessionKeys = ['user123_abc'];
+        $sessionData = 'test_data';
+
+        $this->connection->expects(static::once())
+            ->method('keys')
+            ->willReturn($sessionKeys);
+
+        $this->connection->expects(static::once())
+            ->method('get')
+            ->willReturn($sessionData);
+
+        $sessions = $this->helper->getUserSessions($userId);
+
+        self::assertArrayHasKey('user123_abc', $sessions);
+        self::assertArrayHasKey('session_id', $sessions['user123_abc']);
+        self::assertArrayHasKey('data_size', $sessions['user123_abc']);
+    }
+}
