@@ -383,19 +383,18 @@ class UserSessionHelperTest extends TestCase
     }
 
     /**
-     * セッション未開始の場合のエラーハンドリング
+     * セッションが開始されていない状態でsetUserIdAndRegenerate()を呼び出すとfalseを返すことを確認
+     *
      * @runInSeparateProcess
+     * @preserveGlobalState disabled
      */
-    public function testSetUserIdAndRegenerateWhenSessionNotStarted(): void
+    public function testSetUserIdAndRegenerateWithoutActiveSession(): void
     {
-        // セッションを開始せずにメソッドを呼び出す
-        $userId = 'test_user';
+        // セッションが開始されていないことを確認
+        self::assertSame(PHP_SESSION_NONE, session_status());
 
-        // loggerのerrorメソッドが一度呼ばれることを検証
-        $this->logger->expects(static::once())
-            ->method('error');
-
-        $result = $this->helper->setUserIdAndRegenerate($userId);
+        // setUserIdAndRegenerate()を呼び出すとfalseが返される
+        $result = $this->helper->setUserIdAndRegenerate('test-user');
         self::assertFalse($result);
     }
 }

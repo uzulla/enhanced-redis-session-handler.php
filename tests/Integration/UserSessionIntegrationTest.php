@@ -241,21 +241,6 @@ class UserSessionIntegrationTest extends TestCase
     }
 
     /**
-     * セッションが開始されていない状態でsetUserIdAndRegenerate()を呼び出すとfalseを返すことを確認
-     *
-     * @runInSeparateProcess
-     */
-    public function testSetUserIdAndRegenerateWithoutActiveSession(): void
-    {
-        // セッションが開始されていないことを確認
-        self::assertSame(PHP_SESSION_NONE, session_status());
-
-        // setUserIdAndRegenerate()を呼び出すとfalseが返される
-        $result = $this->helper->setUserIdAndRegenerate('test-user');
-        self::assertFalse($result);
-    }
-
-    /**
      * セッション開始後にsetUserIdAndRegenerate()を呼び出すと成功することを確認
      *
      * @runInSeparateProcess
