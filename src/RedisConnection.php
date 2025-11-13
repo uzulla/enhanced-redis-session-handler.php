@@ -232,9 +232,15 @@ class RedisConnection implements LoggerAwareInterface
     }
 
     /**
-     * @return array<string>
+     * Scan keys matching a pattern using Redis SCAN command (non-blocking)
+     *
+     * This method uses SCAN instead of KEYS to avoid blocking Redis in production.
+     * SCAN is an iterative command that doesn't block the server.
+     *
+     * @param string $pattern Pattern to match (e.g., "user123_*")
+     * @return array<string> Array of matching keys (without prefix)
      */
-    public function keys(string $pattern): array
+    public function scan(string $pattern): array
     {
         $this->connect();
 
@@ -259,6 +265,15 @@ class RedisConnection implements LoggerAwareInterface
             ]);
             return [];
         }
+    }
+
+    /**
+     * @deprecated Use scan() instead. This method is kept for backward compatibility.
+     * @return array<string>
+     */
+    public function keys(string $pattern): array
+    {
+        return $this->scan($pattern);
     }
 
     public function isConnected(): bool

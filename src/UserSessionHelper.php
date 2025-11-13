@@ -106,6 +106,7 @@ class UserSessionHelper
      * 特定ユーザーの全セッションを強制削除
      *
      * user{userId}_* パターンのRedisキーを全て削除
+     * Redis SCANコマンドを使用して本番環境でも安全に実行
      *
      * @param string $userId ユーザーID
      * @return int 削除されたセッション数
@@ -114,7 +115,7 @@ class UserSessionHelper
     {
         $escapedUserId = $this->escapeRedisPattern($userId);
         $pattern = 'user' . $escapedUserId . '_*';
-        $sessionKeys = $this->connection->keys($pattern);
+        $sessionKeys = $this->connection->scan($pattern);
 
         if (count($sessionKeys) === 0) {
             $this->logger->info('No active sessions found for user', [
@@ -146,6 +147,8 @@ class UserSessionHelper
     /**
      * 特定ユーザーのアクティブセッション一覧を取得
      *
+     * Redis SCANコマンドを使用して本番環境でも安全に実行
+     *
      * @param string $userId ユーザーID
      * @return array<string, array{
      *     session_id: string,
@@ -156,7 +159,7 @@ class UserSessionHelper
     {
         $escapedUserId = $this->escapeRedisPattern($userId);
         $pattern = 'user' . $escapedUserId . '_*';
-        $sessionKeys = $this->connection->keys($pattern);
+        $sessionKeys = $this->connection->scan($pattern);
 
         $sessions = [];
         foreach ($sessionKeys as $key) {
@@ -182,6 +185,8 @@ class UserSessionHelper
     /**
      * 特定ユーザーのアクティブセッション数を取得
      *
+     * Redis SCANコマンドを使用して本番環境でも安全に実行
+     *
      * @param string $userId ユーザーID
      * @return int セッション数
      */
@@ -189,7 +194,7 @@ class UserSessionHelper
     {
         $escapedUserId = $this->escapeRedisPattern($userId);
         $pattern = 'user' . $escapedUserId . '_*';
-        $sessionKeys = $this->connection->keys($pattern);
+        $sessionKeys = $this->connection->scan($pattern);
 
         return count($sessionKeys);
     }
