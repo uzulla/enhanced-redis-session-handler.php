@@ -232,4 +232,86 @@ class UserSessionHelperTest extends TestCase
         self::assertArrayHasKey('session_id', $sessions['user123_abc']);
         self::assertArrayHasKey('data_size', $sessions['user123_abc']);
     }
+
+    /**
+     * Redis特殊文字のエスケープテスト
+     *
+     * escapeRedisPattern()メソッドがRedis特殊文字を正しくエスケープすることを検証
+     * 特殊文字: *, ?, [, ], \
+     */
+    public function testForceLogoutUserEscapesRedisSpecialCharacters(): void
+    {
+        // Redis特殊文字を含むユーザーID（実際のバリデーションでは拒否されるが、防御的プログラミングの観点でテスト）
+        $userId = 'user*test';
+        $escapedPattern = 'user' . 'user\\*test' . '_*';
+
+        $this->connection->expects(static::once())
+            ->method('keys')
+            ->with($escapedPattern)
+            ->willReturn([]);
+
+        $deletedCount = $this->helper->forceLogoutUser($userId);
+
+        self::assertSame(0, $deletedCount);
+    }
+
+    public function testGetUserSessionsEscapesRedisSpecialCharacters(): void
+    {
+        $userId = 'user?test';
+        $escapedPattern = 'user' . 'user\\?test' . '_*';
+
+        $this->connection->expects(static::once())
+            ->method('keys')
+            ->with($escapedPattern)
+            ->willReturn([]);
+
+        $sessions = $this->helper->getUserSessions($userId);
+
+        self::assertSame([], $sessions);
+    }
+
+    public function testCountUserSessionsEscapesRedisSpecialCharacters(): void
+    {
+        $userId = 'user[test]';
+        $escapedPattern = 'user' . 'user\\[test\\]' . '_*';
+
+        $this->connection->expects(static::once())
+            ->method('keys')
+            ->with($escapedPattern)
+            ->willReturn([]);
+
+        $count = $this->helper->countUserSessions($userId);
+
+        self::assertSame(0, $count);
+    }
+
+    public function testEscapesBackslashInUserId(): void
+    {
+        $userId = 'user\\test';
+        $escapedPattern = 'user' . 'user\\\\test' . '_*';
+
+        $this->connection->expects(static::once())
+            ->method('keys')
+            ->with($escapedPattern)
+            ->willReturn([]);
+
+        $count = $this->helper->countUserSessions($userId);
+
+        self::assertSame(0, $count);
+    }
+
+    public function testEscapesMultipleSpecialCharactersInUserId(): void
+    {
+        $userId = 'user*?[test]';
+        $escapedPattern = 'user' . 'user\\*\\?\\[test\\]' . '_*';
+
+        $this->connection->expects(static::once())
+            ->method('keys')
+            ->with($escapedPattern)
+            ->willReturn([]);
+
+        $deletedCount = $this->helper->forceLogoutUser($userId);
+
+        self::assertSame(0, $deletedCount);
+    }
 }
