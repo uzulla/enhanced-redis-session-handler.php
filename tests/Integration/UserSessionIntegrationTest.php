@@ -6,7 +6,10 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
+use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\UserSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\UserSessionHelper;
 use Redis;
@@ -259,7 +262,24 @@ class UserSessionIntegrationTest extends TestCase
      */
     public function testSetUserIdAndRegenerateWithActiveSession(): void
     {
-        // セッションを開始
+        $logger = new Logger('test');
+        $logger->pushHandler(new StreamHandler('php://stderr', Logger::DEBUG));
+
+        // RedisSessionHandlerを作成し、session_set_save_handlerで設定
+        $options = new RedisSessionHandlerOptions(
+            $this->generator,
+            null,
+            $logger
+        );
+        $serializer = new PhpSerializeSerializer();
+        $handler = new RedisSessionHandler(
+            $this->connection,
+            $serializer,
+            $options
+        );
+
+        // セッションハンドラーを設定してからセッションを開始
+        session_set_save_handler($handler, true);
         session_start();
         self::assertSame(PHP_SESSION_ACTIVE, session_status());
 
@@ -280,6 +300,6 @@ class UserSessionIntegrationTest extends TestCase
         // 新しいセッションIDにユーザーIDが含まれていることを確認
         self::assertStringStartsWith('usertest-user-123_', $newSessionId);
 
-        session_destroy();
+        session_write_close();
     }
 }
