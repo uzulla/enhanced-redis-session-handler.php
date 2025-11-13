@@ -236,4 +236,50 @@ class UserSessionIntegrationTest extends TestCase
         $count = $this->helper->countUserSessions($userId);
         self::assertSame(0, $count);
     }
+
+    /**
+     * セッションが開始されていない状態でsetUserIdAndRegenerate()を呼び出すとfalseを返すことを確認
+     *
+     * @runInSeparateProcess
+     */
+    public function testSetUserIdAndRegenerateWithoutActiveSession(): void
+    {
+        // セッションが開始されていないことを確認
+        self::assertSame(PHP_SESSION_NONE, session_status());
+
+        // setUserIdAndRegenerate()を呼び出すとfalseが返される
+        $result = $this->helper->setUserIdAndRegenerate('test-user');
+        self::assertFalse($result);
+    }
+
+    /**
+     * セッション開始後にsetUserIdAndRegenerate()を呼び出すと成功することを確認
+     *
+     * @runInSeparateProcess
+     */
+    public function testSetUserIdAndRegenerateWithActiveSession(): void
+    {
+        // セッションを開始
+        session_start();
+        self::assertSame(PHP_SESSION_ACTIVE, session_status());
+
+        $oldSessionId = session_id();
+        self::assertIsString($oldSessionId);
+        self::assertNotEmpty($oldSessionId);
+
+        // setUserIdAndRegenerate()を呼び出す
+        $result = $this->helper->setUserIdAndRegenerate('test-user-123');
+        self::assertTrue($result);
+
+        // セッションIDが変更されたことを確認
+        $newSessionId = session_id();
+        self::assertIsString($newSessionId);
+        self::assertNotEmpty($newSessionId);
+        self::assertNotSame($oldSessionId, $newSessionId);
+
+        // 新しいセッションIDにユーザーIDが含まれていることを確認
+        self::assertStringStartsWith('usertest-user-123_', $newSessionId);
+
+        session_destroy();
+    }
 }
