@@ -6,7 +6,10 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
+use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\UserSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\UserSessionHelper;
 use Redis;
@@ -390,16 +393,19 @@ class UserSessionIntegrationTest extends TestCase
     /**
      * セッションハンドラを作成するヘルパーメソッド
      */
-    private function createSessionHandler(): \Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler
+    private function createSessionHandler(): RedisSessionHandler
     {
-        $options = new \Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions(
+        $logger = new Logger('test');
+        $logger->pushHandler(new StreamHandler('php://stderr', Logger::DEBUG));
+
+        $options = new RedisSessionHandlerOptions(
             $this->generator,
             null,
-            new \Monolog\Logger('test')
+            $logger
         );
-        $serializer = new \Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer();
+        $serializer = new PhpSerializeSerializer();
 
-        return new \Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler(
+        return new RedisSessionHandler(
             $this->connection,
             $serializer,
             $options
