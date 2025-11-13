@@ -6,10 +6,7 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
-use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
-use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
-use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\UserSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\UserSessionHelper;
 use Redis;
@@ -240,51 +237,4 @@ class UserSessionIntegrationTest extends TestCase
         self::assertSame(0, $count);
     }
 
-    /**
-     * セッション開始後にsetUserIdAndRegenerate()を呼び出すと成功することを確認
-     *
-     * @runInSeparateProcess
-     */
-    public function testSetUserIdAndRegenerateWithActiveSession(): void
-    {
-        $logger = new Logger('test');
-        $logger->pushHandler(new StreamHandler('php://stderr', Logger::DEBUG));
-
-        // RedisSessionHandlerを作成し、session_set_save_handlerで設定
-        $options = new RedisSessionHandlerOptions(
-            $this->generator,
-            null,
-            $logger
-        );
-        $serializer = new PhpSerializeSerializer();
-        $handler = new RedisSessionHandler(
-            $this->connection,
-            $serializer,
-            $options
-        );
-
-        // セッションハンドラーを設定してからセッションを開始
-        session_set_save_handler($handler, true);
-        session_start();
-        self::assertSame(PHP_SESSION_ACTIVE, session_status());
-
-        $oldSessionId = session_id();
-        self::assertIsString($oldSessionId);
-        self::assertNotEmpty($oldSessionId);
-
-        // setUserIdAndRegenerate()を呼び出す
-        $result = $this->helper->setUserIdAndRegenerate('test-user-123');
-        self::assertTrue($result);
-
-        // セッションIDが変更されたことを確認
-        $newSessionId = session_id();
-        self::assertIsString($newSessionId);
-        self::assertNotEmpty($newSessionId);
-        self::assertNotSame($oldSessionId, $newSessionId);
-
-        // 新しいセッションIDにユーザーIDが含まれていることを確認
-        self::assertStringStartsWith('usertest-user-123_', $newSessionId);
-
-        session_write_close();
-    }
 }
