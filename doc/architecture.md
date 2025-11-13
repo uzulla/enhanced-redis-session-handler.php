@@ -59,15 +59,19 @@ enhanced-redis-session-handler.phpは、PHPのセッション管理をRedis/ValK
 ```mermaid
 graph TD
     A[PHPアプリケーション] --> B[RedisSessionHandler]
+    A --> H[UserSessionHelper]
     B --> C[SessionIdGeneratorInterface]
     B --> D[ReadHookInterface]
     B --> E[WriteHookInterface]
     B --> F[RedisConnection]
     F --> G[Redis/ValKey]
-    
+    H --> C3[UserSessionIdGenerator]
+    H --> F
+
     C --> C1[DefaultSessionIdGenerator]
     C --> C2[SecureSessionIdGenerator]
-    
+    C --> C3[UserSessionIdGenerator]
+
     D --> D1[ReadHook実装例]
     E --> E1[WriteHook実装例]
 ```
@@ -202,6 +206,110 @@ interface WriteHookInterface
 - セッションデータの暗号化
 - データの圧縮
 - 監査ログの記録
+
+#### 3.3.4 UserSessionIdGenerator
+
+**目的:** ユーザーIDをセッションIDのプレフィックスとして使用し、ユーザー単位のセッション管理を実現します。
+
+**クラス構造:**
+```php
+class UserSessionIdGenerator implements SessionIdGeneratorInterface
+{
+    private ?string $userId = null;
+    private int $randomLength;
+    private string $anonymousPrefix;
+
+    public function __construct(int $randomLength = 32, string $anonymousPrefix = 'anon');
+    public function generate(): string;
+    public function setUserId(string $userId): void;
+    public function getUserId(): ?string;
+    public function hasUserId(): bool;
+    public function clearUserId(): void;
+}
+```
+
+**セッションIDフォーマット:**
+- **匿名セッション**: `{anonymousPrefix}_{random}` (例: `anon_abc123...`)
+- **ユーザーセッション**: `user{userId}_{random}` (例: `user123_def456...`)
+
+**設計上の特徴:**
+1. **状態管理**: ユーザーIDをインスタンス変数として保持
+2. **ログイン時の再生成**: setUserId()とsession_regenerate_id()を組み合わせて使用
+3. **パターンマッチング**: セッションIDのプレフィックスによりユーザーのセッションを特定可能
+4. **バリデーション**: ユーザーIDの文字種制限、予約語チェックを実装
+
+**セキュリティ考慮事項:**
+- セッションフィクセーション攻撃対策（ログイン時に必ずID再生成）
+- 予約語（`anon`, `user`）で始まるユーザーIDを拒否
+- ランダム部分は暗号学的に安全な乱数生成
+
+**使用フロー:**
+```
+1. 初回訪問 → session_start() → anon_xxx
+2. ログイン成功 → setUserId('123') → session_regenerate_id() → user123_yyy
+3. ログアウト → clearUserId() → (オプション: セッション再生成 → anon_zzz)
+```
+
+#### 3.3.5 UserSessionHelper
+
+**目的:** UserSessionIdGeneratorと連携して、ユーザー単位のセッション管理機能を提供します。
+
+**クラス構造:**
+```php
+class UserSessionHelper
+{
+    private UserSessionIdGenerator $generator;
+    private RedisConnection $connection;
+    private LoggerInterface $logger;
+
+    public function __construct(
+        UserSessionIdGenerator $generator,
+        RedisConnection $connection,
+        LoggerInterface $logger
+    );
+
+    public function setUserIdAndRegenerate(string $userId): bool;
+    public function forceLogoutUser(string $userId): int;
+    public function getUserSessions(string $userId): array;
+    public function countUserSessions(string $userId): int;
+}
+```
+
+**責務:**
+1. **セッションID再生成の管理**: ログイン時のセッションID再生成を一括処理
+2. **強制ログアウト**: 特定ユーザーの全セッションを削除
+3. **セッション監査**: ユーザーのアクティブセッション一覧取得
+4. **ログ記録**: セッション操作のログ記録（SessionIdMaskerでマスキング）
+
+**設計パターン:**
+- **ヘルパークラス**: UserSessionIdGeneratorとRedisConnectionを協調させる
+- **ファサードパターン**: 複雑な操作を単純なインターフェースで提供
+- **関心の分離**: セッション管理ロジックをアプリケーションコードから分離
+
+**Redis操作:**
+- **SCAN使用**: KEYSコマンドの代わりにSCANを使用（本番環境でのブロッキング回避）
+- **パターンマッチング**: `user{userId}_*` パターンでセッションを検索
+- **バッチ処理**: デフォルトバッチサイズ100で効率的に処理
+
+**セキュリティ考慮事項:**
+1. **権限チェック**: forceLogoutUser()呼び出し前に必ず権限チェックを実施
+2. **セッションIDマスキング**: 全ログ出力でSessionIdMasker::mask()を自動適用
+3. **タイミング攻撃対策**: 存在しないユーザーでも同じ処理時間
+4. **エラーハンドリング**: 部分的な失敗を適切にログ記録
+
+**アーキテクチャ上の位置づけ:**
+```
+PHPアプリケーション
+    ↓
+UserSessionHelper (ヘルパー層)
+    ↓              ↓
+UserSessionId    RedisConnection
+Generator         (データアクセス層)
+(ID生成層)          ↓
+                Redis/ValKey
+```
+
+**詳細設計:** `doc/UserSessionIdGenerator/design.md` を参照
 
 ### 3.4 SessionHandlerFactory
 
