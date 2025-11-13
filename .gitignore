@@ -42,3 +42,6 @@ Thumbs.db
 # Environment files
 .env
 .env.local
+
+# Redis dump file
+dump.rdb
