@@ -67,7 +67,7 @@ class UserSessionHelper
     public function setUserIdAndRegenerate(string $userId): bool
     {
         $oldSessionId = session_id();
-        if ($oldSessionId === false) {
+        if ($oldSessionId === false || $oldSessionId === '') {
             $this->logger->error('Session ID not available', [
                 'user_id' => $userId,
             ]);

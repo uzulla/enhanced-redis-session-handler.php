@@ -236,4 +236,173 @@ class UserSessionIntegrationTest extends TestCase
         $count = $this->helper->countUserSessions($userId);
         self::assertSame(0, $count);
     }
+
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function testSetUserIdAndRegenerateWithRealSession(): void
+    {
+        // セッションハンドラを設定
+        $handler = $this->createSessionHandler();
+        session_set_save_handler($handler, true);
+
+        // セッションを開始
+        session_start();
+        $oldSessionId = session_id();
+        self::assertIsString($oldSessionId);
+
+        // セッションデータを設定
+        $_SESSION['test_data'] = 'before_regenerate';
+
+        // ユーザーIDを設定してセッションIDを再生成
+        $userId = 'integration_test_user_123';
+        $result = $this->helper->setUserIdAndRegenerate($userId);
+
+        self::assertTrue($result);
+
+        // セッションIDが変更されたことを確認
+        $newSessionId = session_id();
+        self::assertIsString($newSessionId);
+        self::assertNotEquals($oldSessionId, $newSessionId);
+
+        // セッションデータが保持されていることを確認
+        self::assertSame('before_regenerate', $_SESSION['test_data']);
+
+        // 新しいセッションIDにユーザープレフィックスが含まれることを確認
+        self::assertStringStartsWith('user' . $userId . '_', $newSessionId);
+
+        // 古いセッションがRedisから削除されていることを確認
+        self::assertFalse($this->connection->exists($oldSessionId));
+
+        // 新しいセッションがRedisに存在することを確認
+        self::assertTrue($this->connection->exists($newSessionId));
+
+        session_write_close();
+        $this->connection->delete($newSessionId);
+    }
+
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function testSetUserIdAndRegenerateCreatesUserPrefixedSessionId(): void
+    {
+        $handler = $this->createSessionHandler();
+        session_set_save_handler($handler, true);
+
+        session_start();
+        $userId = 'testuser456';
+
+        $result = $this->helper->setUserIdAndRegenerate($userId);
+
+        self::assertTrue($result);
+
+        $newSessionId = session_id();
+        self::assertIsString($newSessionId);
+        self::assertStringStartsWith('user' . $userId . '_', $newSessionId);
+
+        // ジェネレータのユーザーIDが正しく設定されていることを確認
+        self::assertSame($userId, $this->generator->getUserId());
+
+        session_write_close();
+        $this->connection->delete($newSessionId);
+    }
+
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function testSetUserIdAndRegenerateMultipleTimes(): void
+    {
+        $handler = $this->createSessionHandler();
+        session_set_save_handler($handler, true);
+
+        session_start();
+
+        // 最初のユーザーでログイン
+        $userId1 = 'user_one';
+        $result1 = $this->helper->setUserIdAndRegenerate($userId1);
+        self::assertTrue($result1);
+
+        $sessionId1 = session_id();
+        self::assertIsString($sessionId1);
+        self::assertStringStartsWith('user' . $userId1 . '_', $sessionId1);
+
+        $_SESSION['user_data'] = 'data_for_user_one';
+
+        // 2番目のユーザーでログイン（同じセッション内でユーザー切り替え）
+        $userId2 = 'user_two';
+        $result2 = $this->helper->setUserIdAndRegenerate($userId2);
+        self::assertTrue($result2);
+
+        $sessionId2 = session_id();
+        self::assertIsString($sessionId2);
+        self::assertStringStartsWith('user' . $userId2 . '_', $sessionId2);
+        self::assertNotEquals($sessionId1, $sessionId2);
+
+        // セッションデータは保持される
+        self::assertSame('data_for_user_one', $_SESSION['user_data']);
+
+        // 最初のセッションは削除されている
+        self::assertFalse($this->connection->exists($sessionId1));
+
+        session_write_close();
+        $this->connection->delete($sessionId2);
+    }
+
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function testSetUserIdAndRegenerateWithInvalidUserId(): void
+    {
+        $handler = $this->createSessionHandler();
+        session_set_save_handler($handler, true);
+
+        session_start();
+
+        // 空文字列のユーザーIDは無効
+        $this->expectException(\InvalidArgumentException::class);
+        $this->helper->setUserIdAndRegenerate('');
+
+        session_write_close();
+    }
+
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function testSetUserIdAndRegenerateWithReservedWords(): void
+    {
+        $handler = $this->createSessionHandler();
+        session_set_save_handler($handler, true);
+
+        session_start();
+
+        // 予約語は使用できない
+        $this->expectException(\InvalidArgumentException::class);
+        $this->helper->setUserIdAndRegenerate('anonymous');
+
+        session_write_close();
+    }
+
+    /**
+     * セッションハンドラを作成するヘルパーメソッド
+     */
+    private function createSessionHandler(): \Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler
+    {
+        $options = new \Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions(
+            $this->generator,
+            null,
+            new \Monolog\Logger('test')
+        );
+        $serializer = new \Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer();
+
+        return new \Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler(
+            $this->connection,
+            $serializer,
+            $options
+        );
+    }
 }
