@@ -246,7 +246,7 @@ class UserSessionHelperTest extends TestCase
         $escapedPattern = 'user' . 'user\\*test' . '_*';
 
         $this->connection->expects(static::once())
-            ->method('keys')
+            ->method('scan')
             ->with($escapedPattern)
             ->willReturn([]);
 
@@ -268,7 +268,7 @@ class UserSessionHelperTest extends TestCase
         $escapedPattern = 'user' . 'user\\?test' . '_*';
 
         $this->connection->expects(static::once())
-            ->method('keys')
+            ->method('scan')
             ->with($escapedPattern)
             ->willReturn([]);
 
@@ -290,7 +290,7 @@ class UserSessionHelperTest extends TestCase
         $escapedPattern = 'user' . 'user\\[test\\]' . '_*';
 
         $this->connection->expects(static::once())
-            ->method('keys')
+            ->method('scan')
             ->with($escapedPattern)
             ->willReturn([]);
 
@@ -312,7 +312,7 @@ class UserSessionHelperTest extends TestCase
         $escapedPattern = 'user' . 'user\\\\test' . '_*';
 
         $this->connection->expects(static::once())
-            ->method('keys')
+            ->method('scan')
             ->with($escapedPattern)
             ->willReturn([]);
 
@@ -334,7 +334,7 @@ class UserSessionHelperTest extends TestCase
         $escapedPattern = 'user' . 'user\\*\\?\\[test\\]' . '_*';
 
         $this->connection->expects(static::once())
-            ->method('keys')
+            ->method('scan')
             ->with($escapedPattern)
             ->willReturn([]);
 

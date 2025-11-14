@@ -237,8 +237,11 @@ class RedisConnection implements LoggerAwareInterface
      * This method uses SCAN instead of KEYS to avoid blocking Redis in production.
      * SCAN is an iterative command that doesn't block the server.
      *
+     * Note: Redis SCAN may return duplicate keys across iterations. This method
+     * automatically deduplicates the results before returning.
+     *
      * @param string $pattern Pattern to match (e.g., "user123_*")
-     * @return array<string> Array of matching keys (without prefix)
+     * @return array<string> Array of unique matching keys (without prefix)
      */
     public function scan(string $pattern): array
     {
@@ -253,11 +256,14 @@ class RedisConnection implements LoggerAwareInterface
         try {
             while (false !== ($scanKeys = $this->redis->scan($iterator, $fullPattern, 100))) {
                 foreach ($scanKeys as $key) {
-                    $keys[] = str_replace($prefix, '', $key);
+                    // Use key as array key to automatically deduplicate
+                    $keyWithoutPrefix = str_replace($prefix, '', $key);
+                    $keys[$keyWithoutPrefix] = true;
                 }
             }
 
-            return $keys;
+            // Return array of unique keys (array keys, not values)
+            return array_keys($keys);
         } catch (RedisException $e) {
             $this->logger->error('Redis SCAN operation failed', [
                 'error' => $e->getMessage(),
