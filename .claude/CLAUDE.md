@@ -207,7 +207,89 @@ $this->logger->debug('Session operation', [
 - コミットメッセージは日本語で記述
 - 1行で変更の理由（WHY）を説明
 - 複数の独立した修正は別々のコミットに分割
-- コミット前に必ず `composer phpstan` と `composer cs-check` を実行
+
+### コミット・プッシュ前の必須チェック
+
+**重要**: コミット・プッシュ前に必ず以下の手順を実行してください：
+
+#### 1. Redis環境のセットアップ
+
+Docker環境が利用可能な場合:
+```bash
+docker compose -f docker/docker-compose.yml up -d
+./docker/healthcheck.sh
+```
+
+Docker環境が利用できない場合、システムRedisを使用:
+```bash
+# Redisが起動しているか確認
+redis-cli ping
+
+# 起動していない場合はRedisを起動
+redis-server --daemonize yes --port 6379
+
+# 起動確認
+redis-cli ping  # 'PONG'が返ればOK
+```
+
+#### 2. 静的解析とコードスタイルチェック
+
+```bash
+# PHPStan実行（エラーがないこと）
+composer phpstan
+
+# コードスタイルチェック（修正が必要なファイルがないこと）
+composer cs-check
+```
+
+エラーがある場合は修正してください：
+```bash
+# コードスタイルを自動修正
+composer cs-fix
+```
+
+#### 3. テスト実行
+
+```bash
+# 全テストを実行（すべてパスすること）
+composer test
+```
+
+**注意**: テストが失敗する場合は、必ずRedis環境が起動していることを確認してください。多くの統合テストはRedisが必要です。
+
+#### 4. 環境のクリーンアップ（オプション）
+
+テスト完了後、必要に応じてRedis環境を停止:
+```bash
+# システムRedisの場合
+redis-cli shutdown save
+
+# Docker環境の場合
+docker compose -f docker/docker-compose.yml down
+```
+
+### コミット・プッシュのワークフロー例
+
+```bash
+# 1. Redis起動
+redis-server --daemonize yes --port 6379
+
+# 2. 静的解析
+composer phpstan && composer cs-check
+
+# 3. テスト実行
+composer test
+
+# 4. すべてパスしたらコミット
+git add .
+git commit -m "変更内容の説明"
+
+# 5. プッシュ
+git push -u origin ブランチ名
+
+# 6. Redis停止（必要に応じて）
+redis-cli shutdown save
+```
 
 ## Git操作のベストプラクティス
 
@@ -215,4 +297,4 @@ PRレビュー対応時:
 1. 各指摘事項ごとに個別のコミットを作成
 2. コミットメッセージでレビュー指摘の理由を説明
 3. 全修正完了後、PRにまとめコメントを投稿
-4. PHPStanとPHP CS Fixerが通過していることを確認
+4. 上記の「コミット・プッシュ前の必須チェック」をすべて実行
