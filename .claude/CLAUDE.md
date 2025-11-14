@@ -215,12 +215,14 @@ $this->logger->debug('Session operation', [
 #### 1. Redis環境のセットアップ
 
 Docker環境が利用可能な場合:
+
 ```bash
 docker compose -f docker/docker-compose.yml up -d
 ./docker/healthcheck.sh
 ```
 
 Docker環境が利用できない場合、システムRedisを使用:
+
 ```bash
 # Redisが起動しているか確認
 redis-cli ping
@@ -243,6 +245,7 @@ composer cs-check
 ```
 
 エラーがある場合は修正してください：
+
 ```bash
 # コードスタイルを自動修正
 composer cs-fix
@@ -260,6 +263,7 @@ composer test
 #### 4. 環境のクリーンアップ（オプション）
 
 テスト完了後、必要に応じてRedis環境を停止:
+
 ```bash
 # システムRedisの場合
 redis-cli shutdown save
