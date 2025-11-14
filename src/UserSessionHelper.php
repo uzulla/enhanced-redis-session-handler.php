@@ -105,11 +105,27 @@ class UserSessionHelper
     /**
      * 特定ユーザーの全セッションを強制削除
      *
-     * user{userId}_* パターンのRedisキーを全て削除
-     * Redis SCANコマンドを使用して本番環境でも安全に実行
+     * 指定されたユーザーIDに紐づく全てのセッションをRedisから削除します。
+     * user{userId}_* パターンにマッチする全てのキーを検索し、順次削除します。
      *
-     * @param string $userId ユーザーID
-     * @return int 削除されたセッション数
+     * 本番環境での安全性:
+     * - Redis SCANコマンドを使用（非ブロッキング）
+     * - 大量のセッションが存在しても他のRedis操作に影響しない
+     * - ユーザーID内のRedis特殊文字（*?[]\）を自動エスケープ
+     *
+     * 重複除去:
+     * Redis SCANは同じキーを複数回返す可能性がありますが、scan()メソッドが
+     * 自動的に重複を除去するため、正確な削除件数が取得できます。
+     *
+     * 使用例:
+     * ```php
+     * // ユーザー「123」の全セッションを削除（強制ログアウト）
+     * $deletedCount = $helper->forceLogoutUser('123');
+     * echo "削除されたセッション数: {$deletedCount}";
+     * ```
+     *
+     * @param string $userId ユーザーID（内部で自動的にエスケープされます）
+     * @return int 削除されたセッション数（削除に失敗したセッションは含まれません）
      */
     public function forceLogoutUser(string $userId): int
     {
@@ -147,13 +163,39 @@ class UserSessionHelper
     /**
      * 特定ユーザーのアクティブセッション一覧を取得
      *
-     * Redis SCANコマンドを使用して本番環境でも安全に実行
+     * 指定されたユーザーIDに紐づく全てのアクティブセッションの情報を取得します。
+     * 各セッションのIDとデータサイズを含む配列を返します。
      *
-     * @param string $userId ユーザーID
+     * 本番環境での安全性:
+     * - Redis SCANコマンドを使用（非ブロッキング）
+     * - ユーザーID内のRedis特殊文字を自動エスケープ
+     * - セッション数が多くても他のRedis操作に影響しない
+     *
+     * セキュリティ:
+     * - セッションIDはマスキングされて返されます（末尾4文字のみ表示）
+     * - セッションデータの内容は返されません（データサイズのみ）
+     *
+     * 監査とデバッグ用途:
+     * このメソッドは管理者がユーザーのセッション状況を監視・監査する目的で使用します。
+     * - 複数デバイスからのログインチェック
+     * - 異常なセッション数の検出
+     * - セッションデータサイズの分析
+     *
+     * 使用例:
+     * ```php
+     * $sessions = $helper->getUserSessions('123');
+     * foreach ($sessions as $key => $info) {
+     *     echo "セッションキー: {$key}\n";
+     *     echo "  ID: {$info['session_id']}\n";  // マスキング済み
+     *     echo "  サイズ: {$info['data_size']} bytes\n";
+     * }
+     * ```
+     *
+     * @param string $userId ユーザーID（内部で自動的にエスケープされます）
      * @return array<string, array{
      *     session_id: string,
      *     data_size: int
-     * }>
+     * }> セッションキーをキーとする連想配列。データ取得に失敗したセッションは含まれません。
      */
     public function getUserSessions(string $userId): array
     {
@@ -185,10 +227,37 @@ class UserSessionHelper
     /**
      * 特定ユーザーのアクティブセッション数を取得
      *
-     * Redis SCANコマンドを使用して本番環境でも安全に実行
+     * 指定されたユーザーIDに紐づくアクティブセッションの総数を返します。
+     * セッションデータの内容は取得せず、キーの存在のみをカウントします。
      *
-     * @param string $userId ユーザーID
-     * @return int セッション数
+     * 本番環境での安全性:
+     * - Redis SCANコマンドを使用（非ブロッキング）
+     * - ユーザーID内のRedis特殊文字を自動エスケープ
+     * - 自動重複除去により正確なカウントを保証
+     *
+     * 正確性の保証:
+     * Redis SCANは反復処理中に同じキーを複数回返す可能性がありますが、
+     * scan()メソッドが自動的に重複を除去するため、常に正確なセッション数が取得できます。
+     *
+     * パフォーマンス特性:
+     * - getUserSessions()よりも高速（セッションデータを取得しないため）
+     * - 大量のセッションが存在する場合でも効率的
+     * - メモリ使用量が少ない
+     *
+     * 使用例:
+     * ```php
+     * $count = $helper->countUserSessions('123');
+     * if ($count > 5) {
+     *     // 異常な同時ログイン数を検出
+     *     $logger->warning('Multiple sessions detected', [
+     *         'user_id' => '123',
+     *         'session_count' => $count
+     *     ]);
+     * }
+     * ```
+     *
+     * @param string $userId ユーザーID（内部で自動的にエスケープされます）
+     * @return int アクティブセッション数（0以上の整数）
      */
     public function countUserSessions(string $userId): int
     {
@@ -202,17 +271,33 @@ class UserSessionHelper
     /**
      * Redisパターン用に特殊文字をエスケープ
      *
-     * Redis KEYS/SCAN コマンドで使用される特殊文字をエスケープします：
-     * - * : 任意の文字列にマッチ
-     * - ? : 任意の1文字にマッチ
-     * - [ ] : 文字クラス
-     * - \ : エスケープ文字
+     * Redis SCAN/KEYSコマンドで使用されるglob-styleパターンの特殊文字をエスケープします。
+     * これにより、ユーザーIDにRedis特殊文字が含まれる場合でも、意図しないパターンマッチを防ぎます。
      *
-     * このメソッドは防御的プログラミングの一環として、バリデーション済みの
-     * ユーザーIDに対しても明示的なエスケープを行います。
+     * エスケープ対象の特殊文字:
+     * - * : 任意の文字列にマッチ → \* にエスケープ
+     * - ? : 任意の1文字にマッチ → \? にエスケープ
+     * - [ ] : 文字クラス（例: [a-z]） → \[ \] にエスケープ
+     * - \ : エスケープ文字自体 → \\ にエスケープ（最優先で処理）
+     *
+     * セキュリティ上の重要性:
+     * このメソッドはパターンインジェクション攻撃を防ぐために重要です。
+     * 例えば、ユーザーID「admin*」が「admin1」「admin2」等にもマッチしてしまう
+     * 問題を防ぎます。
+     *
+     * 防御的プログラミング:
+     * UserSessionIdGeneratorでユーザーIDのバリデーションを行っていますが、
+     * 多層防御の観点から、このメソッドでも明示的なエスケープを実施します。
+     *
+     * エスケープ例:
+     * - "user*test" → "user\*test"
+     * - "user?test" → "user\?test"
+     * - "user[123]" → "user\[123\]"
+     * - "user\test" → "user\\test"
+     * - "user*?[test]" → "user\*\?\[test\]"
      *
      * @param string $userId エスケープ対象のユーザーID
-     * @return string エスケープ済みのユーザーID
+     * @return string エスケープ済みのユーザーID（Redisパターンとして安全に使用可能）
      */
     private function escapeRedisPattern(string $userId): string
     {

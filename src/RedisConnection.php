@@ -234,14 +234,25 @@ class RedisConnection implements LoggerAwareInterface
     /**
      * Scan keys matching a pattern using Redis SCAN command (non-blocking)
      *
-     * This method uses SCAN instead of KEYS to avoid blocking Redis in production.
-     * SCAN is an iterative command that doesn't block the server.
+     * This method uses SCAN instead of KEYS to avoid blocking Redis in production environments.
+     * Unlike KEYS which is O(N) and blocks the server, SCAN uses cursor-based iteration that
+     * allows other operations to execute during the scan process.
      *
-     * Note: Redis SCAN may return duplicate keys across iterations. This method
-     * automatically deduplicates the results before returning.
+     * Implementation details:
+     * - Scans 100 keys per iteration (configurable in redis->scan() call)
+     * - Automatically handles key prefix configured in RedisConnectionConfig
+     * - Returns only unique keys (Redis SCAN may return duplicates across iterations)
+     * - Non-blocking: safe to use with large keyspaces in production
      *
-     * @param string $pattern Pattern to match (e.g., "user123_*")
+     * Performance characteristics:
+     * - Time complexity: O(N) where N is the number of keys in the database
+     * - Does not block other Redis operations during execution
+     * - Memory efficient: processes keys in batches
+     *
+     * @param string $pattern Pattern to match (e.g., "user123_*", "session:*")
+     *                        Supports Redis glob-style patterns: *, ?, [abc], [^a], [a-z]
      * @return array<string> Array of unique matching keys (without prefix)
+     *                       Empty array if no keys match or on error
      */
     public function scan(string $pattern): array
     {
@@ -274,8 +285,23 @@ class RedisConnection implements LoggerAwareInterface
     }
 
     /**
-     * @deprecated Use scan() instead. This method is kept for backward compatibility.
-     * @return array<string>
+     * Get keys matching a pattern (deprecated - use scan() instead)
+     *
+     * @deprecated 1.x Use scan() instead. The KEYS command blocks Redis and should not be
+     *                 used in production. This method is kept for backward compatibility only
+     *                 and internally delegates to scan() for safe operation.
+     *
+     * Migration guide:
+     * ```php
+     * // Before (deprecated)
+     * $keys = $connection->keys('user123_*');
+     *
+     * // After (recommended)
+     * $keys = $connection->scan('user123_*');
+     * ```
+     *
+     * @param string $pattern Pattern to match
+     * @return array<string> Array of unique matching keys (without prefix)
      */
     public function keys(string $pattern): array
     {
