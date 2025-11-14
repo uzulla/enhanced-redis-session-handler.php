@@ -255,6 +255,13 @@ class UserSessionHelperTest extends TestCase
         self::assertSame(0, $deletedCount);
     }
 
+    /**
+     * getUserSessions()でRedis特殊文字「?」をエスケープすることを検証
+     *
+     * 「?」は任意の1文字にマッチするRedis特殊文字であり、エスケープせずに使用すると
+     * 意図しないパターンマッチが発生する可能性がある。このテストでは「?」が
+     * 正しく「\?」にエスケープされることを確認する。
+     */
     public function testGetUserSessionsEscapesRedisSpecialCharacters(): void
     {
         $userId = 'user?test';
@@ -270,6 +277,13 @@ class UserSessionHelperTest extends TestCase
         self::assertSame([], $sessions);
     }
 
+    /**
+     * countUserSessions()でRedis特殊文字「[」「]」をエスケープすることを検証
+     *
+     * 「[」「]」は文字クラスを表すRedis特殊文字であり、エスケープせずに使用すると
+     * 文字セットのパターンマッチとして解釈されてしまう。このテストでは
+     * 「[」「]」が正しく「\[」「\]」にエスケープされることを確認する。
+     */
     public function testCountUserSessionsEscapesRedisSpecialCharacters(): void
     {
         $userId = 'user[test]';
@@ -285,6 +299,13 @@ class UserSessionHelperTest extends TestCase
         self::assertSame(0, $count);
     }
 
+    /**
+     * ユーザーID内のバックスラッシュ「\」をエスケープすることを検証
+     *
+     * 「\」はRedisのエスケープ文字として機能するため、ユーザーID内に含まれる場合は
+     * 二重エスケープが必要。このテストでは「\」が正しく「\\」にエスケープされ、
+     * 他の特殊文字のエスケープと混同されないことを確認する。
+     */
     public function testEscapesBackslashInUserId(): void
     {
         $userId = 'user\\test';
@@ -300,6 +321,13 @@ class UserSessionHelperTest extends TestCase
         self::assertSame(0, $count);
     }
 
+    /**
+     * 複数のRedis特殊文字が混在する場合のエスケープを検証
+     *
+     * ユーザーIDに複数の特殊文字（*、?、[、]）が含まれる場合でも、
+     * すべての文字が正しくエスケープされることを確認する。
+     * これは複雑なパターンインジェクション攻撃に対する防御を検証する。
+     */
     public function testEscapesMultipleSpecialCharactersInUserId(): void
     {
         $userId = 'user*?[test]';
