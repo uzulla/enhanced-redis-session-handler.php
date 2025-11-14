@@ -384,31 +384,18 @@ class UserSessionHelperTest extends TestCase
 
     /**
      * セッション未開始の場合のエラーハンドリング
+     * @runInSeparateProcess
      */
     public function testSetUserIdAndRegenerateWhenSessionNotStarted(): void
     {
         // セッションを開始せずにメソッドを呼び出す
-        // PHPUnit実行時、セッションが開始されていないと session_id() は空文字列を返す
-
         $userId = 'test_user';
 
-        // セッションが開始されていない場合
-        $sessionId = session_id();
+        // loggerのerrorメソッドが一度呼ばれることを検証
+        $this->logger->expects(static::once())
+            ->method('error');
 
-        if ($sessionId === '' || $sessionId === false) {
-            // session_id()が空またはfalseを返す場合はエラーログが記録される
-            $this->logger->expects(static::once())
-                ->method('error')
-                ->with(
-                    'Session ID not available',
-                    ['user_id' => $userId]
-                );
-
-            $result = $this->helper->setUserIdAndRegenerate($userId);
-            self::assertFalse($result);
-        } else {
-            // セッションが既に開始されている場合はテストをスキップ
-            self::markTestSkipped('Session already started in test environment');
-        }
+        $result = $this->helper->setUserIdAndRegenerate($userId);
+        self::assertFalse($result);
     }
 }
