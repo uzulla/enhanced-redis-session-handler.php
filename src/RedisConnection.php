@@ -268,7 +268,7 @@ class RedisConnection implements LoggerAwareInterface
             while (false !== ($scanKeys = $this->redis->scan($iterator, $fullPattern, 100))) {
                 foreach ($scanKeys as $key) {
                     // Use key as array key to automatically deduplicate
-                    $keyWithoutPrefix = str_replace($prefix, '', $key);
+                    $keyWithoutPrefix = substr($key, strlen($prefix));
                     $keys[$keyWithoutPrefix] = true;
                 }
             }
