@@ -112,7 +112,8 @@ class UserSessionHelper
      */
     public function forceLogoutUser(string $userId): int
     {
-        $pattern = 'user' . $userId . '_*';
+        $escapedUserId = $this->escapeRedisPattern($userId);
+        $pattern = 'user' . $escapedUserId . '_*';
         $sessionKeys = $this->connection->keys($pattern);
 
         if (count($sessionKeys) === 0) {
@@ -153,7 +154,8 @@ class UserSessionHelper
      */
     public function getUserSessions(string $userId): array
     {
-        $pattern = 'user' . $userId . '_*';
+        $escapedUserId = $this->escapeRedisPattern($userId);
+        $pattern = 'user' . $escapedUserId . '_*';
         $sessionKeys = $this->connection->keys($pattern);
 
         $sessions = [];
@@ -185,9 +187,39 @@ class UserSessionHelper
      */
     public function countUserSessions(string $userId): int
     {
-        $pattern = 'user' . $userId . '_*';
+        $escapedUserId = $this->escapeRedisPattern($userId);
+        $pattern = 'user' . $escapedUserId . '_*';
         $sessionKeys = $this->connection->keys($pattern);
 
         return count($sessionKeys);
+    }
+
+    /**
+     * Redisパターン用に特殊文字をエスケープ
+     *
+     * Redis KEYS/SCAN コマンドで使用される特殊文字をエスケープします：
+     * - * : 任意の文字列にマッチ
+     * - ? : 任意の1文字にマッチ
+     * - [ ] : 文字クラス
+     * - \ : エスケープ文字
+     *
+     * このメソッドは防御的プログラミングの一環として、バリデーション済みの
+     * ユーザーIDに対しても明示的なエスケープを行います。
+     *
+     * @param string $userId エスケープ対象のユーザーID
+     * @return string エスケープ済みのユーザーID
+     */
+    private function escapeRedisPattern(string $userId): string
+    {
+        // バックスラッシュを最初にエスケープ（二重エスケープを防ぐため）
+        $escaped = str_replace('\\', '\\\\', $userId);
+
+        // Redis特殊文字をエスケープ
+        $specialChars = ['*', '?', '[', ']'];
+        foreach ($specialChars as $char) {
+            $escaped = str_replace($char, '\\' . $char, $escaped);
+        }
+
+        return $escaped;
     }
 }
