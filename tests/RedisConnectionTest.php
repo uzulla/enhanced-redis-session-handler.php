@@ -197,8 +197,8 @@ class RedisConnectionTest extends TestCase
         // プレフィックスがキーの途中にも含まれるテストケース
         // 例: prefix="test_prefix:"で、キー="test_prefix:test_prefix:abc"の場合
         // 結果は"test_prefix:abc"であるべき（先頭のプレフィックスのみ除去）
-        $connection->set('test_prefix:abc', 'value1', 60);
-        $connection->set('test_prefix:xyz', 'value2', 60);
+        self::assertTrue($connection->set('test_prefix:abc', 'value1', 60), 'Failed to create test key: test_prefix:abc');
+        self::assertTrue($connection->set('test_prefix:xyz', 'value2', 60), 'Failed to create test key: test_prefix:xyz');
 
         $keys = $connection->scan('test_prefix:*');
 
@@ -255,7 +255,7 @@ class RedisConnectionTest extends TestCase
         // 複数のキーを設定
         $testKeys = ['key1', 'key2', 'key3', 'key4', 'key5'];
         foreach ($testKeys as $key) {
-            $connection->set($key, 'value', 60);
+            self::assertTrue($connection->set($key, 'value', 60), "Failed to create test key: $key");
         }
 
         $keys = $connection->scan('*');
@@ -263,16 +263,8 @@ class RedisConnectionTest extends TestCase
         // 各キーが一度だけ含まれることを確認（重複排除が機能している）
         $keyCounts = array_count_values($keys);
         foreach ($testKeys as $key) {
-            if (isset($keyCounts[$key])) {
-                self::assertEquals(1, $keyCounts[$key], "Key '$key' should appear only once");
-            }
-        }
-
-        // キーの数が期待通りであることを確認
-        // 注: 他のテストで作成されたキーも含まれる可能性があるため、
-        // 作成したキーが含まれていることのみを確認
-        foreach ($testKeys as $key) {
-            self::assertContains($key, $keys);
+            self::assertArrayHasKey($key, $keyCounts, "Key '$key' should be present in scan results");
+            self::assertEquals(1, $keyCounts[$key], "Key '$key' should appear only once");
         }
 
         // クリーンアップ
