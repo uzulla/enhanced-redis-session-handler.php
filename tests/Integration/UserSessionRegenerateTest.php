@@ -163,7 +163,8 @@ class UserSessionRegenerateTest extends TestCase
 
         // 最初のユーザーでログイン
         $userId1 = 'user_001';
-        $this->helper->setUserIdAndRegenerate($userId1);
+        $result1 = $this->helper->setUserIdAndRegenerate($userId1);
+        self::assertTrue($result1, 'setUserIdAndRegenerate should return true for first user');
         $sessionId1 = session_id();
         self::assertNotFalse($sessionId1, 'User session ID should be generated');
         self::assertStringStartsWith("user{$userId1}_", $sessionId1);
@@ -178,6 +179,7 @@ class UserSessionRegenerateTest extends TestCase
         $this->generator->clearUserId();
 
         // 新しいセッションIDを強制（古いセッションIDを使わない）
+        // session_start()の前に呼ぶ必要がある
         session_id('');
 
         // 新しいセッションを開始
@@ -190,7 +192,8 @@ class UserSessionRegenerateTest extends TestCase
 
         // 別のユーザーでログイン
         $userId2 = 'user_002';
-        $this->helper->setUserIdAndRegenerate($userId2);
+        $result2 = $this->helper->setUserIdAndRegenerate($userId2);
+        self::assertTrue($result2, 'setUserIdAndRegenerate should return true for second user');
         $sessionId2 = session_id();
         self::assertNotFalse($sessionId2, 'Second user session ID should be generated');
         self::assertStringStartsWith("user{$userId2}_", $sessionId2);

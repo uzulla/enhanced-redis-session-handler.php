@@ -57,8 +57,12 @@ class UserSessionHelper
      *
      * この1つのメソッドで以下を実行：
      * 1. ユーザーIDをジェネレータに設定
-     * 2. session_regenerate_id(true)を実行
-     * 3. ログ記録
+     * 2. session_regenerate_id(false)を実行（新しいセッションID生成）
+     * 3. 古いセッションデータをRedisから手動削除
+     * 4. ログ記録
+     *
+     * 注意: PHP 8.4+では session_regenerate_id(true) がカスタムセッションハンドラーで
+     * 正しく動作しないため、falseを指定して手動削除する方式を採用しています。
      *
      * 【重要】このメソッドはsession_start()の後に呼び出す必要があります。
      * セッションが開始されていない場合、LogicExceptionが投げられます。
@@ -116,7 +120,7 @@ class UserSessionHelper
             $this->logger->debug('Old session deleted', [
                 'old_session_id' => SessionIdMasker::mask($oldSessionId),
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             // 古いセッションの削除に失敗しても処理は継続
             // （既に期限切れなど、削除できない場合もある）
             $this->logger->warning('Failed to delete old session', [
