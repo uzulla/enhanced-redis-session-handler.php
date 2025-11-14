@@ -380,8 +380,6 @@ class UserSessionHelperTest extends TestCase
 
         // 空文字列は無効
         $this->helper->setUserIdAndRegenerate('');
-
-        session_destroy();
     }
 
     /**
