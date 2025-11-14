@@ -90,8 +90,10 @@ class UserSessionHelper
         // ユーザーIDを設定（バリデーションはジェネレータ内で実施）
         $this->generator->setUserId($userId);
 
-        // セッションIDを再生成（古いセッションを削除）
-        if (!session_regenerate_id(true)) {
+        // セッションIDを再生成（falseを指定して古いセッションを保持）
+        // PHP 8.4+では session_regenerate_id(true) がカスタムハンドラーで正しく動作しないため、
+        // 手動で古いセッションを削除する
+        if (!session_regenerate_id(false)) {
             $this->logger->error('Failed to regenerate session ID', [
                 'user_id' => $userId,
             ]);
@@ -104,6 +106,23 @@ class UserSessionHelper
                 'user_id' => $userId,
             ]);
             return false;
+        }
+
+        // 古いセッションデータを手動で削除
+        // session_regenerate_id(true)の代わりにこの方法を使用することで、
+        // カスタムセッションハンドラーと互換性を保つ
+        try {
+            $this->connection->delete($oldSessionId);
+            $this->logger->debug('Old session deleted', [
+                'old_session_id' => SessionIdMasker::mask($oldSessionId),
+            ]);
+        } catch (\Exception $e) {
+            // 古いセッションの削除に失敗しても処理は継続
+            // （既に期限切れなど、削除できない場合もある）
+            $this->logger->warning('Failed to delete old session', [
+                'old_session_id' => SessionIdMasker::mask($oldSessionId),
+                'error' => $e->getMessage(),
+            ]);
         }
 
         $this->logger->info('User session regenerated', [
