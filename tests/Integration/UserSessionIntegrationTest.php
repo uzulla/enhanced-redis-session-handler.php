@@ -30,7 +30,7 @@ class UserSessionIntegrationTest extends TestCase
         self::assertNotFalse($redisPort, 'SESSION_REDIS_PORT environment variable must be set');
 
         $logger = new Logger('test');
-        $logger->pushHandler(new StreamHandler('php://stderr', Logger::DEBUG));
+        $logger->pushHandler(new StreamHandler('php://memory', Logger::DEBUG));
 
         $config = new RedisConnectionConfig(
             $redisHost,

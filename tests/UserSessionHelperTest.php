@@ -342,4 +342,73 @@ class UserSessionHelperTest extends TestCase
 
         self::assertSame(0, $deletedCount);
     }
+
+    /**
+     * @runInSeparateProcess
+     */
+    public function testSetUserIdAndRegenerateSuccess(): void
+    {
+        // セッションを開始
+        session_start();
+        $oldSessionId = session_id();
+
+        // セッションIDジェネレータを使用してログイン時のセッションID再生成をテスト
+        $userId = 'test_user_123';
+        $result = $this->helper->setUserIdAndRegenerate($userId);
+
+        self::assertTrue($result);
+
+        // セッションIDが変更されたことを確認
+        $newSessionId = session_id();
+        self::assertNotEquals($oldSessionId, $newSessionId);
+
+        // ジェネレータにユーザーIDが設定されたことを確認
+        self::assertSame($userId, $this->generator->getUserId());
+
+        session_destroy();
+    }
+
+    /**
+     * @runInSeparateProcess
+     */
+    public function testSetUserIdAndRegenerateWithInvalidUserId(): void
+    {
+        session_start();
+
+        // UserSessionIdGeneratorは予約語をバリデーション
+        $this->expectException(\InvalidArgumentException::class);
+
+        // 空文字列は無効
+        $this->helper->setUserIdAndRegenerate('');
+    }
+
+    /**
+     * セッション未開始の場合のエラーハンドリング
+     */
+    public function testSetUserIdAndRegenerateWhenSessionNotStarted(): void
+    {
+        // セッションを開始せずにメソッドを呼び出す
+        // PHPUnit実行時、セッションが開始されていないと session_id() は空文字列を返す
+
+        $userId = 'test_user';
+
+        // セッションが開始されていない場合
+        $sessionId = session_id();
+
+        if ($sessionId === '' || $sessionId === false) {
+            // session_id()が空またはfalseを返す場合はエラーログが記録される
+            $this->logger->expects(static::once())
+                ->method('error')
+                ->with(
+                    'Session ID not available',
+                    ['user_id' => $userId]
+                );
+
+            $result = $this->helper->setUserIdAndRegenerate($userId);
+            self::assertFalse($result);
+        } else {
+            // セッションが既に開始されている場合はテストをスキップ
+            self::markTestSkipped('Session already started in test environment');
+        }
+    }
 }
