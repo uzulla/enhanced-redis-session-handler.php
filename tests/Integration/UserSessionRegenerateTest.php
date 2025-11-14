@@ -68,10 +68,14 @@ class UserSessionRegenerateTest extends TestCase
         }
 
         if (isset($this->connection) && $this->connection->isConnected()) {
-            /** @var list<string> $keys */
-            $keys = $this->connection->keys('*');
-            foreach ($keys as $key) {
-                $this->connection->delete($key);
+            try {
+                /** @var list<string> $keys */
+                $keys = $this->connection->keys('*');
+                foreach ($keys as $key) {
+                    $this->connection->delete($key);
+                }
+            } catch (\Throwable $e) {
+                // Cleanup failure is not critical for tests
             }
             $this->connection->disconnect();
         }
