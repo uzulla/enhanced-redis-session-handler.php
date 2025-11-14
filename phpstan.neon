@@ -8,9 +8,9 @@ parameters:
         - tests
     reportUnmatchedIgnoredErrors: false
     ignoreErrors:
-        # RedisConnection::keys() is defined but PHPStan fails to detect it in some CI environments (PHP 7.4)
-        # This is a false positive - the method exists and is properly defined in src/RedisConnection.php:237
-        # This error only occurs in specific PHP versions (7.4) and not locally (8.4)
+        # CI環境（PHP 7.4）でのみ発生するPHPStan誤検出を無視
+        # RedisConnection::keys()はsrc/RedisConnection.php:237で正しく定義されている
+        # ローカル環境（PHP 8.4）では問題なく、環境依存のfalse positive
         -
             message: '#Call to an undefined method Uzulla\\EnhancedRedisSessionHandler\\RedisConnection::keys\(\)\.#'
             path: tests/Integration/UserSessionRegenerateTest.php
