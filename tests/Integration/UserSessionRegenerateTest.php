@@ -9,6 +9,7 @@ use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
+use Uzulla\EnhancedRedisSessionHandler\Exception\ConnectionException;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
 use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
@@ -35,11 +36,10 @@ class UserSessionRegenerateTest extends TestCase
             self::markTestSkipped('Redis extension is required');
         }
 
-        $redisHost = getenv('SESSION_REDIS_HOST');
-        $redisPort = getenv('SESSION_REDIS_PORT');
-
-        self::assertNotFalse($redisHost, 'SESSION_REDIS_HOST environment variable must be set');
-        self::assertNotFalse($redisPort, 'SESSION_REDIS_PORT environment variable must be set');
+        $envHost = getenv('SESSION_REDIS_HOST');
+        $envPort = getenv('SESSION_REDIS_PORT');
+        $redisHost = $envHost !== false ? $envHost : 'localhost';
+        $redisPort = $envPort !== false ? $envPort : '6379';
 
         $this->logger = new Logger('test');
         $this->logger->pushHandler(new StreamHandler('php://memory', Logger::DEBUG));
@@ -55,7 +55,12 @@ class UserSessionRegenerateTest extends TestCase
 
         $redis = new Redis();
         $this->connection = new RedisConnection($redis, $config, $this->logger);
-        $this->connection->connect();
+
+        try {
+            $this->connection->connect();
+        } catch (ConnectionException | \RedisException $e) {
+            self::markTestSkipped('Redis server is not available: ' . $e->getMessage());
+        }
 
         $this->generator = new UserSessionIdGenerator();
         $this->helper = new UserSessionHelper($this->generator, $this->connection, $this->logger);
@@ -72,8 +77,8 @@ class UserSessionRegenerateTest extends TestCase
             if (isset($this->connection) && $this->connection->isConnected()) {
                 try {
                     // test:usersession: プレフィックス付きのキーのみ削除
-                    /** @var list<string> $keys */
-                    $keys = $this->connection->keys('*');
+                    // scan()メソッドはプレフィックスを自動的に処理する
+                    $keys = $this->connection->scan('*');
                     foreach ($keys as $key) {
                         $this->connection->delete($key);
                     }
