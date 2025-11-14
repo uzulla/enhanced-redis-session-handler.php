@@ -68,6 +68,7 @@ class UserSessionRegenerateTest extends TestCase
         }
 
         if (isset($this->connection) && $this->connection->isConnected()) {
+            /** @var list<string> $keys */
             $keys = $this->connection->keys('*');
             foreach ($keys as $key) {
                 $this->connection->delete($key);
