@@ -232,9 +232,29 @@ class RedisConnection implements LoggerAwareInterface
     }
 
     /**
-     * @return array<string>
+     * パターンにマッチするキーをRedis SCANコマンドで取得（非ブロッキング）
+     *
+     * 本番環境でRedisをブロックしないため、KEYSではなくSCANコマンドを使用します。
+     * KEYSはO(N)でサーバーをブロックしますが、SCANはカーソルベースの反復処理により
+     * スキャン中も他の操作を実行可能にします。
+     *
+     * 実装の詳細:
+     * - 1回の反復で100キーずつスキャン（redis->scan()の呼び出しで設定可能）
+     * - RedisConnectionConfigで設定されたキープレフィックスを自動処理
+     * - ユニークなキーのみを返す（Redis SCANは反復処理中に重複を返す可能性あり）
+     * - 非ブロッキング: 大規模なキースペースでも本番環境で安全に使用可能
+     *
+     * パフォーマンス特性:
+     * - 時間計算量: O(N) ただしNはデータベース内のキー数
+     * - 実行中も他のRedis操作をブロックしない
+     * - メモリ効率的: バッチ処理でキーを処理
+     *
+     * @param string $pattern マッチパターン（例: "user123_*", "session:*"）
+     *                        Redisのglob形式パターンをサポート: *, ?, [abc], [^a], [a-z]
+     * @return array<string> ユニークなマッチキーの配列（プレフィックスなし）
+     *                       マッチなしまたはエラー時は空配列
      */
-    public function keys(string $pattern): array
+    public function scan(string $pattern): array
     {
         $this->connect();
 
@@ -247,11 +267,14 @@ class RedisConnection implements LoggerAwareInterface
         try {
             while (false !== ($scanKeys = $this->redis->scan($iterator, $fullPattern, 100))) {
                 foreach ($scanKeys as $key) {
-                    $keys[] = str_replace($prefix, '', $key);
+                    // Use key as array key to automatically deduplicate
+                    $keyWithoutPrefix = str_replace($prefix, '', $key);
+                    $keys[$keyWithoutPrefix] = true;
                 }
             }
 
-            return $keys;
+            // Return array of unique keys (array keys, not values)
+            return array_keys($keys);
         } catch (RedisException $e) {
             $this->logger->error('Redis SCAN operation failed', [
                 'error' => $e->getMessage(),
