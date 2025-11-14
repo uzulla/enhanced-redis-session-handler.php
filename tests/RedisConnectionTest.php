@@ -159,7 +159,19 @@ class RedisConnectionTest extends TestCase
         $connection->delete('test_key');
     }
 
-    public function testKeysRemovesOnlyPrefixAtBeginning(): void
+    /**
+     * scan()メソッドがプレフィックスを先頭からのみ除去することをテスト
+     *
+     * プレフィックスがキー名の途中にも含まれる場合、先頭のプレフィックスのみが除去され、
+     * キー内の他の出現箇所は保持されることを検証します。
+     *
+     * 例: prefix="test_prefix:"、キー="test_prefix:test_prefix:abc"の場合
+     * 期待される結果: "test_prefix:abc" (先頭のプレフィックスのみ除去)
+     * バグがある場合: "abc" (すべてのプレフィックスが除去されてしまう)
+     *
+     * @return void
+     */
+    public function testScanRemovesOnlyPrefixAtBeginning(): void
     {
         if (!extension_loaded('redis')) {
             self::markTestSkipped('Redis extension is required for this test');
@@ -188,7 +200,7 @@ class RedisConnectionTest extends TestCase
         $connection->set('test_prefix:abc', 'value1', 60);
         $connection->set('test_prefix:xyz', 'value2', 60);
 
-        $keys = $connection->keys('test_prefix:*');
+        $keys = $connection->scan('test_prefix:*');
 
         // プレフィックスが正しく除去されていることを確認
         self::assertContains('test_prefix:abc', $keys);
@@ -203,7 +215,21 @@ class RedisConnectionTest extends TestCase
         $connection->delete('test_prefix:xyz');
     }
 
-    public function testKeysReturnsDeduplicated(): void
+    /**
+     * scan()メソッドが重複キーを排除することをテスト
+     *
+     * Redis SCANコマンドはイテレーション中に同じキーを複数回返す可能性があります。
+     * このテストでは、scan()メソッドが配列キーを使用して重複を正しく排除し、
+     * 各キーが結果配列に一度だけ含まれることを検証します。
+     *
+     * Redis SCANの動作仕様として、以下の条件で重複が発生する可能性があります：
+     * - データセットが大きい場合
+     * - イテレーション中にキーの追加・削除が行われた場合
+     * - Redisのリハッシュ処理が実行された場合
+     *
+     * @return void
+     */
+    public function testScanReturnsDeduplicated(): void
     {
         if (!extension_loaded('redis')) {
             self::markTestSkipped('Redis extension is required for this test');
@@ -232,7 +258,7 @@ class RedisConnectionTest extends TestCase
             $connection->set($key, 'value', 60);
         }
 
-        $keys = $connection->keys('*');
+        $keys = $connection->scan('*');
 
         // 各キーが一度だけ含まれることを確認（重複排除が機能している）
         $keyCounts = array_count_values($keys);
@@ -255,7 +281,16 @@ class RedisConnectionTest extends TestCase
         }
     }
 
-    public function testKeysReturnsEmptyArrayOnScanFailure(): void
+    /**
+     * scan()メソッドが接続失敗時にConnectionExceptionをスローすることをテスト
+     *
+     * 無効なホストへの接続を試みた場合、scan()メソッドがConnectionExceptionを
+     * 正しくスローすることを検証します。これにより、呼び出し元でエラーハンドリングが
+     * 可能になります。
+     *
+     * @return void
+     */
+    public function testScanThrowsConnectionExceptionOnFailure(): void
     {
         $logger = new Logger('test');
         $logger->pushHandler(new NullHandler());
@@ -267,6 +302,6 @@ class RedisConnectionTest extends TestCase
 
         // 接続失敗時はConnectionExceptionがスローされる
         $this->expectException(ConnectionException::class);
-        $connection->keys('*');
+        $connection->scan('*');
     }
 }
