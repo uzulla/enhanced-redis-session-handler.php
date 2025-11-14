@@ -6,6 +6,7 @@ namespace Uzulla\EnhancedRedisSessionHandler;
 
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
+use Uzulla\EnhancedRedisSessionHandler\Exception\ConnectionException;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\UserSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 
@@ -121,11 +122,20 @@ class UserSessionHelper
             $this->logger->debug('Old session deleted', [
                 'old_session_id' => SessionIdMasker::mask($oldSessionId),
             ]);
+        } catch (ConnectionException $e) {
+            // Redis接続エラーは重大な問題として記録
+            // 新しいセッションは既に作成済みなので処理は継続
+            $this->logger->error('Failed to delete old session due to connection error', [
+                'old_session_id' => SessionIdMasker::mask($oldSessionId),
+                'exception_class' => get_class($e),
+                'error' => $e->getMessage(),
+            ]);
         } catch (\Throwable $e) {
-            // 古いセッションの削除に失敗しても処理は継続
-            // （既に期限切れなど、削除できない場合もある）
+            // その他のエラー（期限切れセッションの削除失敗など）
+            // 削除できない場合もあるため、処理は継続
             $this->logger->warning('Failed to delete old session', [
                 'old_session_id' => SessionIdMasker::mask($oldSessionId),
+                'exception_class' => get_class($e),
                 'error' => $e->getMessage(),
             ]);
         }
