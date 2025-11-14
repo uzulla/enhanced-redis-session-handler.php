@@ -284,30 +284,6 @@ class RedisConnection implements LoggerAwareInterface
         }
     }
 
-    /**
-     * Get keys matching a pattern (deprecated - use scan() instead)
-     *
-     * @deprecated 1.x Use scan() instead. The KEYS command blocks Redis and should not be
-     *                 used in production. This method is kept for backward compatibility only
-     *                 and internally delegates to scan() for safe operation.
-     *
-     * Migration guide:
-     * ```php
-     * // Before (deprecated)
-     * $keys = $connection->keys('user123_*');
-     *
-     * // After (recommended)
-     * $keys = $connection->scan('user123_*');
-     * ```
-     *
-     * @param string $pattern Pattern to match
-     * @return array<string> Array of unique matching keys (without prefix)
-     */
-    public function keys(string $pattern): array
-    {
-        return $this->scan($pattern);
-    }
-
     public function isConnected(): bool
     {
         if (!$this->connected) {

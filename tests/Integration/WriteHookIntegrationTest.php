@@ -97,7 +97,7 @@ class WriteHookIntegrationTest extends TestCase
         if (extension_loaded('redis')) {
             try {
                 $this->primaryConnection->connect();
-                $keys = $this->primaryConnection->keys('*');
+                $keys = $this->primaryConnection->scan('*');
                 foreach ($keys as $key) {
                     $this->primaryConnection->delete($key);
                 }
@@ -107,7 +107,7 @@ class WriteHookIntegrationTest extends TestCase
 
             try {
                 $this->secondaryConnection->connect();
-                $keys = $this->secondaryConnection->keys('*');
+                $keys = $this->secondaryConnection->scan('*');
                 foreach ($keys as $key) {
                     $this->secondaryConnection->delete($key);
                 }

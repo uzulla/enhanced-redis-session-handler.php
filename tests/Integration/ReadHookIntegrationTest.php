@@ -67,12 +67,12 @@ class ReadHookIntegrationTest extends TestCase
         $this->primaryConnection->connect();
         $this->fallbackConnection->connect();
 
-        $primaryKeys = $this->primaryConnection->keys('*');
+        $primaryKeys = $this->primaryConnection->scan('*');
         foreach ($primaryKeys as $key) {
             $this->primaryConnection->delete($key);
         }
 
-        $fallbackKeys = $this->fallbackConnection->keys('*');
+        $fallbackKeys = $this->fallbackConnection->scan('*');
         foreach ($fallbackKeys as $key) {
             $this->fallbackConnection->delete($key);
         }

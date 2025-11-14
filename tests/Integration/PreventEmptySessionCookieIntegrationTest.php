@@ -93,7 +93,7 @@ class PreventEmptySessionCookieIntegrationTest extends TestCase
 
         if (isset($this->connection) && $this->connection->isConnected()) {
             try {
-                $keys = $this->connection->keys('*');
+                $keys = $this->connection->scan('*');
                 foreach ($keys as $key) {
                     $this->connection->delete($key);
                 }

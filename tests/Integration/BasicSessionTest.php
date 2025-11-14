@@ -54,7 +54,7 @@ class BasicSessionTest extends TestCase
     protected function tearDown(): void
     {
         if (isset($this->connection) && $this->connection->isConnected()) {
-            $keys = $this->connection->keys('*');
+            $keys = $this->connection->scan('*');
             foreach ($keys as $key) {
                 $this->connection->delete($key);
             }
