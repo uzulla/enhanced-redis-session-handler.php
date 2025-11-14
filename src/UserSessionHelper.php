@@ -57,13 +57,13 @@ class UserSessionHelper
      *
      * この1つのメソッドで以下を実行：
      * 1. ユーザーIDをジェネレータに設定
-     * 2. PHPバージョンに応じてセッションIDを再生成
-     *    - PHP 8.4以降: session_regenerate_id(false) + 手動削除
-     *    - PHP 8.3以前: session_regenerate_id(true)
-     * 3. ログ記録
+     * 2. session_regenerate_id(false)でセッションIDを再生成
+     * 3. 古いセッションデータをRedisから手動削除
+     * 4. ログ記録
      *
-     * 注意: PHP 8.4+では session_regenerate_id(true) がカスタムセッションハンドラーで
-     * 正しく動作しないため、PHP_VERSION_IDで条件分岐しています。
+     * 注意: カスタムセッションハンドラー使用時、session_regenerate_id(true)は
+     * PHPのバージョンに関係なく「Session object destruction failed」エラーを
+     * 引き起こす可能性があるため、falseを指定して手動削除する方式を採用しています。
      *
      * 【重要】このメソッドはsession_start()の後に呼び出す必要があります。
      * セッションが開始されていない場合、LogicExceptionが投げられます。
@@ -95,55 +95,39 @@ class UserSessionHelper
         // ユーザーIDを設定（バリデーションはジェネレータ内で実施）
         $this->generator->setUserId($userId);
 
-        // PHP 8.4+では session_regenerate_id(true) がカスタムセッションハンドラーで正しく動作しないため、
-        // PHP バージョンに応じて処理を分岐
-        if (PHP_VERSION_ID >= 80400) {
-            // PHP 8.4以降: session_regenerate_id(false) + 手動削除
-            if (!session_regenerate_id(false)) {
-                $this->logger->error('Failed to regenerate session ID', [
-                    'user_id' => $userId,
-                ]);
-                return false;
-            }
+        // セッションIDを再生成（falseを指定して古いセッションを保持）
+        // カスタムセッションハンドラー使用時、session_regenerate_id(true)は
+        // PHPバージョンに関係なく問題を起こす可能性があるため、手動削除方式を採用
+        if (!session_regenerate_id(false)) {
+            $this->logger->error('Failed to regenerate session ID', [
+                'user_id' => $userId,
+            ]);
+            return false;
+        }
 
-            $newSessionId = session_id();
-            if ($newSessionId === false) {
-                $this->logger->error('New session ID not available', [
-                    'user_id' => $userId,
-                ]);
-                return false;
-            }
+        $newSessionId = session_id();
+        if ($newSessionId === false) {
+            $this->logger->error('New session ID not available', [
+                'user_id' => $userId,
+            ]);
+            return false;
+        }
 
-            // 古いセッションデータを手動で削除
-            try {
-                $this->connection->delete($oldSessionId);
-                $this->logger->debug('Old session deleted', [
-                    'old_session_id' => SessionIdMasker::mask($oldSessionId),
-                ]);
-            } catch (\Throwable $e) {
-                // 古いセッションの削除に失敗しても処理は継続
-                // （既に期限切れなど、削除できない場合もある）
-                $this->logger->warning('Failed to delete old session', [
-                    'old_session_id' => SessionIdMasker::mask($oldSessionId),
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        } else {
-            // PHP 8.3以前: session_regenerate_id(true) で標準的な動作
-            if (!session_regenerate_id(true)) {
-                $this->logger->error('Failed to regenerate session ID', [
-                    'user_id' => $userId,
-                ]);
-                return false;
-            }
-
-            $newSessionId = session_id();
-            if ($newSessionId === false) {
-                $this->logger->error('New session ID not available', [
-                    'user_id' => $userId,
-                ]);
-                return false;
-            }
+        // 古いセッションデータを手動で削除
+        // session_regenerate_id(true)の代わりにこの方法を使用することで、
+        // カスタムセッションハンドラーと互換性を保つ
+        try {
+            $this->connection->delete($oldSessionId);
+            $this->logger->debug('Old session deleted', [
+                'old_session_id' => SessionIdMasker::mask($oldSessionId),
+            ]);
+        } catch (\Throwable $e) {
+            // 古いセッションの削除に失敗しても処理は継続
+            // （既に期限切れなど、削除できない場合もある）
+            $this->logger->warning('Failed to delete old session', [
+                'old_session_id' => SessionIdMasker::mask($oldSessionId),
+                'error' => $e->getMessage(),
+            ]);
         }
 
         $this->logger->info('User session regenerated', [
