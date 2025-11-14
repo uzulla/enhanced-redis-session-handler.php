@@ -393,6 +393,10 @@ class UserSessionHelperTest extends TestCase
         // セッションが開始されていないことを確認
         self::assertSame(PHP_SESSION_NONE, session_status());
 
+        // エラーログが出力されることを確認（メッセージ内容は問わない）
+        $this->logger->expects(self::once())
+            ->method('error');
+
         // setUserIdAndRegenerate()を呼び出すとfalseが返される
         $result = $this->helper->setUserIdAndRegenerate('test-user');
         self::assertFalse($result);
