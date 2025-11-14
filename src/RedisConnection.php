@@ -232,27 +232,27 @@ class RedisConnection implements LoggerAwareInterface
     }
 
     /**
-     * Scan keys matching a pattern using Redis SCAN command (non-blocking)
+     * パターンにマッチするキーをRedis SCANコマンドで取得（非ブロッキング）
      *
-     * This method uses SCAN instead of KEYS to avoid blocking Redis in production environments.
-     * Unlike KEYS which is O(N) and blocks the server, SCAN uses cursor-based iteration that
-     * allows other operations to execute during the scan process.
+     * 本番環境でRedisをブロックしないため、KEYSではなくSCANコマンドを使用します。
+     * KEYSはO(N)でサーバーをブロックしますが、SCANはカーソルベースの反復処理により
+     * スキャン中も他の操作を実行可能にします。
      *
-     * Implementation details:
-     * - Scans 100 keys per iteration (configurable in redis->scan() call)
-     * - Automatically handles key prefix configured in RedisConnectionConfig
-     * - Returns only unique keys (Redis SCAN may return duplicates across iterations)
-     * - Non-blocking: safe to use with large keyspaces in production
+     * 実装の詳細:
+     * - 1回の反復で100キーずつスキャン（redis->scan()の呼び出しで設定可能）
+     * - RedisConnectionConfigで設定されたキープレフィックスを自動処理
+     * - ユニークなキーのみを返す（Redis SCANは反復処理中に重複を返す可能性あり）
+     * - 非ブロッキング: 大規模なキースペースでも本番環境で安全に使用可能
      *
-     * Performance characteristics:
-     * - Time complexity: O(N) where N is the number of keys in the database
-     * - Does not block other Redis operations during execution
-     * - Memory efficient: processes keys in batches
+     * パフォーマンス特性:
+     * - 時間計算量: O(N) ただしNはデータベース内のキー数
+     * - 実行中も他のRedis操作をブロックしない
+     * - メモリ効率的: バッチ処理でキーを処理
      *
-     * @param string $pattern Pattern to match (e.g., "user123_*", "session:*")
-     *                        Supports Redis glob-style patterns: *, ?, [abc], [^a], [a-z]
-     * @return array<string> Array of unique matching keys (without prefix)
-     *                       Empty array if no keys match or on error
+     * @param string $pattern マッチパターン（例: "user123_*", "session:*"）
+     *                        Redisのglob形式パターンをサポート: *, ?, [abc], [^a], [a-z]
+     * @return array<string> ユニークなマッチキーの配列（プレフィックスなし）
+     *                       マッチなしまたはエラー時は空配列
      */
     public function scan(string $pattern): array
     {
