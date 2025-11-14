@@ -60,12 +60,25 @@ class UserSessionHelper
      * 2. session_regenerate_id(true)を実行
      * 3. ログ記録
      *
+     * 【重要】このメソッドはsession_start()の後に呼び出す必要があります。
+     * セッションが開始されていない場合、LogicExceptionが投げられます。
+     *
      * @param string $userId ユーザーID
      * @return bool 成功した場合true
      * @throws InvalidArgumentException ユーザーIDが無効な場合
+     * @throws \LogicException セッションが開始されていない場合
      */
     public function setUserIdAndRegenerate(string $userId): bool
     {
+        // セッションがアクティブかどうかを明示的にチェック
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            $this->logger->error('Session is not active. Call session_start() before this method.', [
+                'user_id' => $userId,
+                'session_status' => session_status(),
+            ]);
+            throw new \LogicException('Session is not active. Call session_start() before this method.');
+        }
+
         $oldSessionId = session_id();
         if ($oldSessionId === false || $oldSessionId === '') {
             $this->logger->error('Session ID not available', [

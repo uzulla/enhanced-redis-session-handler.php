@@ -383,19 +383,32 @@ class UserSessionHelperTest extends TestCase
     }
 
     /**
-     * セッション未開始の場合のエラーハンドリング
+     * セッションが開始されていない状態でsetUserIdAndRegenerate()を呼び出すとLogicExceptionが投げられることを確認
+     *
      * @runInSeparateProcess
+     * @preserveGlobalState disabled
      */
-    public function testSetUserIdAndRegenerateWhenSessionNotStarted(): void
+    public function testSetUserIdAndRegenerateWithoutActiveSession(): void
     {
-        // セッションを開始せずにメソッドを呼び出す
-        $userId = 'test_user';
+        // セッションが開始されていないことを確認
+        self::assertSame(PHP_SESSION_NONE, session_status());
 
-        // loggerのerrorメソッドが一度呼ばれることを検証
-        $this->logger->expects(static::once())
-            ->method('error');
+        // LogicExceptionが投げられることを期待
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Session is not active. Call session_start() before this method.');
 
-        $result = $this->helper->setUserIdAndRegenerate($userId);
-        self::assertFalse($result);
+        // エラーログが出力されることを確認
+        $this->logger->expects(self::once())
+            ->method('error')
+            ->with(
+                'Session is not active. Call session_start() before this method.',
+                [
+                    'user_id' => 'test-user',
+                    'session_status' => PHP_SESSION_NONE,
+                ]
+            );
+
+        // setUserIdAndRegenerate()を呼び出すとLogicExceptionが投げられる
+        $this->helper->setUserIdAndRegenerate('test-user');
     }
 }

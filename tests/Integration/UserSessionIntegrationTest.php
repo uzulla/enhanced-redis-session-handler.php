@@ -236,4 +236,5 @@ class UserSessionIntegrationTest extends TestCase
         $count = $this->helper->countUserSessions($userId);
         self::assertSame(0, $count);
     }
+
 }
