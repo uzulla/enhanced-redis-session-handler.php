@@ -61,11 +61,12 @@ class UserSessionHelper
      * 3. ログ記録
      *
      * 【重要】このメソッドはsession_start()の後に呼び出す必要があります。
-     * セッションが開始されていない場合、falseを返します。
+     * セッションが開始されていない場合、LogicExceptionが投げられます。
      *
      * @param string $userId ユーザーID
      * @return bool 成功した場合true
      * @throws InvalidArgumentException ユーザーIDが無効な場合
+     * @throws \LogicException セッションが開始されていない場合
      */
     public function setUserIdAndRegenerate(string $userId): bool
     {
@@ -75,7 +76,7 @@ class UserSessionHelper
                 'user_id' => $userId,
                 'session_status' => session_status(),
             ]);
-            return false;
+            throw new \LogicException('Session is not active. Call session_start() before this method.');
         }
 
         $oldSessionId = session_id();
