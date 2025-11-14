@@ -145,11 +145,11 @@ class UserSessionRegenerateTest extends TestCase
     }
 
     /**
-     * 異なるユーザーIDで複数回再生成できることを検証
+     * 匿名セッションからユーザーログイン時のセッションID再生成を検証
      *
      * @runInSeparateProcess
      */
-    public function testMultipleRegenerationsWithDifferentUserIds(): void
+    public function testAnonymousToUserSessionRegeneration(): void
     {
         $options = new RedisSessionHandlerOptions(
             $this->generator,
@@ -170,17 +170,15 @@ class UserSessionRegenerateTest extends TestCase
         self::assertNotFalse($anonymousId, 'Anonymous session ID should be generated');
         self::assertStringStartsWith('anon_', $anonymousId);
 
-        // 最初のユーザーでログイン
-        $userId1 = 'user_001';
-        $result1 = $this->helper->setUserIdAndRegenerate($userId1);
-        self::assertTrue($result1, 'setUserIdAndRegenerate should return true for first user');
-        $sessionId1 = session_id();
-        self::assertNotFalse($sessionId1, 'User session ID should be generated');
-        self::assertStringStartsWith("user{$userId1}_", $sessionId1);
+        // ユーザーログイン時のセッションID再生成
+        $userId = 'user_001';
+        $result = $this->helper->setUserIdAndRegenerate($userId);
+        self::assertTrue($result, 'setUserIdAndRegenerate should return true');
 
-        // 1回目のログインが成功したことを確認できたので、
-        // 2回目のログインは別のテストケースとして分離することを推奨
-        // （session_regenerate_id(true)のPHP 8.4互換性問題を回避）
+        $userSessionId = session_id();
+        self::assertNotFalse($userSessionId, 'User session ID should be generated');
+        self::assertStringStartsWith("user{$userId}_", $userSessionId);
+        self::assertNotEquals($anonymousId, $userSessionId, 'Session ID should change after login');
 
         session_write_close();
     }
