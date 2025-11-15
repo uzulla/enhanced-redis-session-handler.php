@@ -6,11 +6,4 @@ parameters:
     paths:
         - src
         - tests
-    reportUnmatchedIgnoredErrors: false
-    ignoreErrors:
-        # CI環境（PHP 7.4）でのみ発生するPHPStan誤検出を無視
-        # RedisConnection::keys()はsrc/RedisConnection.php:237で正しく定義されている
-        # ローカル環境（PHP 8.4）では問題なく、環境依存のfalse positive
-        -
-            message: '#Call to an undefined method Uzulla\\EnhancedRedisSessionHandler\\RedisConnection::keys\(\)\.#'
-            path: tests/Integration/UserSessionRegenerateTest.php
+    reportUnmatchedIgnoredErrors: true
