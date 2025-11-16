@@ -123,9 +123,10 @@ class UserSessionHelper
                 'old_session_id' => SessionIdMasker::mask($oldSessionId),
             ]);
         } catch (ConnectionException $e) {
-            // Redis接続エラーは重大な問題として記録
-            // 新しいセッションは既に作成済みなので処理は継続
-            $this->logger->error('Failed to delete old session due to connection error', [
+            // Redis接続エラーを記録
+            // 新しいセッションは既に作成済みなので処理は継続可能
+            // 古いセッションは自動的にGCで削除されるため、warningレベルで記録
+            $this->logger->warning('Failed to delete old session due to connection error', [
                 'old_session_id' => SessionIdMasker::mask($oldSessionId),
                 'exception_class' => get_class($e),
                 'error' => $e->getMessage(),
