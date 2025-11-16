@@ -12,6 +12,36 @@ use Uzulla\EnhancedRedisSessionHandler\Exception\ConnectionException;
 
 class RedisConnectionTest extends TestCase
 {
+    /**
+     * Redis接続を作成して接続を確立するヘルパーメソッド
+     *
+     * @return RedisConnection 接続済みのRedisConnectionインスタンス
+     */
+    private function createConnectedRedisConnection(): RedisConnection
+    {
+        if (!extension_loaded('redis')) {
+            self::markTestSkipped('Redis extension is required for this test');
+        }
+
+        $logger = new Logger('test');
+        $logger->pushHandler(new NullHandler());
+
+        $redis = new Redis();
+        $redisHostEnv = getenv('SESSION_REDIS_HOST');
+        $redisHost = $redisHostEnv !== false ? $redisHostEnv : 'localhost';
+        $redisPortEnv = getenv('SESSION_REDIS_PORT');
+        $redisPort = $redisPortEnv !== false ? (int)$redisPortEnv : 6379;
+
+        $config = new RedisConnectionConfig($redisHost, $redisPort);
+        $connection = new RedisConnection($redis, $config, $logger);
+
+        if (!$connection->connect()) {
+            self::markTestSkipped('Redis connection not available');
+        }
+
+        return $connection;
+    }
+
     public function testConstructorWithDefaultConfig(): void
     {
         $logger = new Logger('test');
@@ -54,25 +84,7 @@ class RedisConnectionTest extends TestCase
 
     public function testDeleteReturnsTrueWhenKeyExists(): void
     {
-        if (!extension_loaded('redis')) {
-            self::markTestSkipped('Redis extension is required for this test');
-        }
-
-        $logger = new Logger('test');
-        $logger->pushHandler(new NullHandler());
-
-        $redis = new Redis();
-        $redisHostEnv = getenv('SESSION_REDIS_HOST');
-        $redisHost = $redisHostEnv !== false ? $redisHostEnv : 'localhost';
-        $redisPortEnv = getenv('SESSION_REDIS_PORT');
-        $redisPort = $redisPortEnv !== false ? (int)$redisPortEnv : 6379;
-
-        $config = new RedisConnectionConfig($redisHost, $redisPort);
-        $connection = new RedisConnection($redis, $config, $logger);
-
-        if (!$connection->connect()) {
-            self::markTestSkipped('Redis connection not available');
-        }
+        $connection = $this->createConnectedRedisConnection();
 
         // テストキーを設定
         $connection->set('test_delete_key_exists', 'value', 60);
@@ -83,25 +95,7 @@ class RedisConnectionTest extends TestCase
 
     public function testDeleteReturnsFalseWhenKeyDoesNotExist(): void
     {
-        if (!extension_loaded('redis')) {
-            self::markTestSkipped('Redis extension is required for this test');
-        }
-
-        $logger = new Logger('test');
-        $logger->pushHandler(new NullHandler());
-
-        $redis = new Redis();
-        $redisHostEnv = getenv('SESSION_REDIS_HOST');
-        $redisHost = $redisHostEnv !== false ? $redisHostEnv : 'localhost';
-        $redisPortEnv = getenv('SESSION_REDIS_PORT');
-        $redisPort = $redisPortEnv !== false ? (int)$redisPortEnv : 6379;
-
-        $config = new RedisConnectionConfig($redisHost, $redisPort);
-        $connection = new RedisConnection($redis, $config, $logger);
-
-        if (!$connection->connect()) {
-            self::markTestSkipped('Redis connection not available');
-        }
+        $connection = $this->createConnectedRedisConnection();
 
         // キーが存在しないことを確認
         $connection->delete('test_delete_nonexistent_key');
@@ -112,25 +106,7 @@ class RedisConnectionTest extends TestCase
 
     public function testDeleteReturnsTrueWhenKeyExistsAmongMultiple(): void
     {
-        if (!extension_loaded('redis')) {
-            self::markTestSkipped('Redis extension is required for this test');
-        }
-
-        $logger = new Logger('test');
-        $logger->pushHandler(new NullHandler());
-
-        $redis = new Redis();
-        $redisHostEnv = getenv('SESSION_REDIS_HOST');
-        $redisHost = $redisHostEnv !== false ? $redisHostEnv : 'localhost';
-        $redisPortEnv = getenv('SESSION_REDIS_PORT');
-        $redisPort = $redisPortEnv !== false ? (int)$redisPortEnv : 6379;
-
-        $config = new RedisConnectionConfig($redisHost, $redisPort);
-        $connection = new RedisConnection($redis, $config, $logger);
-
-        if (!$connection->connect()) {
-            self::markTestSkipped('Redis connection not available');
-        }
+        $connection = $this->createConnectedRedisConnection();
 
         // 複数のキーを設定して、その中の1つを削除できることを確認
         $connection->set('test_delete_multiple_1', 'value1', 60);
