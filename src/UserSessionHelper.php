@@ -6,6 +6,7 @@ namespace Uzulla\EnhancedRedisSessionHandler;
 
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
+use Uzulla\EnhancedRedisSessionHandler\Exception\ConnectionException;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\UserSessionIdGenerator;
 use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 
@@ -57,8 +58,13 @@ class UserSessionHelper
      *
      * この1つのメソッドで以下を実行：
      * 1. ユーザーIDをジェネレータに設定
-     * 2. session_regenerate_id(true)を実行
-     * 3. ログ記録
+     * 2. session_regenerate_id(false)でセッションIDを再生成
+     * 3. 古いセッションデータをRedisから手動削除
+     * 4. ログ記録
+     *
+     * 注意: カスタムセッションハンドラー使用時、session_regenerate_id(true)は
+     * PHPのバージョンに関係なく「Session object destruction failed」エラーを
+     * 引き起こす可能性があるため、falseを指定して手動削除する方式を採用しています。
      *
      * 【重要】このメソッドはsession_start()の後に呼び出す必要があります。
      * セッションが開始されていない場合、LogicExceptionが投げられます。
@@ -90,8 +96,10 @@ class UserSessionHelper
         // ユーザーIDを設定（バリデーションはジェネレータ内で実施）
         $this->generator->setUserId($userId);
 
-        // セッションIDを再生成（古いセッションを削除）
-        if (!session_regenerate_id(true)) {
+        // セッションIDを再生成（falseを指定して古いセッションを保持）
+        // カスタムセッションハンドラー使用時、session_regenerate_id(true)は
+        // PHPバージョンに関係なく問題を起こす可能性があるため、手動削除方式を採用
+        if (!session_regenerate_id(false)) {
             $this->logger->error('Failed to regenerate session ID', [
                 'user_id' => $userId,
             ]);
@@ -104,6 +112,33 @@ class UserSessionHelper
                 'user_id' => $userId,
             ]);
             return false;
+        }
+
+        // 古いセッションデータを手動で削除
+        // session_regenerate_id(true)の代わりにこの方法を使用することで、
+        // カスタムセッションハンドラーと互換性を保つ
+        try {
+            $this->connection->delete($oldSessionId);
+            $this->logger->debug('Old session deleted', [
+                'old_session_id' => SessionIdMasker::mask($oldSessionId),
+            ]);
+        } catch (ConnectionException $e) {
+            // Redis接続エラーを記録
+            // 新しいセッションは既に作成済みなので処理は継続可能
+            // 古いセッションは自動的にGCで削除されるため、warningレベルで記録
+            $this->logger->warning('Failed to delete old session due to connection error', [
+                'old_session_id' => SessionIdMasker::mask($oldSessionId),
+                'exception_class' => get_class($e),
+                'error' => $e->getMessage(),
+            ]);
+        } catch (\Throwable $e) {
+            // その他のエラー（期限切れセッションの削除失敗など）
+            // 削除できない場合もあるため、処理は継続
+            $this->logger->warning('Failed to delete old session', [
+                'old_session_id' => SessionIdMasker::mask($oldSessionId),
+                'exception_class' => get_class($e),
+                'error' => $e->getMessage(),
+            ]);
         }
 
         $this->logger->info('User session regenerated', [

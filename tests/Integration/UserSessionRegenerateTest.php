@@ -1,0 +1,190 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Uzulla\EnhancedRedisSessionHandler\Tests\Integration;
+
+use Monolog\Handler\StreamHandler;
+use Monolog\Logger;
+use PHPUnit\Framework\TestCase;
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
+use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
+use Uzulla\EnhancedRedisSessionHandler\Exception\ConnectionException;
+use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
+use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
+use Uzulla\EnhancedRedisSessionHandler\SessionId\UserSessionIdGenerator;
+use Uzulla\EnhancedRedisSessionHandler\UserSessionHelper;
+use Redis;
+
+/**
+ * UserSessionHelper.setUserIdAndRegenerate() の統合テスト
+ *
+ * このテストは、実際のRedis接続とPHPのセッション機構を使用して、
+ * セッションID再生成時のプレフィックス付与が正しく動作することを検証します。
+ */
+class UserSessionRegenerateTest extends TestCase
+{
+    private RedisConnection $connection;
+    private UserSessionIdGenerator $generator;
+    private UserSessionHelper $helper;
+    private Logger $logger;
+
+    protected function setUp(): void
+    {
+        if (!extension_loaded('redis')) {
+            self::markTestSkipped('Redis extension is required');
+        }
+
+        $envHost = getenv('SESSION_REDIS_HOST');
+        $envPort = getenv('SESSION_REDIS_PORT');
+        $redisHost = $envHost !== false ? $envHost : 'localhost';
+        $redisPort = $envPort !== false ? $envPort : '6379';
+
+        $this->logger = new Logger('test');
+        $this->logger->pushHandler(new StreamHandler('php://memory', Logger::DEBUG));
+
+        $config = new RedisConnectionConfig(
+            $redisHost,
+            (int)$redisPort,
+            2.5,
+            null,
+            0,
+            'test:usersession:'
+        );
+
+        $redis = new Redis();
+        $this->connection = new RedisConnection($redis, $config, $this->logger);
+
+        try {
+            $this->connection->connect();
+        } catch (ConnectionException | \RedisException $e) {
+            self::markTestSkipped('Redis server is not available: ' . $e->getMessage());
+        }
+
+        $this->generator = new UserSessionIdGenerator();
+        $this->helper = new UserSessionHelper($this->generator, $this->connection, $this->logger);
+    }
+
+    protected function tearDown(): void
+    {
+        try {
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_write_close();
+            }
+        } finally {
+            // プレフィックス付きキーのみクリーンアップ（他のテストへの影響を防ぐ）
+            if (isset($this->connection) && $this->connection->isConnected()) {
+                try {
+                    // test:usersession: プレフィックス付きのキーのみ削除
+                    // scan()メソッドはプレフィックスを自動的に処理する
+                    $keys = $this->connection->scan('*');
+                    foreach ($keys as $key) {
+                        $this->connection->delete($key);
+                    }
+                } catch (\Throwable $e) {
+                    // Cleanup failure is not critical for tests
+                }
+                $this->connection->disconnect();
+            }
+        }
+    }
+
+    /**
+     * セッションID再生成時にユーザーIDプレフィックスが付与されることを検証
+     *
+     * @runInSeparateProcess
+     */
+    public function testSetUserIdAndRegenerateWithPrefixAssertion(): void
+    {
+        $options = new RedisSessionHandlerOptions(
+            $this->generator,
+            null,
+            $this->logger
+        );
+        $handler = new RedisSessionHandler(
+            $this->connection,
+            new PhpSerializeSerializer(),
+            $options
+        );
+
+        // カスタムセッションハンドラーを登録
+        session_set_save_handler($handler, true);
+
+        // セッション保存パスを設定（デフォルトのファイルシステムパスの問題を回避）
+        session_save_path(sys_get_temp_dir());
+
+        // セッション開始
+        session_start();
+        $oldSessionId = session_id();
+        self::assertNotFalse($oldSessionId, 'Session ID should be generated');
+
+        // 最初のセッションIDは匿名プレフィックスで始まることを確認
+        self::assertStringStartsWith('anon_', $oldSessionId);
+
+        // セッションデータを設定
+        $_SESSION['test_data'] = 'value';
+
+        // ユーザーIDを設定してセッションID再生成
+        $userId = 'test_user_123';
+        $result = $this->helper->setUserIdAndRegenerate($userId);
+
+        self::assertTrue($result, 'setUserIdAndRegenerate should return true');
+
+        // 新しいセッションIDを取得
+        $newSessionId = session_id();
+        self::assertNotFalse($newSessionId, 'New session ID should not be false');
+        self::assertNotEquals($oldSessionId, $newSessionId, 'Session ID should change');
+
+        // 新しいセッションIDがユーザーIDプレフィックスで始まることを確認
+        self::assertStringStartsWith("user{$userId}_", $newSessionId);
+
+        // セッションデータが保持されていることを確認
+        self::assertArrayHasKey('test_data', $_SESSION);
+        self::assertSame('value', $_SESSION['test_data']);
+
+        // ジェネレータにユーザーIDが設定されていることを確認
+        self::assertSame($userId, $this->generator->getUserId());
+
+        session_write_close();
+    }
+
+    /**
+     * 匿名セッションからユーザーログイン時のセッションID再生成を検証
+     *
+     * @runInSeparateProcess
+     */
+    public function testAnonymousToUserSessionRegeneration(): void
+    {
+        $options = new RedisSessionHandlerOptions(
+            $this->generator,
+            null,
+            $this->logger
+        );
+        $handler = new RedisSessionHandler(
+            $this->connection,
+            new PhpSerializeSerializer(),
+            $options
+        );
+
+        session_set_save_handler($handler, true);
+        session_save_path(sys_get_temp_dir());
+        session_start();
+
+        $anonymousId = session_id();
+        self::assertNotFalse($anonymousId, 'Anonymous session ID should be generated');
+        self::assertStringStartsWith('anon_', $anonymousId);
+
+        // ユーザーログイン時のセッションID再生成
+        $userId = 'user_001';
+        $result = $this->helper->setUserIdAndRegenerate($userId);
+        self::assertTrue($result, 'setUserIdAndRegenerate should return true');
+
+        $userSessionId = session_id();
+        self::assertNotFalse($userSessionId, 'User session ID should be generated');
+        self::assertStringStartsWith("user{$userId}_", $userSessionId);
+        self::assertNotEquals($anonymousId, $userSessionId, 'Session ID should change after login');
+
+        session_write_close();
+    }
+}
