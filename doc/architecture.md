@@ -440,7 +440,7 @@ session_start();
 
 PreventEmptySessionCookie機能は、以下のコンポーネントと連携します：
 
-```
+```text
 PreventEmptySessionCookie (Facade)
     ↓
     ├─ EmptySessionFilter (WriteFilterInterface実装)
