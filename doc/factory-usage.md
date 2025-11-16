@@ -112,6 +112,7 @@ Redis接続に関する設定を行います。コンストラクタのパラメ
 セッションハンドラの設定を行います。コンストラクタのパラメータ：
 
 - `connectionConfig` (RedisConnectionConfig): Redis接続設定
+- `serializer` (SessionSerializerInterface): セッションデータのシリアライザ（例: `PhpSerializeSerializer`）
 - `idGenerator` (SessionIdGeneratorInterface): セッションIDジェネレータ
 - `maxLifetime` (int): セッションの最大ライフタイム（秒）
 - `logger` (LoggerInterface): PSR-3準拠のロガー
