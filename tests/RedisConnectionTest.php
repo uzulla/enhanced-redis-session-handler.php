@@ -229,8 +229,10 @@ class RedisConnectionTest extends TestCase
      *
      * テスト戦略：
      * - 大量のキー（200個）を作成して重複発生確率を高める
-     * - 結果配列に重複がないことを検証（array_unique との比較）
-     * - すべてのキーが正しく取得できることを検証
+     * - 3つの観点から重複排除ロジックを検証：
+     *   1. 重複がないこと（array_uniqueとのカウント比較）
+     *   2. すべてのキーが正しく取得できること（ソート済み配列の完全一致）
+     *   3. 各キーが正確に1回だけ出現すること（個別カウント検証）
      * - 配列キーによる重複排除ロジック（src/RedisConnection.php:272）が機能することを確認
      *
      * @return void
@@ -275,15 +277,15 @@ class RedisConnectionTest extends TestCase
         $keys = $connection->scan('*');
 
         // 検証1: 結果配列に重複がないことを確認
-        // array_uniqueを適用しても配列のサイズが変わらないことで、重複がないことを検証
-        $uniqueKeys = array_unique($keys);
-        self::assertCount(
-            count($uniqueKeys),
-            $keys,
+        // 元の配列のサイズとarray_unique適用後のサイズが同じであれば重複なし
+        self::assertSame(
+            count($keys),
+            count(array_unique($keys)),
             'scan() result should not contain duplicates. The deduplication logic using array keys should prevent duplicates.'
         );
 
         // 検証2: すべてのテストキーが取得できていることを確認
+        // assertEquals は要素と順序とカウントをすべて検証するため、これ単体で十分
         sort($testKeys);
         sort($keys);
         self::assertEquals(
@@ -298,13 +300,6 @@ class RedisConnectionTest extends TestCase
             self::assertArrayHasKey($key, $keyCounts, "Key '$key' should be present in scan results");
             self::assertEquals(1, $keyCounts[$key], "Key '$key' should appear exactly once, not {$keyCounts[$key]} times");
         }
-
-        // 検証4: 期待される数のキーが返されることを確認
-        self::assertCount(
-            count($testKeys),
-            $keys,
-            'scan() should return exactly ' . count($testKeys) . ' unique keys'
-        );
 
         // クリーンアップ
         foreach ($testKeys as $key) {
