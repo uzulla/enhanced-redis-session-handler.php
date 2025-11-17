@@ -192,25 +192,59 @@ class RedisConnectionTest extends TestCase
      * - イテレーション中にキーの追加・削除が行われた場合
      * - Redisのリハッシュ処理が実行された場合
      *
+     * テスト戦略：
+     * - 大量のキー（200個）を作成して重複発生確率を高める
+     * - 3つの観点から重複排除ロジックを検証：
+     *   1. 重複がないこと（array_uniqueとのカウント比較）
+     *   2. すべてのキーが正しく取得できること（ソート済み配列の完全一致）
+     *   3. 各キーが正確に1回だけ出現すること（個別カウント検証）
+     * - 配列キーによる重複排除ロジック（src/RedisConnection.php:272）が機能することを確認
+     *
      * @return void
      */
     public function testScanReturnsDeduplicated(): void
     {
         $connection = $this->createConnectedRedisConnection('test_dedup:');
 
-        // 複数のキーを設定
-        $testKeys = ['key1', 'key2', 'key3', 'key4', 'key5'];
+        // 大量のキーを作成してRedis SCANの重複発生確率を高める
+        // Redis SCANは内部のハッシュテーブルを走査するため、キー数が多いほど
+        // イテレーション中に同じスロットを複数回訪問する可能性が高まる
+        $testKeys = [];
+        for ($i = 1; $i <= 200; $i++) {
+            $testKeys[] = sprintf('key_%03d', $i);
+        }
+
+        // キーを作成
         foreach ($testKeys as $key) {
             self::assertTrue($connection->set($key, 'value', 60), "Failed to create test key: $key");
         }
 
+        // scan() を実行
         $keys = $connection->scan('*');
 
-        // 各キーが一度だけ含まれることを確認（重複排除が機能している）
+        // 検証1: 結果配列に重複がないことを確認
+        // 元の配列のサイズとarray_unique適用後のサイズが同じであれば重複なし
+        self::assertSame(
+            count($keys),
+            count(array_unique($keys)),
+            'scan() result should not contain duplicates. The deduplication logic using array keys should prevent duplicates.'
+        );
+
+        // 検証2: すべてのテストキーが取得できていることを確認
+        // assertEquals は要素と順序とカウントをすべて検証するため、これ単体で十分
+        sort($testKeys);
+        sort($keys);
+        self::assertEquals(
+            $testKeys,
+            $keys,
+            'scan() should return all created keys exactly once'
+        );
+
+        // 検証3: 各キーが正確に1回だけ出現することを確認
         $keyCounts = array_count_values($keys);
         foreach ($testKeys as $key) {
             self::assertArrayHasKey($key, $keyCounts, "Key '$key' should be present in scan results");
-            self::assertEquals(1, $keyCounts[$key], "Key '$key' should appear only once");
+            self::assertEquals(1, $keyCounts[$key], "Key '$key' should appear exactly once, not {$keyCounts[$key]} times");
         }
 
         // クリーンアップ
