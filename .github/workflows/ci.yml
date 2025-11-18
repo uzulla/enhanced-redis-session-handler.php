@@ -62,9 +62,12 @@ jobs:
     
     - name: Run PHPStan
       run: composer phpstan
-    
+
+    - name: Run PHPMD
+      run: composer phpmd
+
     - name: Run PHP CS Fixer
       run: composer cs-check
-    
+
     - name: Run tests
       run: composer test

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Uzulla\EnhancedRedisSessionHandler;
 
 use InvalidArgumentException;
+use LogicException;
 use Psr\Log\LoggerInterface;
 use Uzulla\EnhancedRedisSessionHandler\Exception\ConnectionException;
 use Uzulla\EnhancedRedisSessionHandler\SessionId\UserSessionIdGenerator;
@@ -82,7 +83,7 @@ class UserSessionHelper
                 'user_id' => $userId,
                 'session_status' => session_status(),
             ]);
-            throw new \LogicException('Session is not active. Call session_start() before this method.');
+            throw new LogicException('Session is not active. Call session_start() before this method.');
         }
 
         $oldSessionId = session_id();
