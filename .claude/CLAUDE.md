@@ -37,13 +37,16 @@ vendor/bin/phpunit --filter testMethodName
 # PHPStan実行（最大レベル + strict rules）
 composer phpstan
 
+# PHPMD実行（コード品質チェック）
+composer phpmd
+
 # コードスタイルチェック（PSR-12準拠）
 composer cs-check
 
 # コードスタイル自動修正
 composer cs-fix
 
-# 全てのlintチェックを実行
+# 全てのlintチェックを実行（PHPStan + PHPMD + CS Fixer）
 composer lint
 
 # 全てのチェック（lint + テスト）
@@ -239,6 +242,9 @@ redis-cli ping  # 'PONG'が返ればOK
 ```bash
 # PHPStan実行（エラーがないこと）
 composer phpstan
+
+# PHPMD実行（エラーがないこと）
+composer phpmd
 
 # コードスタイルチェック（修正が必要なファイルがないこと）
 composer cs-check
