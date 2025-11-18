@@ -8,6 +8,7 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use RuntimeException;
 use Uzulla\EnhancedRedisSessionHandler\Hook\Storage\HookContext;
 use Uzulla\EnhancedRedisSessionHandler\Hook\Storage\HookRedisStorage;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
@@ -284,7 +285,7 @@ class HookRedisStorageTest extends TestCase
     {
         $this->connection->expects(self::once())
             ->method('get')
-            ->willThrowException(new \RuntimeException('Redis error'));
+            ->willThrowException(new RuntimeException('Redis error'));
 
         $storage = new HookRedisStorage($this->connection, $this->context, $this->logger);
 
@@ -293,7 +294,7 @@ class HookRedisStorageTest extends TestCase
         try {
             $storage->get('key');
             self::fail('Expected exception was not thrown');
-        } catch (\RuntimeException $e) {
+        } catch (RuntimeException $e) {
             // Exception is expected
         }
 
