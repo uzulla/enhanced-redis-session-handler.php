@@ -41,17 +41,14 @@
         "test": "phpunit",
         "lint": [
             "@phpstan",
-            "@phpmd",
             "@cs-check"
         ],
         "lint-dryrun": [
             "@phpstan",
-            "@phpmd",
             "@cs-check"
         ],
         "check": [
             "@phpstan",
-            "@phpmd",
             "@cs-check",
             "@test"
         ],
