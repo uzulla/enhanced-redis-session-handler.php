@@ -84,22 +84,7 @@ class HookRedisStorage implements HookStorageInterface
      */
     public function get(string $key)
     {
-        $this->context->incrementDepth();
-
-        try {
-            if ($this->context->isDepthExceeded()) {
-                $this->logger->warning('Hook storage depth limit exceeded for GET operation', [
-                    'current_depth' => $this->context->getDepth(),
-                    'max_depth' => $this->context->getMaxDepth(),
-                    'operation' => 'get',
-                ]);
-            }
-
-            // Even if depth is exceeded, we still execute (graceful degradation)
-            return $this->connection->get($key);
-        } finally {
-            $this->context->decrementDepth();
-        }
+        return $this->executeWithDepthTracking('get', fn () => $this->connection->get($key));
     }
 
     /**
@@ -112,22 +97,7 @@ class HookRedisStorage implements HookStorageInterface
      */
     public function set(string $key, string $value, int $ttl): bool
     {
-        $this->context->incrementDepth();
-
-        try {
-            if ($this->context->isDepthExceeded()) {
-                $this->logger->warning('Hook storage depth limit exceeded for SET operation', [
-                    'current_depth' => $this->context->getDepth(),
-                    'max_depth' => $this->context->getMaxDepth(),
-                    'operation' => 'set',
-                ]);
-            }
-
-            // Even if depth is exceeded, we still execute (graceful degradation)
-            return $this->connection->set($key, $value, $ttl);
-        } finally {
-            $this->context->decrementDepth();
-        }
+        return $this->executeWithDepthTracking('set', fn () => $this->connection->set($key, $value, $ttl));
     }
 
     /**
@@ -138,19 +108,38 @@ class HookRedisStorage implements HookStorageInterface
      */
     public function delete(string $key): bool
     {
+        return $this->executeWithDepthTracking('delete', fn () => $this->connection->delete($key));
+    }
+
+    /**
+     * Execute a callable with depth tracking and logging.
+     *
+     * This helper method encapsulates the common pattern of:
+     * 1. Incrementing the execution depth
+     * 2. Checking if depth limit is exceeded and logging a warning
+     * 3. Executing the operation (even if depth is exceeded, for graceful degradation)
+     * 4. Decrementing the depth in a finally block
+     *
+     * @template T
+     * @param string $operation Operation name for logging (e.g., 'get', 'set', 'delete')
+     * @param callable(): T $fn The operation to execute
+     * @return T The result of the callable
+     */
+    private function executeWithDepthTracking(string $operation, callable $fn)
+    {
         $this->context->incrementDepth();
 
         try {
             if ($this->context->isDepthExceeded()) {
-                $this->logger->warning('Hook storage depth limit exceeded for DELETE operation', [
+                $this->logger->warning('Hook storage depth limit exceeded for ' . strtoupper($operation) . ' operation', [
                     'current_depth' => $this->context->getDepth(),
                     'max_depth' => $this->context->getMaxDepth(),
-                    'operation' => 'delete',
+                    'operation' => $operation,
                 ]);
             }
 
             // Even if depth is exceeded, we still execute (graceful degradation)
-            return $this->connection->delete($key);
+            return $fn();
         } finally {
             $this->context->decrementDepth();
         }
