@@ -7,25 +7,25 @@ namespace Uzulla\EnhancedRedisSessionHandler\Hook\Storage;
 use InvalidArgumentException;
 
 /**
- * Manages execution depth tracking for hook storage operations.
+ * フックストレージ操作の実行深度追跡を管理する。
  *
- * This class prevents infinite recursion by tracking how deeply nested
- * hook operations are. When hooks perform Redis operations (which themselves
- * may trigger hooks), we need to track this depth and prevent runaway recursion.
+ * このクラスは、フック操作のネストの深さを追跡することで無限再帰を防ぎます。
+ * フックがRedis操作を実行し、それ自体がフックをトリガーする可能性がある場合、
+ * この深度を追跡して暴走再帰を防ぐ必要があります。
  *
- * Design decisions:
- * - Default maximum depth of 3 levels is sufficient for typical use cases
- * - Thread-safe for single-threaded PHP environments (uses instance state)
- * - Minimal performance overhead from simple integer increment/decrement
+ * 設計上の決定:
+ * - デフォルトの最大深度3レベルは、一般的なユースケースに十分
+ * - シングルスレッドPHP環境でスレッドセーフ（インスタンス状態を使用）
+ * - 単純な整数のインクリメント/デクリメントによる最小限のパフォーマンスオーバーヘッド
  *
- * Example usage:
+ * 使用例:
  * ```php
  * $context = new HookContext(3);
  * $context->incrementDepth();
  * try {
- *     // Perform operation
+ *     // 操作を実行
  *     if ($context->isDepthExceeded()) {
- *         // Handle depth limit exceeded
+ *         // 深度制限超過の処理
  *     }
  * } finally {
  *     $context->decrementDepth();
@@ -35,29 +35,29 @@ use InvalidArgumentException;
 class HookContext
 {
     /**
-     * Default maximum depth for hook execution chain.
+     * フック実行チェーンのデフォルト最大深度。
      */
     private const DEFAULT_MAX_DEPTH = 3;
 
     /**
-     * Current execution depth counter.
+     * 現在の実行深度カウンター。
      *
      * @var int
      */
     private int $depth = 0;
 
     /**
-     * Maximum allowed execution depth.
+     * 許可される最大実行深度。
      *
      * @var int
      */
     private int $maxDepth;
 
     /**
-     * Create a new hook context.
+     * 新しいフックコンテキストを作成する。
      *
-     * @param int $maxDepth Maximum allowed execution depth (must be positive)
-     * @throws InvalidArgumentException If maxDepth is not positive
+     * @param int $maxDepth 許可される最大実行深度（正の値である必要がある）
+     * @throws InvalidArgumentException maxDepthが正の値でない場合
      */
     public function __construct(int $maxDepth = self::DEFAULT_MAX_DEPTH)
     {
@@ -69,9 +69,9 @@ class HookContext
     }
 
     /**
-     * Increment the execution depth counter.
+     * 実行深度カウンターをインクリメントする。
      *
-     * Call this method when entering a hook storage operation.
+     * フックストレージ操作に入る際にこのメソッドを呼び出す。
      *
      * @return void
      */
@@ -81,10 +81,10 @@ class HookContext
     }
 
     /**
-     * Decrement the execution depth counter.
+     * 実行深度カウンターをデクリメントする。
      *
-     * Call this method when exiting a hook storage operation.
-     * The depth will never go below 0.
+     * フックストレージ操作から出る際にこのメソッドを呼び出す。
+     * 深度は0を下回ることはない。
      *
      * @return void
      */
@@ -96,9 +96,9 @@ class HookContext
     }
 
     /**
-     * Get the current execution depth.
+     * 現在の実行深度を取得する。
      *
-     * @return int Current depth (0 or greater)
+     * @return int 現在の深度（0以上）
      */
     public function getDepth(): int
     {
@@ -106,9 +106,9 @@ class HookContext
     }
 
     /**
-     * Get the maximum allowed execution depth.
+     * 許可される最大実行深度を取得する。
      *
-     * @return int Maximum depth
+     * @return int 最大深度
      */
     public function getMaxDepth(): int
     {
@@ -116,9 +116,9 @@ class HookContext
     }
 
     /**
-     * Check if the current depth exceeds the maximum allowed depth.
+     * 現在の深度が最大許容深度を超えているかチェックする。
      *
-     * @return bool True if depth limit is exceeded, false otherwise
+     * @return bool 深度制限を超えている場合true、それ以外はfalse
      */
     public function isDepthExceeded(): bool
     {
@@ -126,10 +126,10 @@ class HookContext
     }
 
     /**
-     * Reset the execution depth counter to zero.
+     * 実行深度カウンターをゼロにリセットする。
      *
-     * Use this method with caution. It's primarily intended for testing
-     * or specific edge cases where you need to reset the context state.
+     * このメソッドは注意して使用すること。主にテストや
+     * コンテキスト状態をリセットする必要がある特定のエッジケースを想定している。
      *
      * @return void
      */

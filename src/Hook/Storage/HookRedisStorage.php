@@ -9,62 +9,62 @@ use Psr\Log\NullLogger;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 
 /**
- * Redis-backed implementation of HookStorageInterface with depth tracking.
+ * 深度追跡機能付きHookStorageInterfaceのRedisバックエンド実装。
  *
- * This class wraps RedisConnection and tracks execution depth to prevent
- * infinite recursion when hooks perform Redis operations that themselves
- * trigger hooks.
+ * このクラスはRedisConnectionをラップし、フックがRedis操作を実行する際の
+ * 無限再帰を防ぐために実行深度を追跡します。Redis操作自体がフックをトリガーする
+ * 可能性があります。
  *
- * Architecture:
- * - Delegates actual Redis operations to RedisConnection
- * - Uses HookContext to track execution depth
- * - Logs warnings when depth limits are approached or exceeded
- * - Falls back to direct execution when depth limit is exceeded (graceful degradation)
+ * アーキテクチャ:
+ * - 実際のRedis操作はRedisConnectionに委譲
+ * - HookContextを使用して実行深度を追跡
+ * - 深度制限に達した、または超過した場合に警告をログ出力
+ * - 深度制限超過時は直接実行にフォールバック（graceful degradation）
  *
- * Design decisions:
- * - Graceful degradation rather than failure when depth exceeded
- * - Warning-level logging for depth issues (not errors, to avoid alert fatigue)
- * - Minimal performance overhead from depth checking
- * - Compatible with PSR-12 and PHPStan strict rules
+ * 設計上の決定:
+ * - 深度超過時は失敗ではなくgraceful degradation
+ * - 深度問題に対する警告レベルのログ出力（アラート疲労を避けるためエラーレベルではない）
+ * - 深度チェックによる最小限のパフォーマンスオーバーヘッド
+ * - PSR-12およびPHPStan strict rulesとの互換性
  *
- * Example usage:
+ * 使用例:
  * ```php
  * $context = new HookContext(3);
  * $storage = new HookRedisStorage($redisConnection, $context, $logger);
  *
- * // This will track depth and warn if limits exceeded
+ * // 深度を追跡し、制限を超えた場合は警告を出力
  * $storage->set('key', 'value', 3600);
  * ```
  */
 class HookRedisStorage implements HookStorageInterface
 {
     /**
-     * The underlying Redis connection.
+     * ラップするRedis接続。
      *
      * @var RedisConnection
      */
     private RedisConnection $connection;
 
     /**
-     * Context for tracking execution depth.
+     * 実行深度追跡用のコンテキスト。
      *
      * @var HookContext
      */
     private HookContext $context;
 
     /**
-     * Logger for monitoring and debugging.
+     * 監視とデバッグ用のロガー。
      *
      * @var LoggerInterface
      */
     private LoggerInterface $logger;
 
     /**
-     * Create a new HookRedisStorage instance.
+     * 新しいHookRedisStorageインスタンスを作成する。
      *
-     * @param RedisConnection $connection The Redis connection to wrap
-     * @param HookContext $context Context for depth tracking
-     * @param LoggerInterface|null $logger Optional logger (uses NullLogger if not provided)
+     * @param RedisConnection $connection ラップするRedis接続
+     * @param HookContext $context 深度追跡用のコンテキスト
+     * @param LoggerInterface|null $logger オプションのロガー（未指定の場合はNullLoggerを使用）
      */
     public function __construct(
         RedisConnection $connection,
@@ -77,10 +77,10 @@ class HookRedisStorage implements HookStorageInterface
     }
 
     /**
-     * Get a value from Redis by key with depth tracking.
+     * 深度追跡付きでキーによりRedisから値を取得する。
      *
-     * @param string $key The storage key
-     * @return string|false Returns the value as string if found, false if not found or on error
+     * @param string $key ストレージキー
+     * @return string|false 値が見つかった場合は文字列、見つからないかエラーの場合はfalse
      */
     public function get(string $key)
     {
@@ -88,12 +88,12 @@ class HookRedisStorage implements HookStorageInterface
     }
 
     /**
-     * Set a value in Redis with a time-to-live and depth tracking.
+     * 深度追跡付きでTTL（有効期限）付きの値をRedisに設定する。
      *
-     * @param string $key The storage key
-     * @param string $value The value to store
-     * @param int $ttl Time-to-live in seconds (must be positive)
-     * @return bool True if the operation succeeded, false otherwise
+     * @param string $key ストレージキー
+     * @param string $value 保存する値
+     * @param int $ttl 有効期限（秒単位、正の値である必要がある）
+     * @return bool 操作が成功した場合true、それ以外はfalse
      */
     public function set(string $key, string $value, int $ttl): bool
     {
@@ -101,10 +101,10 @@ class HookRedisStorage implements HookStorageInterface
     }
 
     /**
-     * Delete a value from Redis by key with depth tracking.
+     * 深度追跡付きでキーによりRedisから値を削除する。
      *
-     * @param string $key The storage key
-     * @return bool True if the key was deleted, false if the key didn't exist or on error
+     * @param string $key ストレージキー
+     * @return bool キーが削除された場合true、キーが存在しないかエラーの場合false
      */
     public function delete(string $key): bool
     {
@@ -112,18 +112,18 @@ class HookRedisStorage implements HookStorageInterface
     }
 
     /**
-     * Execute a callable with depth tracking and logging.
+     * 深度追跡とログ出力を伴うcallableを実行する。
      *
-     * This helper method encapsulates the common pattern of:
-     * 1. Incrementing the execution depth
-     * 2. Checking if depth limit is exceeded and logging a warning
-     * 3. Executing the operation (even if depth is exceeded, for graceful degradation)
-     * 4. Decrementing the depth in a finally block
+     * このヘルパーメソッドは以下の共通パターンをカプセル化する:
+     * 1. 実行深度をインクリメント
+     * 2. 深度制限超過をチェックし、超過している場合は警告をログ出力
+     * 3. 操作を実行（深度超過時もgraceful degradationのため実行）
+     * 4. finallyブロックで深度をデクリメント
      *
      * @template T
-     * @param string $operation Operation name for logging (e.g., 'get', 'set', 'delete')
-     * @param callable(): T $fn The operation to execute
-     * @return T The result of the callable
+     * @param string $operation ログ出力用の操作名（例: 'get', 'set', 'delete'）
+     * @param callable(): T $fn 実行する操作
+     * @return T callableの戻り値
      */
     private function executeWithDepthTracking(string $operation, callable $fn)
     {
@@ -138,7 +138,7 @@ class HookRedisStorage implements HookStorageInterface
                 ]);
             }
 
-            // Even if depth is exceeded, we still execute (graceful degradation)
+            // 深度超過時もgraceful degradationのため実行を継続
             return $fn();
         } finally {
             $this->context->decrementDepth();
@@ -146,11 +146,11 @@ class HookRedisStorage implements HookStorageInterface
     }
 
     /**
-     * Get the current execution depth.
+     * 現在の実行深度を取得する。
      *
-     * This method is primarily for testing and debugging purposes.
+     * このメソッドは主にテストとデバッグ目的を想定している。
      *
-     * @return int Current execution depth
+     * @return int 現在の実行深度
      */
     public function getDepth(): int
     {
@@ -158,11 +158,11 @@ class HookRedisStorage implements HookStorageInterface
     }
 
     /**
-     * Get the underlying HookContext instance.
+     * ラップしているHookContextインスタンスを取得する。
      *
-     * This method is primarily for testing purposes.
+     * このメソッドは主にテスト目的を想定している。
      *
-     * @return HookContext The context instance
+     * @return HookContext コンテキストインスタンス
      */
     public function getContext(): HookContext
     {
