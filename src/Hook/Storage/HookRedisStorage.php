@@ -18,12 +18,13 @@ use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
  * アーキテクチャ:
  * - 実際のRedis操作はRedisConnectionに委譲
  * - HookContextを使用して実行深度を追跡
- * - 深度制限に達した、または超過した場合に警告をログ出力
+ * - 深度制限を超過した場合に警告をログ出力
  * - 深度制限超過時は直接実行にフォールバック（graceful degradation）
  *
  * 設計上の決定:
  * - 深度超過時は失敗ではなくgraceful degradation
- * - 深度問題に対する警告レベルのログ出力（アラート疲労を避けるためエラーレベルではない）
+ * - 深度超過時のみ警告レベルでログ出力（アラート疲労を避けるためエラーレベルではない）
+ * - 深度制限値（maxDepth）自体は許容範囲内として扱う
  * - 深度チェックによる最小限のパフォーマンスオーバーヘッド
  * - PSR-12およびPHPStan strict rulesとの互換性
  *
@@ -32,7 +33,7 @@ use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
  * $context = new HookContext(3);
  * $storage = new HookRedisStorage($redisConnection, $context, $logger);
  *
- * // 深度を追跡し、制限を超えた場合は警告を出力
+ * // 深度を追跡し、制限を超過した場合は警告を出力
  * $storage->set('key', 'value', 3600);
  * ```
  */
