@@ -43,11 +43,20 @@ composer cs-check
 # コードスタイル自動修正
 composer cs-fix
 
-# 全てのlintチェックを実行
+# 全てのlintチェックを実行（PHPStan + CS Fixer）
 composer lint
 
 # 全てのチェック（lint + テスト）
 composer check
+```
+
+### コード品質チェック（オプション）
+
+```bash
+# PHPMD実行（コード品質チェック）
+# 注意: 現在多くの警告が出るため、CIや必須チェックには含めていません
+# 今後のコード改善の参考として使用してください
+composer phpmd
 ```
 
 ### Docker環境

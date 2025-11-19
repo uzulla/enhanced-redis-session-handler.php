@@ -1,0 +1,81 @@
+<?xml version="1.0"?>
+<ruleset name="Enhanced Redis Session Handler PHPMD Ruleset"
+         xmlns="http://pmd.sf.net/ruleset/1.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sf.net/ruleset/1.0.0 http://pmd.sf.net/ruleset_xml_schema.xsd"
+         xsi:noNamespaceSchemaLocation="http://pmd.sf.net/ruleset_xml_schema.xsd">
+
+    <description>
+        PHPMD ruleset for Enhanced Redis Session Handler project.
+        - 新人でも読みやすいコード
+        - 静的・型重視のスタイル
+        - まずはやや厳しめにして、運用しながら緩めていく方針
+    </description>
+
+    <!-- 1. Clean Code Rules
+         ほぼデフォルトで全部採用。どうしても例外にしたい場所は
+         コード側で @SuppressWarnings を使う方針。 -->
+    <rule ref="rulesets/cleancode.xml" />
+
+    <!-- 2. Code Size Rules
+         デフォルトをベースに、複雑度だけ明示的に少し厳しめ設定。 -->
+    <rule ref="rulesets/codesize.xml" />
+
+    <!-- CyclomaticComplexity:
+         - デフォルトに近い 10 でスタート
+         - うるさければ 12 → 15 と上げていく -->
+    <rule ref="rulesets/codesize.xml/CyclomaticComplexity">
+        <properties>
+            <property name="reportLevel" value="10"/>
+        </properties>
+    </rule>
+
+    <!-- NPathComplexity:
+         - デフォルト近辺とされる 200 から開始
+         - 複雑な条件分岐が多いなら 250 〜 300 まで上げる検討 -->
+    <rule ref="rulesets/codesize.xml/NPathComplexity">
+        <properties>
+            <property name="minimum" value="200"/>
+        </properties>
+    </rule>
+
+    <!-- 3. Design Rules
+         動的・マジックめいた書き方を嫌うので基本全採用。
+         CouplingBetweenObjects だけ少し緩めておく。 -->
+    <rule ref="rulesets/design.xml" />
+
+    <!-- CouplingBetweenObjects:
+         - デフォルト(13)付近を少し緩めて 14 に
+         - インフラ寄りクラスでノイズが出るようなら 16 〜 18 も検討 -->
+    <rule ref="rulesets/design.xml/CouplingBetweenObjects">
+        <properties>
+            <property name="maximum" value="14"/>
+        </properties>
+    </rule>
+
+    <!-- 4. Naming Rules
+         命名は可読性に直結するので基本全部 ON。
+         ただし慣習的な短い変数は ShortVariable から除外。 -->
+    <rule ref="rulesets/naming.xml" />
+
+    <!-- ShortVariable:
+         - 最小長 2 文字
+         - ただし for ループ等で慣習的に使う1文字は例外扱い -->
+    <rule ref="rulesets/naming.xml/ShortVariable">
+        <properties>
+            <property name="minimum" value="2"/>
+            <!-- i,j,k: ループ変数
+                 x,y,z: マスっぽい座標や一時的な計算
+                 id: 典型的な ID
+                 io,db,e: よくある短縮形 -->
+            <property name="exceptions" value="i,j,k,x,y,z,id,io,db,e"/>
+        </properties>
+    </rule>
+
+    <!-- 5. Unused Code Rules
+         未使用の変数・メソッドは基本NG。
+         インターフェイス実装でどうしても未使用引数が出る場合だけ
+         @SuppressWarnings("UnusedFormalParameter") を付ける運用に。 -->
+    <rule ref="rulesets/unusedcode.xml" />
+
+</ruleset>
