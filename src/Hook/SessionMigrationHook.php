@@ -177,54 +177,7 @@ class SessionMigrationHook implements WriteHookInterface
         }
 
         try {
-            $data = $this->pendingWrites[$sessionId];
-            $serializedData = $this->serializer->encode($data);
-            $targetId = $this->targetSessionId;
-
-            $this->logger->info('Starting session migration via hook', [
-                'old_session_id' => SessionIdMasker::mask($sessionId),
-                'new_session_id' => SessionIdMasker::mask($targetId),
-            ]);
-
-            // Write to new session ID
-            $migrationSuccess = $this->connection->set($targetId, $serializedData, $this->ttl);
-
-            if (!$migrationSuccess) {
-                $message = 'Failed to write session data to migration target';
-                $this->logger->error($message, [
-                    'old_session_id' => SessionIdMasker::mask($sessionId),
-                    'new_session_id' => SessionIdMasker::mask($targetId),
-                ]);
-
-                if ($this->failOnMigrationError) {
-                    throw new RuntimeException($message);
-                }
-                return;
-            }
-
-            $this->logger->debug('Session data written to migration target', [
-                'new_session_id' => SessionIdMasker::mask($targetId),
-            ]);
-
-            // Delete old session if requested
-            if ($this->deleteOldSession) {
-                $deleted = $this->connection->delete($sessionId);
-                if ($deleted) {
-                    $this->logger->debug('Old session deleted after migration', [
-                        'old_session_id' => SessionIdMasker::mask($sessionId),
-                    ]);
-                } else {
-                    $this->logger->warning('Failed to delete old session after migration', [
-                        'old_session_id' => SessionIdMasker::mask($sessionId),
-                    ]);
-                }
-            }
-
-            $this->logger->info('Session migration via hook completed successfully', [
-                'old_session_id' => SessionIdMasker::mask($sessionId),
-                'new_session_id' => SessionIdMasker::mask($targetId),
-                'old_session_deleted' => $this->deleteOldSession,
-            ]);
+            $this->performMigration($sessionId);
         } catch (Throwable $e) {
             $this->logger->error('Exception during session migration', [
                 'session_id' => SessionIdMasker::mask($sessionId),
@@ -238,6 +191,80 @@ class SessionMigrationHook implements WriteHookInterface
             // Clear migration target after attempt (one-shot)
             $this->targetSessionId = null;
             unset($this->pendingWrites[$sessionId]);
+        }
+    }
+
+    /**
+     * Perform the actual migration of session data to the target session ID.
+     *
+     * @param string $sessionId The current session ID
+     * @throws RuntimeException If migration fails and failOnMigrationError is true
+     */
+    private function performMigration(string $sessionId): void
+    {
+        // targetSessionId is guaranteed to be non-null when this method is called
+        // (checked in afterWrite before calling performMigration)
+        $targetId = $this->targetSessionId;
+        if ($targetId === null) {
+            return;
+        }
+
+        $data = $this->pendingWrites[$sessionId];
+        $serializedData = $this->serializer->encode($data);
+
+        $this->logger->info('Starting session migration via hook', [
+            'old_session_id' => SessionIdMasker::mask($sessionId),
+            'new_session_id' => SessionIdMasker::mask($targetId),
+        ]);
+
+        // Write to new session ID
+        $migrationSuccess = $this->connection->set($targetId, $serializedData, $this->ttl);
+
+        if (!$migrationSuccess) {
+            $message = 'Failed to write session data to migration target';
+            $this->logger->error($message, [
+                'old_session_id' => SessionIdMasker::mask($sessionId),
+                'new_session_id' => SessionIdMasker::mask($targetId),
+            ]);
+
+            if ($this->failOnMigrationError) {
+                throw new RuntimeException($message);
+            }
+            return;
+        }
+
+        $this->logger->debug('Session data written to migration target', [
+            'new_session_id' => SessionIdMasker::mask($targetId),
+        ]);
+
+        // Delete old session if requested
+        if ($this->deleteOldSession) {
+            $this->deleteOldSessionData($sessionId);
+        }
+
+        $this->logger->info('Session migration via hook completed successfully', [
+            'old_session_id' => SessionIdMasker::mask($sessionId),
+            'new_session_id' => SessionIdMasker::mask($targetId),
+            'old_session_deleted' => $this->deleteOldSession,
+        ]);
+    }
+
+    /**
+     * Delete the old session data from Redis.
+     *
+     * @param string $sessionId The session ID to delete
+     */
+    private function deleteOldSessionData(string $sessionId): void
+    {
+        $deleted = $this->connection->delete($sessionId);
+        if ($deleted) {
+            $this->logger->debug('Old session deleted after migration', [
+                'old_session_id' => SessionIdMasker::mask($sessionId),
+            ]);
+        } else {
+            $this->logger->warning('Failed to delete old session after migration', [
+                'old_session_id' => SessionIdMasker::mask($sessionId),
+            ]);
         }
     }
 
