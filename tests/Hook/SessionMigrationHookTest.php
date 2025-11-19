@@ -11,6 +11,7 @@ use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Uzulla\EnhancedRedisSessionHandler\Hook\SessionMigrationHook;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\SessionSerializerInterface;
 
 class SessionMigrationHookTest extends TestCase
 {
@@ -286,5 +287,43 @@ class SessionMigrationHookTest extends TestCase
         // Second write - should NOT migrate (target cleared)
         $hook->beforeWrite('old_session_id', ['key' => 'value2']);
         $hook->afterWrite('old_session_id', true);
+    }
+
+    public function testConstructorWithCustomSerializer(): void
+    {
+        $serializer = $this->createMock(SessionSerializerInterface::class);
+        $hook = new SessionMigrationHook($this->connection, 1440, false, null, $serializer);
+
+        self::assertInstanceOf(SessionMigrationHook::class, $hook);
+    }
+
+    public function testAfterWriteUsesCustomSerializer(): void
+    {
+        $serializer = $this->createMock(SessionSerializerInterface::class);
+        $serializer->expects(self::once())
+            ->method('encode')
+            ->with(['key' => 'value'])
+            ->willReturn('custom_serialized_data');
+
+        $this->connection->expects(self::once())
+            ->method('set')
+            ->with(
+                'new_session_id',
+                'custom_serialized_data',
+                1440
+            )
+            ->willReturn(true);
+
+        $this->connection->expects(self::once())
+            ->method('delete')
+            ->with('old_session_id')
+            ->willReturn(true);
+
+        $hook = new SessionMigrationHook($this->connection, 1440, false, null, $serializer);
+        $hook->setMigrationTarget('new_session_id', true);
+        $hook->beforeWrite('old_session_id', ['key' => 'value']);
+        $hook->afterWrite('old_session_id', true);
+
+        self::assertFalse($hook->hasPendingMigration());
     }
 }

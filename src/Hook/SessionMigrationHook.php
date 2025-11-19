@@ -10,6 +10,8 @@ use Psr\Log\NullLogger;
 use RuntimeException;
 use Throwable;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\SessionSerializerInterface;
 use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 
 /**
@@ -37,6 +39,7 @@ use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 class SessionMigrationHook implements WriteHookInterface
 {
     private RedisConnection $connection;
+    private SessionSerializerInterface $serializer;
     private LoggerInterface $logger;
     private int $ttl;
     private bool $failOnMigrationError;
@@ -52,12 +55,14 @@ class SessionMigrationHook implements WriteHookInterface
      * @param int $ttl Time to live for session data in seconds
      * @param bool $failOnMigrationError If true, throw exception when migration fails
      * @param LoggerInterface|null $logger Optional logger for debugging
+     * @param SessionSerializerInterface|null $serializer Optional serializer (defaults to PhpSerializeSerializer)
      */
     public function __construct(
         RedisConnection $connection,
         int $ttl = 1440,
         bool $failOnMigrationError = false,
-        ?LoggerInterface $logger = null
+        ?LoggerInterface $logger = null,
+        ?SessionSerializerInterface $serializer = null
     ) {
         if ($ttl <= 0) {
             throw new InvalidArgumentException('TTL must be positive');
@@ -66,6 +71,7 @@ class SessionMigrationHook implements WriteHookInterface
         $this->ttl = $ttl;
         $this->failOnMigrationError = $failOnMigrationError;
         $this->logger = $logger ?? new NullLogger();
+        $this->serializer = $serializer ?? new PhpSerializeSerializer();
     }
 
     /**
@@ -174,7 +180,7 @@ class SessionMigrationHook implements WriteHookInterface
 
         try {
             $data = $this->pendingWrites[$sessionId];
-            $serializedData = serialize($data);
+            $serializedData = $this->serializer->encode($data);
             $targetId = $this->targetSessionId;
 
             $this->logger->info('Starting session migration via hook', [
