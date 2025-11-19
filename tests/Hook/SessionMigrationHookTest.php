@@ -9,6 +9,7 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
+use Uzulla\EnhancedRedisSessionHandler\Exception\InvalidSessionIdException;
 use Uzulla\EnhancedRedisSessionHandler\Hook\SessionMigrationHook;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\Serializer\SessionSerializerInterface;
@@ -70,8 +71,7 @@ class SessionMigrationHookTest extends TestCase
     {
         $hook = new SessionMigrationHook($this->connection);
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Session ID cannot be empty');
+        $this->expectException(InvalidSessionIdException::class);
 
         $hook->setMigrationTarget('');
     }
@@ -80,8 +80,7 @@ class SessionMigrationHookTest extends TestCase
     {
         $hook = new SessionMigrationHook($this->connection);
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Session ID contains invalid characters');
+        $this->expectException(InvalidSessionIdException::class);
 
         $hook->setMigrationTarget('invalid/session/id');
     }

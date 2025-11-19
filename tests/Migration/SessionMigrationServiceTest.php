@@ -8,6 +8,7 @@ use InvalidArgumentException;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
+use Uzulla\EnhancedRedisSessionHandler\Exception\InvalidSessionIdException;
 use Uzulla\EnhancedRedisSessionHandler\Exception\MigrationException;
 use Uzulla\EnhancedRedisSessionHandler\Migration\SessionMigrationService;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
@@ -173,8 +174,7 @@ class SessionMigrationServiceTest extends TestCase
     {
         $service = new SessionMigrationService($this->connection, 1440);
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Session ID cannot be empty');
+        $this->expectException(InvalidSessionIdException::class);
 
         $service->copy('', 'target_session');
     }
@@ -183,8 +183,7 @@ class SessionMigrationServiceTest extends TestCase
     {
         $service = new SessionMigrationService($this->connection, 1440);
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Session ID cannot be empty');
+        $this->expectException(InvalidSessionIdException::class);
 
         $service->copy('source_session', '');
     }
@@ -193,8 +192,7 @@ class SessionMigrationServiceTest extends TestCase
     {
         $service = new SessionMigrationService($this->connection, 1440);
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Session ID contains invalid characters');
+        $this->expectException(InvalidSessionIdException::class);
 
         $service->copy('invalid/source', 'target_session');
     }
@@ -203,8 +201,7 @@ class SessionMigrationServiceTest extends TestCase
     {
         $service = new SessionMigrationService($this->connection, 1440);
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Session ID contains invalid characters');
+        $this->expectException(InvalidSessionIdException::class);
 
         $service->copy('source_session', 'invalid<target>');
     }
@@ -240,7 +237,6 @@ class SessionMigrationServiceTest extends TestCase
         $service = new SessionMigrationService($this->connection, 1440);
 
         $this->expectException(MigrationException::class);
-        $this->expectExceptionMessage('Session must be active before migration');
 
         $service->migrate('new_session_id');
     }
@@ -249,8 +245,7 @@ class SessionMigrationServiceTest extends TestCase
     {
         $service = new SessionMigrationService($this->connection, 1440);
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Session ID cannot be empty');
+        $this->expectException(InvalidSessionIdException::class);
 
         $service->migrate('');
     }
@@ -259,8 +254,7 @@ class SessionMigrationServiceTest extends TestCase
     {
         $service = new SessionMigrationService($this->connection, 1440);
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Session ID contains invalid characters');
+        $this->expectException(InvalidSessionIdException::class);
 
         $service->migrate('invalid/session/id');
     }

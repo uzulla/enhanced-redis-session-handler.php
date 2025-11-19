@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler\Support;
 
-use InvalidArgumentException;
+use Uzulla\EnhancedRedisSessionHandler\Exception\InvalidSessionIdException;
 
 /**
  * Utility class for validating session IDs.
@@ -61,20 +61,20 @@ class SessionIdValidator
      * Validate a session ID and throw an exception if invalid.
      *
      * @param string $sessionId The session ID to validate
-     * @throws InvalidArgumentException If the session ID is invalid
+     * @throws InvalidSessionIdException If the session ID is invalid
      */
     public static function validate(string $sessionId): void
     {
         if ($sessionId === '') {
-            throw new InvalidArgumentException('Session ID cannot be empty');
+            throw new InvalidSessionIdException('Session ID cannot be empty');
         }
 
         if (preg_match(self::VALID_PATTERN, $sessionId) !== 1) {
-            throw new InvalidArgumentException('Session ID contains invalid characters');
+            throw new InvalidSessionIdException('Session ID contains invalid characters');
         }
 
         if (strlen($sessionId) > self::MAX_LENGTH) {
-            throw new InvalidArgumentException(
+            throw new InvalidSessionIdException(
                 'Session ID exceeds maximum length of ' . self::MAX_LENGTH . ' characters'
             );
         }

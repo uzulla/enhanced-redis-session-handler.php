@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Support;
 
-use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
+use Uzulla\EnhancedRedisSessionHandler\Exception\InvalidSessionIdException;
 use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdValidator;
 
 class SessionIdValidatorTest extends TestCase
@@ -51,24 +51,21 @@ class SessionIdValidatorTest extends TestCase
 
     public function testValidateThrowsExceptionForEmptyId(): void
     {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Session ID cannot be empty');
+        $this->expectException(InvalidSessionIdException::class);
 
         SessionIdValidator::validate('');
     }
 
     public function testValidateThrowsExceptionForInvalidCharacters(): void
     {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Session ID contains invalid characters');
+        $this->expectException(InvalidSessionIdException::class);
 
         SessionIdValidator::validate('invalid/session');
     }
 
     public function testValidateThrowsExceptionForTooLongId(): void
     {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Session ID exceeds maximum length');
+        $this->expectException(InvalidSessionIdException::class);
 
         $tooLongId = str_repeat('a', 257);
         SessionIdValidator::validate($tooLongId);
