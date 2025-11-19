@@ -264,4 +264,86 @@ class SessionMigrationServiceTest extends TestCase
 
         $service->migrate('invalid/session/id');
     }
+
+    public function testMigrateThrowsExceptionWhenTargetSessionExists(): void
+    {
+        // Ensure no session is active
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+
+        $this->connection->expects(self::once())
+            ->method('exists')
+            ->with('existing_session_id')
+            ->willReturn(true);
+
+        $service = new SessionMigrationService($this->connection, 1440);
+
+        $this->expectException(MigrationException::class);
+        $this->expectExceptionMessage('Target session ID already exists');
+
+        $service->migrate('existing_session_id');
+    }
+
+    public function testSessionExistsReturnsFalseForEmptyId(): void
+    {
+        $this->connection->expects(self::never())
+            ->method('exists');
+
+        $service = new SessionMigrationService($this->connection, 1440);
+
+        self::assertFalse($service->sessionExists(''));
+        self::assertFalse($service->sessionExists('   '));
+    }
+
+    public function testSessionExistsReturnsFalseForInvalidCharacters(): void
+    {
+        $this->connection->expects(self::never())
+            ->method('exists');
+
+        $service = new SessionMigrationService($this->connection, 1440);
+
+        self::assertFalse($service->sessionExists('invalid/session'));
+        self::assertFalse($service->sessionExists('invalid<session>'));
+        self::assertFalse($service->sessionExists('session with spaces'));
+    }
+
+    public function testSessionExistsReturnsFalseForTooLongId(): void
+    {
+        $this->connection->expects(self::never())
+            ->method('exists');
+
+        $service = new SessionMigrationService($this->connection, 1440);
+
+        // 257 characters - too long
+        $tooLongId = str_repeat('a', 257);
+        self::assertFalse($service->sessionExists($tooLongId));
+    }
+
+    public function testSessionExistsAcceptsValidIdAtMaxLength(): void
+    {
+        // 256 characters - at the limit
+        $maxLengthId = str_repeat('a', 256);
+
+        $this->connection->expects(self::once())
+            ->method('exists')
+            ->with($maxLengthId)
+            ->willReturn(true);
+
+        $service = new SessionMigrationService($this->connection, 1440);
+
+        self::assertTrue($service->sessionExists($maxLengthId));
+    }
+
+    public function testSessionExistsTrimsWhitespace(): void
+    {
+        $this->connection->expects(self::once())
+            ->method('exists')
+            ->with('valid_session_id')
+            ->willReturn(true);
+
+        $service = new SessionMigrationService($this->connection, 1440);
+
+        self::assertTrue($service->sessionExists('  valid_session_id  '));
+    }
 }

@@ -72,6 +72,11 @@ class SessionMigrationService
     {
         $this->validateSessionId($newSessionId);
 
+        // Check if target session ID already exists to prevent overwriting another user's session
+        if ($this->connection->exists($newSessionId)) {
+            throw new MigrationException('Target session ID already exists');
+        }
+
         if (session_status() !== PHP_SESSION_ACTIVE) {
             throw new MigrationException('Session must be active before migration. Call session_start() first.');
         }
@@ -201,10 +206,27 @@ class SessionMigrationService
      * Check if a session ID exists in Redis.
      *
      * @param string $sessionId The session ID to check
-     * @return bool True if session exists
+     * @return bool True if session exists, false if not exists or invalid ID
      */
     public function sessionExists(string $sessionId): bool
     {
+        // Lightweight validation to avoid unnecessary Redis queries
+        $sessionId = trim($sessionId);
+
+        if ($sessionId === '') {
+            return false;
+        }
+
+        // Check for valid characters (alphanumeric, underscore, hyphen)
+        if (preg_match('/^[a-zA-Z0-9_-]+$/', $sessionId) !== 1) {
+            return false;
+        }
+
+        // Sensible max length check (256 characters)
+        if (strlen($sessionId) > 256) {
+            return false;
+        }
+
         return $this->connection->exists($sessionId);
     }
 
