@@ -10,6 +10,7 @@ use Psr\Log\NullLogger;
 use Uzulla\EnhancedRedisSessionHandler\Exception\MigrationException;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
+use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdValidator;
 
 /**
  * Service for migrating session data to a new session ID.
@@ -217,20 +218,10 @@ class SessionMigrationService
      */
     public function sessionExists(string $sessionId): bool
     {
-        // Lightweight validation to avoid unnecessary Redis queries
-        $sessionId = trim($sessionId);
+        // Sanitize and validate using shared validator
+        $sessionId = SessionIdValidator::sanitize($sessionId);
 
-        if ($sessionId === '') {
-            return false;
-        }
-
-        // Check for valid characters (alphanumeric, underscore, hyphen)
-        if (preg_match('/^[a-zA-Z0-9_-]+$/', $sessionId) !== 1) {
-            return false;
-        }
-
-        // Sensible max length check (256 characters)
-        if (strlen($sessionId) > 256) {
+        if (!SessionIdValidator::isValid($sessionId)) {
             return false;
         }
 
@@ -261,22 +252,15 @@ class SessionMigrationService
      * Validate that a session ID is in the expected format.
      *
      * @param string $sessionId The session ID to validate
-     * @throws InvalidArgumentException If session ID is invalid
+     * @throws \InvalidArgumentException If session ID is invalid
      */
     private function validateSessionId(string $sessionId): void
     {
-        if ($sessionId === '') {
-            throw new InvalidArgumentException('Session ID cannot be empty');
-        }
-
-        // Session IDs should only contain alphanumeric characters, hyphens, and underscores
-        // This matches PHP's default session ID format
-        if (preg_match('/^[a-zA-Z0-9_-]+$/', $sessionId) !== 1) {
-            throw new InvalidArgumentException('Session ID contains invalid characters');
-        }
+        // Use shared validator for consistent validation
+        SessionIdValidator::validate($sessionId);
 
         // Warn if session ID is too short (security concern)
-        if (strlen($sessionId) < 16) {
+        if (SessionIdValidator::isShorterThanRecommended($sessionId)) {
             $this->logger->warning('Session ID is shorter than recommended minimum of 16 characters', [
                 'session_id' => SessionIdMasker::mask($sessionId),
                 'length' => strlen($sessionId),

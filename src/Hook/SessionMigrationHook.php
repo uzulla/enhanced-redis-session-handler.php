@@ -13,6 +13,7 @@ use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\Serializer\SessionSerializerInterface;
 use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
+use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdValidator;
 
 /**
  * Hook implementation that migrates session data to a new session ID during write.
@@ -87,14 +88,8 @@ class SessionMigrationHook implements WriteHookInterface
      */
     public function setMigrationTarget(string $targetSessionId, bool $deleteOldSession = true): void
     {
-        if ($targetSessionId === '') {
-            throw new InvalidArgumentException('Target session ID cannot be empty');
-        }
-
-        // Validate session ID format
-        if (preg_match('/^[a-zA-Z0-9_-]+$/', $targetSessionId) !== 1) {
-            throw new InvalidArgumentException('Session ID contains invalid characters');
-        }
+        // Use shared validator for consistent validation
+        SessionIdValidator::validate($targetSessionId);
 
         $this->targetSessionId = $targetSessionId;
         $this->deleteOldSession = $deleteOldSession;

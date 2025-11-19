@@ -71,7 +71,7 @@ class SessionMigrationHookTest extends TestCase
         $hook = new SessionMigrationHook($this->connection);
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Target session ID cannot be empty');
+        $this->expectExceptionMessage('Session ID cannot be empty');
 
         $hook->setMigrationTarget('');
     }
