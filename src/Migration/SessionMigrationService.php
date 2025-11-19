@@ -265,9 +265,7 @@ class SessionMigrationService
         // Session IDs should only contain alphanumeric characters, hyphens, and underscores
         // This matches PHP's default session ID format
         if (preg_match('/^[a-zA-Z0-9_-]+$/', $sessionId) !== 1) {
-            throw new InvalidArgumentException(
-                'Session ID contains invalid characters. Only alphanumeric, hyphen, and underscore allowed.'
-            );
+            throw new InvalidArgumentException('Session ID contains invalid characters');
         }
 
         // Warn if session ID is too short (security concern)

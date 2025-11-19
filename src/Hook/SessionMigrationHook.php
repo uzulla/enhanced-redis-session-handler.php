@@ -93,9 +93,7 @@ class SessionMigrationHook implements WriteHookInterface
 
         // Validate session ID format
         if (preg_match('/^[a-zA-Z0-9_-]+$/', $targetSessionId) !== 1) {
-            throw new InvalidArgumentException(
-                'Session ID contains invalid characters. Only alphanumeric, hyphen, and underscore allowed.'
-            );
+            throw new InvalidArgumentException('Session ID contains invalid characters');
         }
 
         $this->targetSessionId = $targetSessionId;
