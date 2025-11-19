@@ -125,6 +125,13 @@ class SessionMigrationService
         }
 
         // Verify session data was preserved
+        // Note: This identity comparison (!==) works correctly for scalar values and simple arrays.
+        // However, comparing arrays/objects for equality is inherently difficult:
+        // - Objects may not compare equal even if they have the same data after serialize/unserialize
+        // - Resource types cannot be serialized
+        // - Closure/anonymous functions cannot be compared
+        // This check serves as a basic sanity check for typical session data (scalars and arrays).
+        // For sessions containing complex objects, additional verification may be needed.
         if ($_SESSION !== $sessionData) {
             // If data mismatch, restore from our backup
             $_SESSION = $sessionData;
