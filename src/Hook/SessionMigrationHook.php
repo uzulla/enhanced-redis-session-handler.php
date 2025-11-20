@@ -212,6 +212,20 @@ class SessionMigrationHook implements WriteHookInterface
             'new_session_id' => SessionIdMasker::mask($targetId),
         ]);
 
+        // Check if target session ID already exists to prevent overwriting another user's session
+        if ($this->connection->exists($targetId)) {
+            $message = 'Target session ID already exists';
+            $this->logger->error($message, [
+                'old_session_id' => SessionIdMasker::mask($sessionId),
+                'new_session_id' => SessionIdMasker::mask($targetId),
+            ]);
+
+            if ($this->failOnMigrationError) {
+                throw new RuntimeException($message);
+            }
+            return;
+        }
+
         // Write to new session ID
         $migrationSuccess = $this->connection->set($targetId, $serializedData, $this->ttl);
 

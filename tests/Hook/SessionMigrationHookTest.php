@@ -158,6 +158,11 @@ class SessionMigrationHookTest extends TestCase
     public function testAfterWritePerformsMigration(): void
     {
         $this->connection->expects(self::once())
+            ->method('exists')
+            ->with('new_session_id')
+            ->willReturn(false);
+
+        $this->connection->expects(self::once())
             ->method('set')
             ->with(
                 'new_session_id',
@@ -188,6 +193,11 @@ class SessionMigrationHookTest extends TestCase
 
     public function testAfterWriteSkipsDeleteWhenDeleteOldSessionIsFalse(): void
     {
+        $this->connection->expects(self::once())
+            ->method('exists')
+            ->with('new_session_id')
+            ->willReturn(false);
+
         $this->connection->expects(self::once())
             ->method('set')
             ->willReturn(true);
@@ -220,6 +230,11 @@ class SessionMigrationHookTest extends TestCase
     public function testAfterWriteThrowsExceptionWhenFailOnMigrationErrorIsTrue(): void
     {
         $this->connection->expects(self::once())
+            ->method('exists')
+            ->with('new_session_id')
+            ->willReturn(false);
+
+        $this->connection->expects(self::once())
             ->method('set')
             ->willReturn(false);
 
@@ -234,6 +249,11 @@ class SessionMigrationHookTest extends TestCase
 
     public function testAfterWriteDoesNotThrowExceptionWhenFailOnMigrationErrorIsFalse(): void
     {
+        $this->connection->expects(self::once())
+            ->method('exists')
+            ->with('new_session_id')
+            ->willReturn(false);
+
         $this->connection->expects(self::once())
             ->method('set')
             ->willReturn(false);
@@ -305,6 +325,11 @@ class SessionMigrationHookTest extends TestCase
             ->willReturn('custom_serialized_data');
 
         $this->connection->expects(self::once())
+            ->method('exists')
+            ->with('new_session_id')
+            ->willReturn(false);
+
+        $this->connection->expects(self::once())
             ->method('set')
             ->with(
                 'new_session_id',
@@ -323,6 +348,44 @@ class SessionMigrationHookTest extends TestCase
         $hook->beforeWrite('old_session_id', ['key' => 'value']);
         $hook->afterWrite('old_session_id', true);
 
+        self::assertFalse($hook->hasPendingMigration());
+    }
+
+    public function testAfterWriteThrowsExceptionWhenTargetSessionExistsAndFailOnMigrationErrorIsTrue(): void
+    {
+        $this->connection->expects(self::once())
+            ->method('exists')
+            ->with('existing_session_id')
+            ->willReturn(true);
+
+        $this->connection->expects(self::never())
+            ->method('set');
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Target session ID already exists');
+
+        $hook = new SessionMigrationHook($this->connection, 1440, true);
+        $hook->setMigrationTarget('existing_session_id');
+        $hook->beforeWrite('old_session_id', ['key' => 'value']);
+        $hook->afterWrite('old_session_id', true);
+    }
+
+    public function testAfterWriteDoesNotThrowExceptionWhenTargetSessionExistsAndFailOnMigrationErrorIsFalse(): void
+    {
+        $this->connection->expects(self::once())
+            ->method('exists')
+            ->with('existing_session_id')
+            ->willReturn(true);
+
+        $this->connection->expects(self::never())
+            ->method('set');
+
+        $hook = new SessionMigrationHook($this->connection, 1440, false);
+        $hook->setMigrationTarget('existing_session_id');
+        $hook->beforeWrite('old_session_id', ['key' => 'value']);
+        $hook->afterWrite('old_session_id', true);
+
+        // Migration target should be cleared even on failure
         self::assertFalse($hook->hasPendingMigration());
     }
 }
