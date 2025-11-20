@@ -59,7 +59,7 @@ class SessionMigrationIntegrationTest extends TestCase
 
     private function cleanupTestSessions(): void
     {
-        $keys = $this->connection->scan('test_session_*');
+        $keys = $this->connection->scan('test-session-*');
         foreach ($keys as $key) {
             $this->connection->delete($key);
         }
@@ -96,8 +96,8 @@ class SessionMigrationIntegrationTest extends TestCase
         $connection = new RedisConnection($redis, $config, $logger);
 
         // Start a session with old ID
-        $oldSessionId = 'test_session_old_' . bin2hex(random_bytes(8));
-        $newSessionId = 'test_session_new_' . bin2hex(random_bytes(8));
+        $oldSessionId = 'test-session-old-' . bin2hex(random_bytes(8));
+        $newSessionId = 'test-session-new-' . bin2hex(random_bytes(8));
 
         // Ensure sessions are closed before starting
         if (session_status() === PHP_SESSION_ACTIVE) {
@@ -174,8 +174,8 @@ class SessionMigrationIntegrationTest extends TestCase
         $connection = new RedisConnection($redis, $config, $logger);
 
         // Start a session with old ID
-        $oldSessionId = 'test_session_old_' . bin2hex(random_bytes(8));
-        $newSessionId = 'test_session_new_' . bin2hex(random_bytes(8));
+        $oldSessionId = 'test-session-old-' . bin2hex(random_bytes(8));
+        $newSessionId = 'test-session-new-' . bin2hex(random_bytes(8));
 
         // Ensure sessions are closed before starting
         if (session_status() === PHP_SESSION_ACTIVE) {
@@ -217,8 +217,8 @@ class SessionMigrationIntegrationTest extends TestCase
 
     public function testCopySessionData(): void
     {
-        $sourceSessionId = 'test_session_source_' . bin2hex(random_bytes(8));
-        $targetSessionId = 'test_session_target_' . bin2hex(random_bytes(8));
+        $sourceSessionId = 'test-session-source-' . bin2hex(random_bytes(8));
+        $targetSessionId = 'test-session-target-' . bin2hex(random_bytes(8));
 
         // Create source session data
         $sourceData = serialize(['user_id' => 456, 'email' => 'test@example.com']);
@@ -241,8 +241,8 @@ class SessionMigrationIntegrationTest extends TestCase
 
     public function testCopySessionDataWithDeleteSource(): void
     {
-        $sourceSessionId = 'test_session_source_' . bin2hex(random_bytes(8));
-        $targetSessionId = 'test_session_target_' . bin2hex(random_bytes(8));
+        $sourceSessionId = 'test-session-source-' . bin2hex(random_bytes(8));
+        $targetSessionId = 'test-session-target-' . bin2hex(random_bytes(8));
 
         // Create source session data
         $sourceData = serialize(['test' => 'data']);
