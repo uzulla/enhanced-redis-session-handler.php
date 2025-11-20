@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Integration;
 
 use Monolog\Handler\NullHandler;
 use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
+use Redis;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\Hook\ReadTimestampHook;
@@ -12,10 +15,12 @@ use Uzulla\EnhancedRedisSessionHandler\Hook\FallbackReadHook;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
 use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
-use Redis;
+use Uzulla\EnhancedRedisSessionHandler\Tests\Support\RedisIntegrationTestTrait;
 
 class ReadHookIntegrationTest extends TestCase
 {
+    use RedisIntegrationTestTrait;
+
     private Logger $logger;
     private RedisConnection $primaryConnection;
     private RedisConnection $fallbackConnection;
@@ -23,40 +28,25 @@ class ReadHookIntegrationTest extends TestCase
 
     protected function setUp(): void
     {
-        if (!extension_loaded('redis')) {
-            self::fail('Redis extension is required for this test');
-        }
-
-        $redisHost = getenv('SESSION_REDIS_HOST');
-        $redisPort = getenv('SESSION_REDIS_PORT');
-
-        self::assertNotFalse($redisHost, 'SESSION_REDIS_HOST environment variable must be set');
-        self::assertNotFalse($redisPort, 'SESSION_REDIS_PORT environment variable must be set');
+        $params = $this->getRedisConnectionParameters();
+        $this->assertRedisAvailable($params['host'], $params['port']);
 
         $this->logger = new Logger('test');
         $this->logger->pushHandler(new NullHandler());
 
-        $primaryRedis = new Redis();
-        $primaryConfig = new RedisConnectionConfig(
-            $redisHost,
-            (int)$redisPort,
-            2.5,
-            null,
-            0,
+        $this->primaryConnection = $this->createRedisConnection(
+            $params['host'],
+            $params['port'],
+            $this->logger,
             'primary:'
         );
-        $this->primaryConnection = new RedisConnection($primaryRedis, $primaryConfig, $this->logger);
 
-        $fallbackRedis = new Redis();
-        $fallbackConfig = new RedisConnectionConfig(
-            $redisHost,
-            (int)$redisPort,
-            2.5,
-            null,
-            0,
+        $this->fallbackConnection = $this->createRedisConnection(
+            $params['host'],
+            $params['port'],
+            $this->logger,
             'fallback:'
         );
-        $this->fallbackConnection = new RedisConnection($fallbackRedis, $fallbackConfig, $this->logger);
 
         $options = new RedisSessionHandlerOptions(null, null, $this->logger);
         $this->handler = new RedisSessionHandler($this->primaryConnection, new PhpSerializeSerializer(), $options);
@@ -64,18 +54,7 @@ class ReadHookIntegrationTest extends TestCase
 
     protected function tearDown(): void
     {
-        $this->primaryConnection->connect();
-        $this->fallbackConnection->connect();
-
-        $primaryKeys = $this->primaryConnection->scan('*');
-        foreach ($primaryKeys as $key) {
-            $this->primaryConnection->delete($key);
-        }
-
-        $fallbackKeys = $this->fallbackConnection->scan('*');
-        foreach ($fallbackKeys as $key) {
-            $this->fallbackConnection->delete($key);
-        }
+        $this->cleanupRedisKeys($this->primaryConnection, $this->fallbackConnection);
     }
 
     public function testFallbackReadHookIntegration(): void

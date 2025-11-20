@@ -1,48 +1,39 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Integration;
 
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
-use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
 use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
-use Redis;
+use Uzulla\EnhancedRedisSessionHandler\Tests\Support\RedisIntegrationTestTrait;
 
 class BasicSessionTest extends TestCase
 {
+    use RedisIntegrationTestTrait;
+
     private RedisConnection $connection;
     private RedisSessionHandler $handler;
 
     protected function setUp(): void
     {
-        if (!extension_loaded('redis')) {
-            self::fail('Redis extension is required for integration tests');
-        }
-
-        $redisHost = getenv('SESSION_REDIS_HOST');
-        $redisPort = getenv('SESSION_REDIS_PORT');
-
-        self::assertNotFalse($redisHost, 'SESSION_REDIS_HOST environment variable must be set');
-        self::assertNotFalse($redisPort, 'SESSION_REDIS_PORT environment variable must be set');
+        $params = $this->getRedisConnectionParameters();
+        $this->assertRedisAvailable($params['host'], $params['port']);
 
         $logger = new Logger('test');
         $logger->pushHandler(new StreamHandler('php://stderr', Logger::DEBUG));
 
-        $config = new RedisConnectionConfig(
-            $redisHost,
-            (int)$redisPort,
-            2.5,
-            null,
-            0,
+        $this->connection = $this->createRedisConnection(
+            $params['host'],
+            $params['port'],
+            $logger,
             'test:session:'
         );
-
-        $redis = new Redis();
-        $this->connection = new RedisConnection($redis, $config, $logger);
 
         $options = new RedisSessionHandlerOptions(null, null, $logger);
         $serializer = new PhpSerializeSerializer();
@@ -53,13 +44,7 @@ class BasicSessionTest extends TestCase
 
     protected function tearDown(): void
     {
-        if (isset($this->connection) && $this->connection->isConnected()) {
-            $keys = $this->connection->scan('*');
-            foreach ($keys as $key) {
-                $this->connection->delete($key);
-            }
-            $this->connection->disconnect();
-        }
+        $this->cleanupRedisKeys($this->connection);
     }
 
     public function testOpenSession(): void
@@ -70,8 +55,8 @@ class BasicSessionTest extends TestCase
 
     public function testWriteAndReadSession(): void
     {
-        $sessionId = 'test_session_' . uniqid();
-        $sessionData = serialize(['test_key' => 'test_data_' . time()]);
+        $sessionId = $this->generateTestSessionId();
+        $sessionData = $this->createTestSessionData();
 
         $this->handler->open('/tmp', 'PHPSESSID');
         $writeResult = $this->handler->write($sessionId, $sessionData);
@@ -83,8 +68,8 @@ class BasicSessionTest extends TestCase
 
     public function testDestroySession(): void
     {
-        $sessionId = 'test_session_' . uniqid();
-        $sessionData = serialize(['test_key' => 'test_data']);
+        $sessionId = $this->generateTestSessionId();
+        $sessionData = $this->createTestSessionData(['test_key' => 'test_data']);
 
         $this->handler->open('/tmp', 'PHPSESSID');
         $this->handler->write($sessionId, $sessionData);
@@ -98,8 +83,8 @@ class BasicSessionTest extends TestCase
 
     public function testValidateId(): void
     {
-        $sessionId = 'test_session_' . uniqid();
-        $sessionData = serialize(['test_key' => 'test_data']);
+        $sessionId = $this->generateTestSessionId();
+        $sessionData = $this->createTestSessionData(['test_key' => 'test_data']);
 
         $this->handler->open('/tmp', 'PHPSESSID');
         $this->handler->write($sessionId, $sessionData);
@@ -110,8 +95,8 @@ class BasicSessionTest extends TestCase
 
     public function testUpdateTimestamp(): void
     {
-        $sessionId = 'test_session_' . uniqid();
-        $sessionData = serialize(['test_key' => 'test_data']);
+        $sessionId = $this->generateTestSessionId();
+        $sessionData = $this->createTestSessionData(['test_key' => 'test_data']);
 
         $this->handler->open('/tmp', 'PHPSESSID');
         $this->handler->write($sessionId, $sessionData);

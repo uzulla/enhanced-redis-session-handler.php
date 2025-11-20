@@ -138,6 +138,83 @@ class PsrTestLogger implements LoggerInterface
     }
 
     /**
+     * 指定されたメッセージを持つログレコードが存在するか確認
+     *
+     * @param string $message 検索するログメッセージ
+     * @param string|null $level ログレベル（オプション）
+     * @return bool
+     */
+    public function hasLogMessage(string $message, ?string $level = null): bool
+    {
+        foreach ($this->records as $record) {
+            if ($record['message'] === $message) {
+                if ($level === null || strtoupper($level) === $record['level_name']) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 指定されたメッセージを含むログレコードが存在するか確認
+     *
+     * @param string $substring 検索する部分文字列
+     * @param string|null $level ログレベル（オプション）
+     * @return bool
+     */
+    public function hasLogMessageContaining(string $substring, ?string $level = null): bool
+    {
+        foreach ($this->records as $record) {
+            if (str_contains($record['message'], $substring)) {
+                if ($level === null || strtoupper($level) === $record['level_name']) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 指定されたメッセージを持つログレコードを取得
+     *
+     * @param string $message 検索するログメッセージ
+     * @return array{level: string, level_name: string, message: string, context: array<string,mixed>}|null
+     */
+    public function findLogByMessage(string $message): ?array
+    {
+        foreach ($this->records as $record) {
+            if ($record['message'] === $message) {
+                return $record;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 指定されたメッセージとコンテキストを持つログレコードが存在するか確認
+     *
+     * @param string $message ログメッセージ
+     * @param array<string, mixed> $expectedContext 期待されるコンテキスト（部分一致）
+     * @return bool
+     */
+    public function hasLogWithContext(string $message, array $expectedContext): bool
+    {
+        $record = $this->findLogByMessage($message);
+        if ($record === null) {
+            return false;
+        }
+
+        foreach ($expectedContext as $key => $expectedValue) {
+            if (!isset($record['context'][$key]) || $record['context'][$key] !== $expectedValue) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * @param mixed $level
      * @param string|\Stringable $message
      * @param array<mixed> $context
