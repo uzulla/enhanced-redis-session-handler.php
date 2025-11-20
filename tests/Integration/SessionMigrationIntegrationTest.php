@@ -70,6 +70,9 @@ class SessionMigrationIntegrationTest extends TestCase
      */
     public function testMigrateSuccessfully(): void
     {
+        // Disable cookie-based sessions to prevent headers from being sent
+        ini_set('session.use_cookies', '0');
+
         // Recreate connection in separate process
         if (!extension_loaded('redis')) {
             self::markTestSkipped('Redis extension is required for integration tests');
@@ -148,6 +151,9 @@ class SessionMigrationIntegrationTest extends TestCase
      */
     public function testMigrateWithoutDeletingOldSession(): void
     {
+        // Disable cookie-based sessions to prevent headers from being sent
+        ini_set('session.use_cookies', '0');
+
         // Recreate connection in separate process
         if (!extension_loaded('redis')) {
             self::markTestSkipped('Redis extension is required for integration tests');
