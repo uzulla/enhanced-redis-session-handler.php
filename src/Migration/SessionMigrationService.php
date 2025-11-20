@@ -122,7 +122,7 @@ class SessionMigrationService
             'new_session_id' => SessionIdMasker::mask($newSessionId),
         ]);
 
-        // Close the current session without saving (we'll use the new ID)
+        // Close the current session (writes session data and closes) so the session ID can be changed
         session_write_close();
 
         // Set the new session ID
