@@ -273,6 +273,7 @@ class SessionMigrationServiceTest extends TestCase
         $service = new SessionMigrationService($this->connection, 1440);
 
         $this->expectException(MigrationException::class);
+        $this->expectExceptionMessage('Session must be active before migration. Call session_start() first.');
 
         $service->migrate('new_session_id');
     }
