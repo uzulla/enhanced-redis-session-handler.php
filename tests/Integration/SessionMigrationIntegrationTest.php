@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Integration;
 
-use Monolog\Handler\StreamHandler;
-use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
 use Redis;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Migration\SessionMigrationService;
@@ -29,8 +28,7 @@ class SessionMigrationIntegrationTest extends TestCase
         $redisHost = $redisHostEnv !== false ? $redisHostEnv : 'localhost';
         $redisPort = $redisPortEnv !== false ? $redisPortEnv : '6379';
 
-        $logger = new Logger('test');
-        $logger->pushHandler(new StreamHandler('php://stderr', Logger::DEBUG));
+        $logger = new NullLogger();
 
         $config = new RedisConnectionConfig(
             $redisHost,
@@ -83,8 +81,7 @@ class SessionMigrationIntegrationTest extends TestCase
         $redisHost = $redisHostEnv !== false ? $redisHostEnv : 'localhost';
         $redisPort = $redisPortEnv !== false ? $redisPortEnv : '6379';
 
-        $logger = new Logger('test');
-        $logger->pushHandler(new StreamHandler('php://stderr', Logger::DEBUG));
+        $logger = new NullLogger();
 
         $config = new RedisConnectionConfig(
             $redisHost,
@@ -162,8 +159,7 @@ class SessionMigrationIntegrationTest extends TestCase
         $redisHost = $redisHostEnv !== false ? $redisHostEnv : 'localhost';
         $redisPort = $redisPortEnv !== false ? $redisPortEnv : '6379';
 
-        $logger = new Logger('test');
-        $logger->pushHandler(new StreamHandler('php://stderr', Logger::DEBUG));
+        $logger = new NullLogger();
 
         $config = new RedisConnectionConfig(
             $redisHost,
