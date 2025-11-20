@@ -9,6 +9,7 @@ use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use RuntimeException;
 use Throwable;
+use Uzulla\EnhancedRedisSessionHandler\Exception\InvalidSessionIdException;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\Serializer\SessionSerializerInterface;
@@ -84,7 +85,7 @@ class SessionMigrationHook implements WriteHookInterface
      *
      * @param string $targetSessionId 移行先の新しいセッションID（内部でサニタイズされる）
      * @param bool $deleteOldSession 移行後に古いセッションを削除するか（デフォルト: true）
-     * @throws InvalidArgumentException セッションIDが無効な場合
+     * @throws InvalidSessionIdException セッションIDが無効な場合
      */
     public function setMigrationTarget(string $targetSessionId, bool $deleteOldSession = true): void
     {
