@@ -107,6 +107,16 @@ class SessionMigrationIntegrationTest extends TestCase
             session_write_close();
         }
 
+        // Prepare session data
+        $expectedData = [
+            'user_id' => 123,
+            'username' => 'testuser',
+            'roles' => ['admin', 'editor'],
+        ];
+
+        // Create old session data in Redis manually
+        $connection->set($oldSessionId, serialize($expectedData), 1440);
+
         // Set and start the old session
         session_id($oldSessionId);
         self::assertTrue(session_start(), 'Failed to start session');
@@ -115,9 +125,6 @@ class SessionMigrationIntegrationTest extends TestCase
         $_SESSION['user_id'] = 123;
         $_SESSION['username'] = 'testuser';
         $_SESSION['roles'] = ['admin', 'editor'];
-
-        // Capture the expected data
-        $expectedData = $_SESSION;
 
         // Create migration service
         $service = new SessionMigrationService($connection, 1440);
@@ -187,6 +194,10 @@ class SessionMigrationIntegrationTest extends TestCase
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_write_close();
         }
+
+        // Create old session data in Redis manually
+        $oldSessionData = serialize(['data' => 'test_value']);
+        $connection->set($oldSessionId, $oldSessionData, 1440);
 
         // Set and start the old session
         session_id($oldSessionId);
