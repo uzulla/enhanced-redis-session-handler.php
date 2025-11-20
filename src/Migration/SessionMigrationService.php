@@ -259,14 +259,14 @@ class SessionMigrationService
     }
 
     /**
-     * セッションIDが期待される形式であるか検証する。
+     * セッションIDが期待される形式であるか検証し、サニタイズ済みIDを呼び出し元の変数にも反映する。
      *
-     * @param string $sessionId 検証するセッションID（内部でサニタイズされる）
+     * @param string $sessionId 検証・サニタイズするセッションID（参照渡しで更新される）
      * @throws InvalidSessionIdException セッションIDが無効な場合
      */
-    private function validateSessionId(string $sessionId): void
+    private function validateSessionId(string &$sessionId): void
     {
-        // 入力を最初にサニタイズ（SessionIdValidatorはサニタイズ済み入力を要求）
+        // 入力を最初にサニタイズ（呼び出し元の変数もサニタイズ済みに更新する）
         $sessionId = SessionIdValidator::sanitize($sessionId);
 
         // 一貫した検証のため共有バリデータを使用
