@@ -7,6 +7,7 @@ namespace Uzulla\EnhancedRedisSessionHandler\Migration;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use Uzulla\EnhancedRedisSessionHandler\Exception\InvalidSessionIdException;
 use Uzulla\EnhancedRedisSessionHandler\Exception\MigrationException;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
@@ -73,7 +74,7 @@ class SessionMigrationService
      * @param string $newSessionId The target session ID to migrate to
      * @param bool $deleteOldSession Whether to delete the old session data (default: true)
      * @throws MigrationException If migration fails
-     * @throws InvalidArgumentException If session ID is invalid
+     * @throws InvalidSessionIdException If session ID is invalid
      */
     public function migrate(string $newSessionId, bool $deleteOldSession = true): void
     {
@@ -170,7 +171,7 @@ class SessionMigrationService
      * @param string $targetSessionId The target session ID to copy to
      * @param bool $deleteSource Whether to delete the source session after copying (default: false)
      * @throws MigrationException If copy fails
-     * @throws InvalidArgumentException If session ID is invalid
+     * @throws InvalidSessionIdException If session ID is invalid
      */
     public function copy(string $sourceSessionId, string $targetSessionId, bool $deleteSource = false): void
     {
@@ -264,7 +265,7 @@ class SessionMigrationService
      * Validate that a session ID is in the expected format.
      *
      * @param string $sessionId The session ID to validate
-     * @throws \InvalidArgumentException If session ID is invalid
+     * @throws InvalidSessionIdException If session ID is invalid
      */
     private function validateSessionId(string $sessionId): void
     {
