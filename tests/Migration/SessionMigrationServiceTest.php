@@ -380,4 +380,64 @@ class SessionMigrationServiceTest extends TestCase
 
         self::assertTrue($service->sessionExists('  valid_session_id  '));
     }
+
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function testMigrateSuccessfullyWithRealSession(): void
+    {
+        // Ensure no session is active
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+
+        // Start session with old ID (use only alphanumeric and hyphen for PHP session compatibility)
+        $oldSessionId = 'old-session-' . bin2hex(random_bytes(8));
+        session_id($oldSessionId);
+        self::assertTrue(session_start(), 'Failed to start session');
+
+        // Populate session data
+        $_SESSION['user_id'] = 123;
+        $_SESSION['username'] = 'testuser';
+        $_SESSION['roles'] = ['admin', 'editor'];
+
+        // Capture expected data
+        $expectedData = $_SESSION;
+        $expectedSerializedData = serialize($expectedData);
+
+        // Mock connection expectations
+        $newSessionId = 'new-session-id';
+        $this->connection->expects(self::once())
+            ->method('exists')
+            ->with($newSessionId)
+            ->willReturn(false);
+
+        $this->connection->expects(self::once())
+            ->method('set')
+            ->with($newSessionId, $expectedSerializedData, 1440)
+            ->willReturn(true);
+
+        $this->connection->expects(self::once())
+            ->method('delete')
+            ->with($oldSessionId)
+            ->willReturn(true);
+
+        // Create service
+        $service = new SessionMigrationService($this->connection, 1440);
+
+        // Perform migration
+        $service->migrate($newSessionId, true);
+
+        // Verify new session ID is active
+        self::assertSame($newSessionId, session_id(), 'Session ID should be updated to new session ID');
+
+        // Verify session data is preserved
+        self::assertSame(123, $_SESSION['user_id']);
+        self::assertSame('testuser', $_SESSION['username']);
+        self::assertSame(['admin', 'editor'], $_SESSION['roles']);
+
+        // Clean up
+        session_write_close();
+    }
 }
