@@ -16,25 +16,25 @@ use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdValidator;
 
 /**
- * Hook implementation that migrates session data to a new session ID during write.
+ * 書き込み時にセッションデータを新しいセッションIDに移行するフック実装。
  *
- * This hook allows you to programmatically migrate a session by:
- * 1. Setting the target session ID via setMigrationTarget()
- * 2. On the next write operation, the data will be written to the new session ID
- * 3. The old session can optionally be deleted
+ * このフックは以下の手順でセッションをプログラマティックに移行できます：
+ * 1. setMigrationTarget()でターゲットセッションIDを設定
+ * 2. 次の書き込み操作時に、データが新しいセッションIDに書き込まれる
+ * 3. 必要に応じて古いセッションを削除可能
  *
- * Note: This hook only handles the Redis-side migration. To complete the migration,
- * you need to update the browser's session cookie separately (e.g., by calling
- * session_id($newId) before session_start() on the next request).
+ * 注意: このフックはRedis側の移行のみを処理します。移行を完了するには、
+ * ブラウザのセッションクッキーを別途更新する必要があります（例：次のリクエスト時に
+ * session_start()の前にsession_id($newId)を呼び出す）。
  *
- * For a complete migration solution that also handles the session cookie,
- * use SessionMigrationService instead.
+ * セッションクッキーも処理する完全な移行ソリューションが必要な場合は、
+ * SessionMigrationServiceを使用してください。
  *
- * Usage:
+ * 使用例:
  * ```php
  * $hook = new SessionMigrationHook($connection, $ttl);
  * $hook->setMigrationTarget($newSessionId, true);
- * // On next session write, data will be copied to new session ID
+ * // 次のセッション書き込み時に、データが新しいセッションIDにコピーされる
  * ```
  */
 class SessionMigrationHook implements WriteHookInterface
@@ -52,11 +52,11 @@ class SessionMigrationHook implements WriteHookInterface
     private array $pendingWrites = [];
 
     /**
-     * @param RedisConnection $connection Redis connection for session storage
-     * @param int $ttl Time to live for session data in seconds
-     * @param bool $failOnMigrationError If true, throw exception when migration fails
-     * @param LoggerInterface|null $logger Optional logger for debugging
-     * @param SessionSerializerInterface|null $serializer Optional serializer (defaults to PhpSerializeSerializer)
+     * @param RedisConnection $connection セッションストレージ用のRedis接続
+     * @param int $ttl セッションデータの生存時間（秒）
+     * @param bool $failOnMigrationError trueの場合、移行失敗時に例外をスロー
+     * @param LoggerInterface|null $logger オプションのロガー（デバッグ用）
+     * @param SessionSerializerInterface|null $serializer オプションのシリアライザ（デフォルトはPhpSerializeSerializer）
      */
     public function __construct(
         RedisConnection $connection,
@@ -76,22 +76,22 @@ class SessionMigrationHook implements WriteHookInterface
     }
 
     /**
-     * Set the target session ID for migration.
+     * 移行先のターゲットセッションIDを設定する。
      *
-     * After calling this method, the next write operation will:
-     * 1. Write the session data to the target session ID
-     * 2. Optionally delete the old session
+     * このメソッド呼び出し後、次の書き込み操作では以下が実行されます：
+     * 1. セッションデータをターゲットセッションIDに書き込む
+     * 2. 必要に応じて古いセッションを削除する
      *
-     * @param string $targetSessionId The new session ID to migrate to (will be sanitized internally)
-     * @param bool $deleteOldSession Whether to delete the old session after migration (default: true)
-     * @throws InvalidArgumentException If session ID is invalid
+     * @param string $targetSessionId 移行先の新しいセッションID（内部でサニタイズされる）
+     * @param bool $deleteOldSession 移行後に古いセッションを削除するか（デフォルト: true）
+     * @throws InvalidArgumentException セッションIDが無効な場合
      */
     public function setMigrationTarget(string $targetSessionId, bool $deleteOldSession = true): void
     {
-        // Sanitize input first (SessionIdValidator requires sanitized input)
+        // 入力を最初にサニタイズ（SessionIdValidatorはサニタイズ済み入力を要求）
         $targetSessionId = SessionIdValidator::sanitize($targetSessionId);
 
-        // Use shared validator for consistent validation
+        // 一貫した検証のため共有バリデータを使用
         SessionIdValidator::validate($targetSessionId);
 
         $this->targetSessionId = $targetSessionId;
@@ -104,7 +104,7 @@ class SessionMigrationHook implements WriteHookInterface
     }
 
     /**
-     * Clear the migration target (cancel pending migration).
+     * 移行ターゲットをクリアする（保留中の移行をキャンセル）。
      */
     public function clearMigrationTarget(): void
     {
@@ -115,9 +115,9 @@ class SessionMigrationHook implements WriteHookInterface
     }
 
     /**
-     * Check if a migration is pending.
+     * 移行が保留中であるかチェックする。
      *
-     * @return bool True if migration target is set
+     * @return bool 移行ターゲットが設定されている場合true
      */
     public function hasPendingMigration(): bool
     {
@@ -125,9 +125,9 @@ class SessionMigrationHook implements WriteHookInterface
     }
 
     /**
-     * Get the current migration target session ID.
+     * 現在の移行ターゲットセッションIDを取得する。
      *
-     * @return string|null The target session ID, or null if no migration is pending
+     * @return string|null ターゲットセッションID、または移行が保留中でない場合null
      */
     public function getMigrationTarget(): ?string
     {
@@ -136,7 +136,7 @@ class SessionMigrationHook implements WriteHookInterface
 
     public function beforeWrite(string $sessionId, array $data): array
     {
-        // Store the data for afterWrite to use
+        // afterWriteで使用するためデータを保存
         $this->pendingWrites[$sessionId] = $data;
         return $data;
     }
@@ -151,13 +151,13 @@ class SessionMigrationHook implements WriteHookInterface
             return;
         }
 
-        // Check if migration is requested
+        // 移行が要求されているかチェック
         if ($this->targetSessionId === null) {
             unset($this->pendingWrites[$sessionId]);
             return;
         }
 
-        // Skip if target is same as current
+        // ターゲットが現在のセッションと同じ場合はスキップ
         if ($this->targetSessionId === $sessionId) {
             $this->logger->debug('Migration skipped: target session ID is same as current', [
                 'session_id' => SessionIdMasker::mask($sessionId),
@@ -186,22 +186,22 @@ class SessionMigrationHook implements WriteHookInterface
                 throw $e;
             }
         } finally {
-            // Clear migration target after attempt (one-shot)
+            // 試行後に移行ターゲットをクリア（ワンショット）
             $this->targetSessionId = null;
             unset($this->pendingWrites[$sessionId]);
         }
     }
 
     /**
-     * Perform the actual migration of session data to the target session ID.
+     * セッションデータをターゲットセッションIDに実際に移行する。
      *
-     * @param string $sessionId The current session ID
-     * @throws RuntimeException If migration fails and failOnMigrationError is true
+     * @param string $sessionId 現在のセッションID
+     * @throws RuntimeException 移行が失敗し、failOnMigrationErrorがtrueの場合
      */
     private function performMigration(string $sessionId): void
     {
-        // targetSessionId is guaranteed to be non-null when this method is called
-        // (checked in afterWrite before calling performMigration)
+        // このメソッドが呼ばれる時点でtargetSessionIdは非nullであることが保証されている
+        // （performMigrationを呼び出す前にafterWriteでチェック済み）
         $targetId = $this->targetSessionId;
         if ($targetId === null) {
             return;
@@ -215,7 +215,7 @@ class SessionMigrationHook implements WriteHookInterface
             'new_session_id' => SessionIdMasker::mask($targetId),
         ]);
 
-        // Check if target session ID already exists to prevent overwriting another user's session
+        // ターゲットセッションIDが既に存在していないかチェックし、他ユーザーのセッション上書きを防止
         if ($this->connection->exists($targetId)) {
             $message = 'Target session ID already exists';
             $this->logger->error($message, [
@@ -229,7 +229,7 @@ class SessionMigrationHook implements WriteHookInterface
             return;
         }
 
-        // Write to new session ID
+        // 新しいセッションIDに書き込む
         $migrationSuccess = $this->connection->set($targetId, $serializedData, $this->ttl);
 
         if (!$migrationSuccess) {
@@ -249,7 +249,7 @@ class SessionMigrationHook implements WriteHookInterface
             'new_session_id' => SessionIdMasker::mask($targetId),
         ]);
 
-        // Delete old session if requested
+        // 要求された場合、古いセッションを削除
         if ($this->deleteOldSession) {
             $this->deleteOldSessionData($sessionId);
         }
@@ -262,9 +262,9 @@ class SessionMigrationHook implements WriteHookInterface
     }
 
     /**
-     * Delete the old session data from Redis.
+     * 古いセッションデータをRedisから削除する。
      *
-     * @param string $sessionId The session ID to delete
+     * @param string $sessionId 削除するセッションID
      */
     private function deleteOldSessionData(string $sessionId): void
     {
@@ -287,7 +287,7 @@ class SessionMigrationHook implements WriteHookInterface
             'exception' => $exception,
         ]);
 
-        // Clear pending state
+        // 保留中の状態をクリア
         $this->targetSessionId = null;
         unset($this->pendingWrites[$sessionId]);
     }

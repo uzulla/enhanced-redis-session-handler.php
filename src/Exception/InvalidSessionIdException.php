@@ -7,12 +7,12 @@ namespace Uzulla\EnhancedRedisSessionHandler\Exception;
 use InvalidArgumentException;
 
 /**
- * Exception thrown when a session ID has invalid format.
+ * セッションIDが無効な形式の場合にスローされる例外。
  *
- * This exception is thrown when:
- * - Session ID is empty
- * - Session ID contains invalid characters
- * - Session ID exceeds maximum length
+ * この例外は以下の場合にスローされます：
+ * - セッションIDが空
+ * - セッションIDに無効な文字が含まれる
+ * - セッションIDが最大長を超える
  */
 class InvalidSessionIdException extends InvalidArgumentException
 {

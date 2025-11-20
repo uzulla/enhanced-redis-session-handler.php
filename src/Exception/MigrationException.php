@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Uzulla\EnhancedRedisSessionHandler\Exception;
 
 /**
- * Exception thrown when session migration fails.
+ * セッション移行が失敗した場合にスローされる例外。
  */
 class MigrationException extends RedisSessionException
 {

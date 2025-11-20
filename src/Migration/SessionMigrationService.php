@@ -16,14 +16,14 @@ use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdValidator;
 
 /**
- * Service for migrating session data to a new session ID.
+ * セッションデータを新しいセッションIDに移行するサービス。
  *
- * This service allows you to:
- * - Copy session data from one session ID to another
- * - Update the browser's session cookie to use the new ID
- * - Delete the old session (effectively logging out other browsers)
+ * このサービスは以下の機能を提供します：
+ * - セッションデータを別のセッションIDにコピー
+ * - ブラウザのセッションクッキーを新しいIDに更新
+ * - 古いセッションを削除（他のブラウザを実質的にログアウト）
  *
- * Usage:
+ * 使用例:
  * ```php
  * $migrator = new SessionMigrationService($redisConnection, $ttl);
  * $migrator->migrate($newSessionId, $deleteOldSession);
@@ -37,10 +37,10 @@ class SessionMigrationService
     private SessionSerializerInterface $serializer;
 
     /**
-     * @param RedisConnection $connection Redis connection for session storage
-     * @param int $ttl Time to live for session data in seconds
-     * @param SessionSerializerInterface|null $serializer Optional serializer for session data (defaults to PhpSerializeSerializer)
-     * @param LoggerInterface|null $logger Optional logger for debugging
+     * @param RedisConnection $connection セッションストレージ用のRedis接続
+     * @param int $ttl セッションデータの生存時間（秒）
+     * @param SessionSerializerInterface|null $serializer オプションのシリアライザ（デフォルトはPhpSerializeSerializer）
+     * @param LoggerInterface|null $logger オプションのロガー（デバッグ用）
      */
     public function __construct(
         RedisConnection $connection,
@@ -59,28 +59,28 @@ class SessionMigrationService
     }
 
     /**
-     * Migrate the current session to a new session ID.
+     * 現在のセッションを新しいセッションIDに移行する。
      *
-     * This method:
-     * 1. Reads the current session data from $_SESSION
-     * 2. Writes the data to the new session ID in Redis
-     * 3. Updates the PHP session ID and cookie
-     * 4. Optionally deletes the old session
+     * このメソッドは以下の処理を実行します：
+     * 1. $_SESSIONから現在のセッションデータを読み取る
+     * 2. データを新しいセッションIDでRedisに書き込む
+     * 3. PHPのセッションIDとクッキーを更新する
+     * 4. 必要に応じて古いセッションを削除する
      *
-     * IMPORTANT: This must be called when a session is active (after session_start()).
-     * After calling this method, the browser will have a new session cookie,
-     * and other browsers using the old session ID will be logged out.
+     * 重要: このメソッドはセッションがアクティブな状態（session_start()後）で呼び出す必要があります。
+     * このメソッド呼び出し後、ブラウザには新しいセッションクッキーが設定され、
+     * 古いセッションIDを使用している他のブラウザはログアウトされます。
      *
-     * @param string $newSessionId The target session ID to migrate to
-     * @param bool $deleteOldSession Whether to delete the old session data (default: true)
-     * @throws MigrationException If migration fails
-     * @throws InvalidSessionIdException If session ID is invalid
+     * @param string $newSessionId 移行先のセッションID
+     * @param bool $deleteOldSession 古いセッションデータを削除するか（デフォルト: true）
+     * @throws MigrationException 移行に失敗した場合
+     * @throws InvalidSessionIdException セッションIDが無効な場合
      */
     public function migrate(string $newSessionId, bool $deleteOldSession = true): void
     {
         $this->validateSessionId($newSessionId);
 
-        // Check if target session ID already exists to prevent overwriting another user's session
+        // ターゲットセッションIDが既に存在していないかチェックし、他ユーザーのセッション上書きを防止
         if ($this->connection->exists($newSessionId)) {
             throw new MigrationException('Target session ID already exists');
         }
@@ -106,11 +106,11 @@ class SessionMigrationService
             'new_session_id' => SessionIdMasker::mask($newSessionId),
         ]);
 
-        // Get current session data from $_SESSION
+        // $_SESSIONから現在のセッションデータを取得
         /** @var array<string, mixed> $sessionData */
         $sessionData = $_SESSION;
 
-        // Write the session data to the new session ID in Redis
+        // セッションデータを新しいセッションIDでRedisに書き込む
         $serializedData = $this->serializer->encode($sessionData);
         $writeSuccess = $this->connection->set($newSessionId, $serializedData, $this->ttl);
 
@@ -122,32 +122,31 @@ class SessionMigrationService
             'new_session_id' => SessionIdMasker::mask($newSessionId),
         ]);
 
-        // Close the current session (writes session data and closes) so the session ID can be changed
+        // 現在のセッションを閉じて（セッションデータを書き込んでクローズ）、セッションIDを変更可能にする
         session_write_close();
 
-        // Set the new session ID
+        // 新しいセッションIDを設定
         session_id($newSessionId);
 
-        // Restart the session with the new ID
+        // 新しいIDでセッションを再開
         if (!session_start()) {
             throw new MigrationException('Failed to restart session with new ID');
         }
 
-        // Verify session data was preserved
-        // Use serialized comparison for robust byte-for-byte check that handles objects correctly.
-        // This avoids false positives from identity comparison (===) which would fail for
-        // different object instances, even when they contain the same data.
+        // セッションデータが保持されているか検証
+        // シリアライズ形式での比較により、オブジェクトを正しく扱える堅牢なバイト単位チェックを実施。
+        // これにより、同一性比較（===）で発生する誤検知（同じデータを含む異なるオブジェクトインスタンスで失敗する）を回避。
         /** @var array<string, mixed> $currentSessionData */
         $currentSessionData = $_SESSION;
         if (serialize($currentSessionData) !== serialize($sessionData)) {
-            // If data mismatch, restore from our backup
+            // データ不一致の場合、バックアップから復元
             $_SESSION = $sessionData;
             $this->logger->warning('Session data mismatch after migration, restored from backup', [
                 'new_session_id' => SessionIdMasker::mask($newSessionId),
             ]);
         }
 
-        // Delete the old session if requested
+        // 要求された場合、古いセッションを削除
         if ($deleteOldSession) {
             $this->deleteOldSession($oldSessionId);
         }
@@ -160,17 +159,16 @@ class SessionMigrationService
     }
 
     /**
-     * Copy session data from one session ID to another without changing the current session.
+     * 現在のセッションを変更せずに、セッションデータを別のセッションIDにコピーする。
      *
-     * This is useful for scenarios where you want to prepare a new session
-     * without immediately switching to it.
+     * 新しいセッションを準備しつつ、すぐには切り替えないシナリオで有用です。
      *
-     * @param string $sourceSessionId The source session ID to copy from
-     * @param string $targetSessionId The target session ID to copy to
-     * @param bool $deleteSource Whether to delete the source session after copying (default: false)
-     * @throws InvalidArgumentException If source and target session IDs are the same
-     * @throws MigrationException If copy fails
-     * @throws InvalidSessionIdException If session ID is invalid
+     * @param string $sourceSessionId コピー元のセッションID
+     * @param string $targetSessionId コピー先のセッションID
+     * @param bool $deleteSource コピー後にコピー元のセッションを削除するか（デフォルト: false）
+     * @throws InvalidArgumentException コピー元とコピー先のセッションIDが同じ場合
+     * @throws MigrationException コピーに失敗した場合
+     * @throws InvalidSessionIdException セッションIDが無効な場合
      */
     public function copy(string $sourceSessionId, string $targetSessionId, bool $deleteSource = false): void
     {
@@ -181,7 +179,7 @@ class SessionMigrationService
             throw new InvalidArgumentException('Source and target session IDs must be different');
         }
 
-        // Check if target session ID already exists to prevent overwriting another user's session
+        // ターゲットセッションIDが既に存在していないかチェックし、他ユーザーのセッション上書きを防止
         if ($this->connection->exists($targetSessionId)) {
             throw new MigrationException('Target session ID already exists');
         }
@@ -191,14 +189,14 @@ class SessionMigrationService
             'target_session_id' => SessionIdMasker::mask($targetSessionId),
         ]);
 
-        // Read session data from source
+        // コピー元からセッションデータを読み取る
         $sessionData = $this->connection->get($sourceSessionId);
 
         if ($sessionData === false) {
             throw new MigrationException('Source session not found or could not be read');
         }
 
-        // Write to target
+        // コピー先に書き込む
         $writeSuccess = $this->connection->set($targetSessionId, $sessionData, $this->ttl);
 
         if (!$writeSuccess) {
@@ -210,7 +208,7 @@ class SessionMigrationService
             'target_session_id' => SessionIdMasker::mask($targetSessionId),
         ]);
 
-        // Delete source if requested
+        // 要求された場合、コピー元を削除
         if ($deleteSource) {
             $this->deleteOldSession($sourceSessionId);
         }
@@ -223,14 +221,14 @@ class SessionMigrationService
     }
 
     /**
-     * Check if a session ID exists in Redis.
+     * セッションIDがRedisに存在するかチェックする。
      *
-     * @param string $sessionId The session ID to check
-     * @return bool True if session exists, false if not exists or invalid ID
+     * @param string $sessionId チェックするセッションID
+     * @return bool セッションが存在する場合true、存在しないか無効なIDの場合false
      */
     public function sessionExists(string $sessionId): bool
     {
-        // Sanitize and validate using shared validator
+        // 共有バリデータを使用してサニタイズと検証を実施
         $sessionId = SessionIdValidator::sanitize($sessionId);
 
         if (!SessionIdValidator::isValid($sessionId)) {
@@ -241,9 +239,9 @@ class SessionMigrationService
     }
 
     /**
-     * Delete the old session from Redis.
+     * 古いセッションをRedisから削除する。
      *
-     * @param string $sessionId The session ID to delete
+     * @param string $sessionId 削除するセッションID
      */
     private function deleteOldSession(string $sessionId): void
     {
@@ -261,20 +259,20 @@ class SessionMigrationService
     }
 
     /**
-     * Validate that a session ID is in the expected format.
+     * セッションIDが期待される形式であるか検証する。
      *
-     * @param string $sessionId The session ID to validate (will be sanitized internally)
-     * @throws InvalidSessionIdException If session ID is invalid
+     * @param string $sessionId 検証するセッションID（内部でサニタイズされる）
+     * @throws InvalidSessionIdException セッションIDが無効な場合
      */
     private function validateSessionId(string $sessionId): void
     {
-        // Sanitize input first (SessionIdValidator requires sanitized input)
+        // 入力を最初にサニタイズ（SessionIdValidatorはサニタイズ済み入力を要求）
         $sessionId = SessionIdValidator::sanitize($sessionId);
 
-        // Use shared validator for consistent validation
+        // 一貫した検証のため共有バリデータを使用
         SessionIdValidator::validate($sessionId);
 
-        // Warn if session ID is too short (security concern)
+        // セッションIDが短すぎる場合は警告（セキュリティ上の懸念）
         if (SessionIdValidator::isShorterThanRecommended($sessionId)) {
             $this->logger->warning('Session ID is shorter than recommended minimum of 16 characters', [
                 'session_id' => SessionIdMasker::mask($sessionId),
