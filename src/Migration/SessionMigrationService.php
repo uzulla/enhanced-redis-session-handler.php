@@ -9,6 +9,8 @@ use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Uzulla\EnhancedRedisSessionHandler\Exception\MigrationException;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
+use Uzulla\EnhancedRedisSessionHandler\Serializer\SessionSerializerInterface;
 use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
 use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdValidator;
 
@@ -31,15 +33,18 @@ class SessionMigrationService
     private RedisConnection $connection;
     private int $ttl;
     private LoggerInterface $logger;
+    private SessionSerializerInterface $serializer;
 
     /**
      * @param RedisConnection $connection Redis connection for session storage
      * @param int $ttl Time to live for session data in seconds
+     * @param SessionSerializerInterface|null $serializer Optional serializer for session data (defaults to PhpSerializeSerializer)
      * @param LoggerInterface|null $logger Optional logger for debugging
      */
     public function __construct(
         RedisConnection $connection,
         int $ttl,
+        ?SessionSerializerInterface $serializer = null,
         ?LoggerInterface $logger = null
     ) {
         if ($ttl <= 0) {
@@ -48,6 +53,7 @@ class SessionMigrationService
 
         $this->connection = $connection;
         $this->ttl = $ttl;
+        $this->serializer = $serializer ?? new PhpSerializeSerializer();
         $this->logger = $logger ?? new NullLogger();
     }
 
@@ -55,8 +61,8 @@ class SessionMigrationService
      * Migrate the current session to a new session ID.
      *
      * This method:
-     * 1. Reads the current session data from Redis
-     * 2. Writes the data to the new session ID
+     * 1. Reads the current session data from $_SESSION
+     * 2. Writes the data to the new session ID in Redis
      * 3. Updates the PHP session ID and cookie
      * 4. Optionally deletes the old session
      *
@@ -100,10 +106,11 @@ class SessionMigrationService
         ]);
 
         // Get current session data from $_SESSION
+        /** @var array<string, mixed> $sessionData */
         $sessionData = $_SESSION;
 
         // Write the session data to the new session ID in Redis
-        $serializedData = serialize($sessionData);
+        $serializedData = $this->serializer->encode($sessionData);
         $writeSuccess = $this->connection->set($newSessionId, $serializedData, $this->ttl);
 
         if (!$writeSuccess) {
@@ -172,6 +179,11 @@ class SessionMigrationService
 
         if ($sourceSessionId === $targetSessionId) {
             throw new InvalidArgumentException('Source and target session IDs must be different');
+        }
+
+        // Check if target session ID already exists to prevent overwriting another user's session
+        if ($this->connection->exists($targetSessionId)) {
+            throw new MigrationException('Target session ID already exists');
         }
 
         $this->logger->info('Starting session copy', [

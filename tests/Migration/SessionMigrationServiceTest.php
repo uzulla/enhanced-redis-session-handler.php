@@ -33,7 +33,7 @@ class SessionMigrationServiceTest extends TestCase
     public function testConstructorWithCustomLogger(): void
     {
         $logger = $this->createMock(LoggerInterface::class);
-        $service = new SessionMigrationService($this->connection, 3600, $logger);
+        $service = new SessionMigrationService($this->connection, 3600, null, $logger);
 
         self::assertInstanceOf(SessionMigrationService::class, $service);
     }
@@ -83,6 +83,11 @@ class SessionMigrationServiceTest extends TestCase
         $sessionData = serialize(['user_id' => 123, 'username' => 'test']);
 
         $this->connection->expects(self::once())
+            ->method('exists')
+            ->with('target_session')
+            ->willReturn(false);
+
+        $this->connection->expects(self::once())
             ->method('get')
             ->with('source_session')
             ->willReturn($sessionData);
@@ -104,6 +109,11 @@ class SessionMigrationServiceTest extends TestCase
     public function testCopyWithDeleteSource(): void
     {
         $sessionData = serialize(['user_id' => 123]);
+
+        $this->connection->expects(self::once())
+            ->method('exists')
+            ->with('target_session')
+            ->willReturn(false);
 
         $this->connection->expects(self::once())
             ->method('get')
@@ -128,6 +138,11 @@ class SessionMigrationServiceTest extends TestCase
     public function testCopyThrowsExceptionWhenSourceNotFound(): void
     {
         $this->connection->expects(self::once())
+            ->method('exists')
+            ->with('target_session')
+            ->willReturn(false);
+
+        $this->connection->expects(self::once())
             ->method('get')
             ->with('nonexistent_session')
             ->willReturn(false);
@@ -143,6 +158,11 @@ class SessionMigrationServiceTest extends TestCase
     public function testCopyThrowsExceptionWhenWriteFails(): void
     {
         $sessionData = serialize(['user_id' => 123]);
+
+        $this->connection->expects(self::once())
+            ->method('exists')
+            ->with('target_session')
+            ->willReturn(false);
 
         $this->connection->expects(self::once())
             ->method('get')
@@ -210,6 +230,7 @@ class SessionMigrationServiceTest extends TestCase
     {
         $sessionData = serialize(['data' => 'test']);
 
+        $this->connection->method('exists')->willReturn(false);
         $this->connection->method('get')->willReturn($sessionData);
         $this->connection->method('set')->willReturn(true);
 
@@ -225,6 +246,21 @@ class SessionMigrationServiceTest extends TestCase
         $service->copy('session-id-1', 'session-id-2');
 
         $this->addToAssertionCount(3);
+    }
+
+    public function testCopyThrowsExceptionWhenTargetSessionExists(): void
+    {
+        $this->connection->expects(self::once())
+            ->method('exists')
+            ->with('existing_target_session')
+            ->willReturn(true);
+
+        $service = new SessionMigrationService($this->connection, 1440);
+
+        $this->expectException(MigrationException::class);
+        $this->expectExceptionMessage('Target session ID already exists');
+
+        $service->copy('source_session', 'existing_target_session');
     }
 
     public function testMigrateThrowsExceptionWhenSessionNotActive(): void
