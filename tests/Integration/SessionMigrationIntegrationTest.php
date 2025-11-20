@@ -67,8 +67,37 @@ class SessionMigrationIntegrationTest extends TestCase
         }
     }
 
+    /**
+     * @runInSeparateProcess
+     */
     public function testMigrateSuccessfully(): void
     {
+        // Recreate connection in separate process
+        if (!extension_loaded('redis')) {
+            self::markTestSkipped('Redis extension is required for integration tests');
+        }
+
+        $redisHostEnv = getenv('SESSION_REDIS_HOST');
+        $redisPortEnv = getenv('SESSION_REDIS_PORT');
+
+        $redisHost = $redisHostEnv !== false ? $redisHostEnv : 'localhost';
+        $redisPort = $redisPortEnv !== false ? $redisPortEnv : '6379';
+
+        $logger = new Logger('test');
+        $logger->pushHandler(new StreamHandler('php://stderr', Logger::DEBUG));
+
+        $config = new RedisConnectionConfig(
+            $redisHost,
+            (int)$redisPort,
+            2.5,
+            null,
+            0,
+            'test:session:'
+        );
+
+        $redis = new Redis();
+        $connection = new RedisConnection($redis, $config, $logger);
+
         // Start a session with old ID
         $oldSessionId = 'test_session_old_' . bin2hex(random_bytes(8));
         $newSessionId = 'test_session_new_' . bin2hex(random_bytes(8));
@@ -91,7 +120,7 @@ class SessionMigrationIntegrationTest extends TestCase
         $expectedData = $_SESSION;
 
         // Create migration service
-        $service = new SessionMigrationService($this->connection, 1440);
+        $service = new SessionMigrationService($connection, 1440);
 
         // Perform migration
         $service->migrate($newSessionId, true);
@@ -108,14 +137,46 @@ class SessionMigrationIntegrationTest extends TestCase
         session_write_close();
 
         // Verify old session was deleted
-        self::assertFalse($this->connection->exists($oldSessionId), 'Old session should be deleted');
+        self::assertFalse($connection->exists($oldSessionId), 'Old session should be deleted');
 
         // Verify new session exists
-        self::assertTrue($this->connection->exists($newSessionId), 'New session should exist');
+        self::assertTrue($connection->exists($newSessionId), 'New session should exist');
+
+        // Clean up
+        $connection->delete($newSessionId);
     }
 
+    /**
+     * @runInSeparateProcess
+     */
     public function testMigrateWithoutDeletingOldSession(): void
     {
+        // Recreate connection in separate process
+        if (!extension_loaded('redis')) {
+            self::markTestSkipped('Redis extension is required for integration tests');
+        }
+
+        $redisHostEnv = getenv('SESSION_REDIS_HOST');
+        $redisPortEnv = getenv('SESSION_REDIS_PORT');
+
+        $redisHost = $redisHostEnv !== false ? $redisHostEnv : 'localhost';
+        $redisPort = $redisPortEnv !== false ? $redisPortEnv : '6379';
+
+        $logger = new Logger('test');
+        $logger->pushHandler(new StreamHandler('php://stderr', Logger::DEBUG));
+
+        $config = new RedisConnectionConfig(
+            $redisHost,
+            (int)$redisPort,
+            2.5,
+            null,
+            0,
+            'test:session:'
+        );
+
+        $redis = new Redis();
+        $connection = new RedisConnection($redis, $config, $logger);
+
         // Start a session with old ID
         $oldSessionId = 'test_session_old_' . bin2hex(random_bytes(8));
         $newSessionId = 'test_session_new_' . bin2hex(random_bytes(8));
@@ -133,7 +194,7 @@ class SessionMigrationIntegrationTest extends TestCase
         $_SESSION['data'] = 'test_value';
 
         // Create migration service
-        $service = new SessionMigrationService($this->connection, 1440);
+        $service = new SessionMigrationService($connection, 1440);
 
         // Perform migration without deleting old session
         $service->migrate($newSessionId, false);
@@ -148,10 +209,14 @@ class SessionMigrationIntegrationTest extends TestCase
         session_write_close();
 
         // Verify old session still exists
-        self::assertTrue($this->connection->exists($oldSessionId), 'Old session should still exist');
+        self::assertTrue($connection->exists($oldSessionId), 'Old session should still exist');
 
         // Verify new session exists
-        self::assertTrue($this->connection->exists($newSessionId), 'New session should exist');
+        self::assertTrue($connection->exists($newSessionId), 'New session should exist');
+
+        // Clean up
+        $connection->delete($oldSessionId);
+        $connection->delete($newSessionId);
     }
 
     public function testCopySessionData(): void
