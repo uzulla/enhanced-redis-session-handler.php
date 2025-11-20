@@ -70,7 +70,7 @@ class SessionIdValidator
         }
 
         if (preg_match(self::VALID_PATTERN, $sessionId) !== 1) {
-            throw new InvalidSessionIdException('Session ID contains invalid characters');
+            throw new InvalidSessionIdException('Session ID contains invalid characters. Only alphanumeric, hyphen, and underscore allowed.');
         }
 
         if (strlen($sessionId) > self::MAX_LENGTH) {

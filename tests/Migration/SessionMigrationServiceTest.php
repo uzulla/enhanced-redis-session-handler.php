@@ -213,6 +213,7 @@ class SessionMigrationServiceTest extends TestCase
         $service = new SessionMigrationService($this->connection, 1440);
 
         $this->expectException(InvalidSessionIdException::class);
+        $this->expectExceptionMessage('Session ID contains invalid characters. Only alphanumeric, hyphen, and underscore allowed.');
 
         $service->copy('invalid/source', 'target_session');
     }
@@ -222,6 +223,7 @@ class SessionMigrationServiceTest extends TestCase
         $service = new SessionMigrationService($this->connection, 1440);
 
         $this->expectException(InvalidSessionIdException::class);
+        $this->expectExceptionMessage('Session ID contains invalid characters. Only alphanumeric, hyphen, and underscore allowed.');
 
         $service->copy('source_session', 'invalid<target>');
     }
@@ -292,6 +294,7 @@ class SessionMigrationServiceTest extends TestCase
         $service = new SessionMigrationService($this->connection, 1440);
 
         $this->expectException(InvalidSessionIdException::class);
+        $this->expectExceptionMessage('Session ID contains invalid characters. Only alphanumeric, hyphen, and underscore allowed.');
 
         $service->migrate('invalid/session/id');
     }

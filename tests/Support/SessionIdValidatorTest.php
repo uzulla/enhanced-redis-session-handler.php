@@ -59,6 +59,7 @@ class SessionIdValidatorTest extends TestCase
     public function testValidateThrowsExceptionForInvalidCharacters(): void
     {
         $this->expectException(InvalidSessionIdException::class);
+        $this->expectExceptionMessage('Session ID contains invalid characters. Only alphanumeric, hyphen, and underscore allowed.');
 
         SessionIdValidator::validate('invalid/session');
     }
