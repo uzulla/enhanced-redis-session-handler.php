@@ -168,6 +168,7 @@ class SessionMigrationService
      * @param string $sourceSessionId The source session ID to copy from
      * @param string $targetSessionId The target session ID to copy to
      * @param bool $deleteSource Whether to delete the source session after copying (default: false)
+     * @throws InvalidArgumentException If source and target session IDs are the same
      * @throws MigrationException If copy fails
      * @throws InvalidSessionIdException If session ID is invalid
      */
