@@ -32,16 +32,14 @@ class SessionIdValidator
     /**
      * Check if a session ID is valid without throwing an exception.
      *
-     * @param string $sessionId The session ID to validate
-     * @param bool $trim Whether to trim whitespace before validation (default: false)
+     * IMPORTANT: This method expects the input to be already sanitized.
+     * Call SessionIdValidator::sanitize() before passing the session ID to this method.
+     *
+     * @param string $sessionId The session ID to validate (must be pre-sanitized)
      * @return bool True if valid, false otherwise
      */
-    public static function isValid(string $sessionId, bool $trim = false): bool
+    public static function isValid(string $sessionId): bool
     {
-        if ($trim) {
-            $sessionId = trim($sessionId);
-        }
-
         if ($sessionId === '') {
             return false;
         }
@@ -60,7 +58,10 @@ class SessionIdValidator
     /**
      * Validate a session ID and throw an exception if invalid.
      *
-     * @param string $sessionId The session ID to validate
+     * IMPORTANT: This method expects the input to be already sanitized.
+     * Call SessionIdValidator::sanitize() before passing the session ID to this method.
+     *
+     * @param string $sessionId The session ID to validate (must be pre-sanitized)
      * @throws InvalidSessionIdException If the session ID is invalid
      */
     public static function validate(string $sessionId): void

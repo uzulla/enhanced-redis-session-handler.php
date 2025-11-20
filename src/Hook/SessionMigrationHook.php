@@ -82,12 +82,15 @@ class SessionMigrationHook implements WriteHookInterface
      * 1. Write the session data to the target session ID
      * 2. Optionally delete the old session
      *
-     * @param string $targetSessionId The new session ID to migrate to
+     * @param string $targetSessionId The new session ID to migrate to (will be sanitized internally)
      * @param bool $deleteOldSession Whether to delete the old session after migration (default: true)
      * @throws InvalidArgumentException If session ID is invalid
      */
     public function setMigrationTarget(string $targetSessionId, bool $deleteOldSession = true): void
     {
+        // Sanitize input first (SessionIdValidator requires sanitized input)
+        $targetSessionId = SessionIdValidator::sanitize($targetSessionId);
+
         // Use shared validator for consistent validation
         SessionIdValidator::validate($targetSessionId);
 

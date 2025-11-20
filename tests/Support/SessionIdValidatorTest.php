@@ -43,10 +43,14 @@ class SessionIdValidatorTest extends TestCase
         self::assertTrue(SessionIdValidator::isValid($maxLengthId));
     }
 
-    public function testIsValidWithTrimOption(): void
+    public function testIsValidRequiresSanitizedInput(): void
     {
-        self::assertTrue(SessionIdValidator::isValid('  valid_session  ', true));
-        self::assertFalse(SessionIdValidator::isValid('  valid_session  ', false));
+        // With sanitization, the ID becomes valid
+        $sanitized = SessionIdValidator::sanitize('  valid_session  ');
+        self::assertTrue(SessionIdValidator::isValid($sanitized));
+
+        // Without sanitization, the ID with whitespace is invalid
+        self::assertFalse(SessionIdValidator::isValid('  valid_session  '));
     }
 
     public function testValidateThrowsExceptionForEmptyId(): void

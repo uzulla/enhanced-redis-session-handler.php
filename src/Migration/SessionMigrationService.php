@@ -262,11 +262,14 @@ class SessionMigrationService
     /**
      * Validate that a session ID is in the expected format.
      *
-     * @param string $sessionId The session ID to validate
+     * @param string $sessionId The session ID to validate (will be sanitized internally)
      * @throws InvalidSessionIdException If session ID is invalid
      */
     private function validateSessionId(string $sessionId): void
     {
+        // Sanitize input first (SessionIdValidator requires sanitized input)
+        $sessionId = SessionIdValidator::sanitize($sessionId);
+
         // Use shared validator for consistent validation
         SessionIdValidator::validate($sessionId);
 
