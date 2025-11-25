@@ -128,55 +128,38 @@ class RedisConnectionConfigTest extends TestCase
      * @dataProvider zeroValueProvider
      * @param mixed $expected
      */
-    public function testConstructorAcceptsZeroValues(string $parameter, $expected): void
+    public function testConstructorAcceptsZeroValues(RedisConnectionConfig $config, callable $getter, $expected): void
     {
-        switch ($parameter) {
-            case 'timeout':
-                $config = new RedisConnectionConfig('localhost', 6379, 0.0);
-                break;
-            case 'readTimeout':
-                $config = new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 100, 0.0);
-                break;
-            case 'maxRetries':
-                $config = new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 100, 2.5, 0);
-                break;
-            case 'retryInterval':
-                $config = new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 0);
-                break;
-            default:
-                throw new InvalidArgumentException("Unknown parameter: {$parameter}");
-        }
-
-        switch ($parameter) {
-            case 'timeout':
-                $actual = $config->getTimeout();
-                break;
-            case 'readTimeout':
-                $actual = $config->getReadTimeout();
-                break;
-            case 'maxRetries':
-                $actual = $config->getMaxRetries();
-                break;
-            case 'retryInterval':
-                $actual = $config->getRetryInterval();
-                break;
-            default:
-                throw new InvalidArgumentException("Unknown parameter: {$parameter}");
-        }
-
+        $actual = $getter($config);
         self::assertSame($expected, $actual);
     }
 
     /**
-     * @return array<string, array{string, mixed}>
+     * @return array<string, array{RedisConnectionConfig, callable, mixed}>
      */
     public static function zeroValueProvider(): array
     {
         return [
-            'timeout' => ['timeout', 0.0],
-            'readTimeout' => ['readTimeout', 0.0],
-            'maxRetries' => ['maxRetries', 0],
-            'retryInterval' => ['retryInterval', 0],
+            'timeout' => [
+                new RedisConnectionConfig('localhost', 6379, 0.0),
+                static fn (RedisConnectionConfig $c): float => $c->getTimeout(),
+                0.0,
+            ],
+            'readTimeout' => [
+                new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 100, 0.0),
+                static fn (RedisConnectionConfig $c): float => $c->getReadTimeout(),
+                0.0,
+            ],
+            'maxRetries' => [
+                new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 100, 2.5, 0),
+                static fn (RedisConnectionConfig $c): int => $c->getMaxRetries(),
+                0,
+            ],
+            'retryInterval' => [
+                new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 0),
+                static fn (RedisConnectionConfig $c): int => $c->getRetryInterval(),
+                0,
+            ],
         ];
     }
 
