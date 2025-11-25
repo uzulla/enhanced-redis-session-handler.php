@@ -205,8 +205,11 @@ class PsrTestLogger implements LoggerInterface
             return false;
         }
 
+        /** @var array<string, mixed> $context */
+        $context = $record['context'];
+
         foreach ($expectedContext as $key => $expectedValue) {
-            if (!isset($record['context'][$key]) || $record['context'][$key] !== $expectedValue) {
+            if (!array_key_exists($key, $context) || $context[$key] !== $expectedValue) {
                 return false;
             }
         }
