@@ -61,28 +61,27 @@ class RedisConnectionConfigTest extends TestCase
         new RedisConnectionConfig('');
     }
 
-    public function testConstructorThrowsExceptionWhenPortIsZero(): void
+    /**
+     * @dataProvider invalidPortProvider
+     */
+    public function testConstructorThrowsExceptionWhenPortIsInvalid(int $port): void
     {
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Port must be between 1 and 65535');
 
-        new RedisConnectionConfig('localhost', 0);
+        new RedisConnectionConfig('localhost', $port);
     }
 
-    public function testConstructorThrowsExceptionWhenPortIsNegative(): void
+    /**
+     * @return array<string, array{int}>
+     */
+    public static function invalidPortProvider(): array
     {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Port must be between 1 and 65535');
-
-        new RedisConnectionConfig('localhost', -1);
-    }
-
-    public function testConstructorThrowsExceptionWhenPortIsTooLarge(): void
-    {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Port must be between 1 and 65535');
-
-        new RedisConnectionConfig('localhost', 65536);
+        return [
+            'zero' => [0],
+            'negative' => [-1],
+            'too large' => [65536],
+        ];
     }
 
     public function testConstructorThrowsExceptionWhenTimeoutIsNegative(): void
@@ -125,28 +124,43 @@ class RedisConnectionConfigTest extends TestCase
         new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, -1);
     }
 
-    public function testConstructorAcceptsZeroTimeout(): void
+    /**
+     * @dataProvider zeroValueProvider
+     * @param mixed $expected
+     */
+    public function testConstructorAcceptsZeroValues(RedisConnectionConfig $config, callable $getter, $expected): void
     {
-        $config = new RedisConnectionConfig('localhost', 6379, 0.0);
-        self::assertSame(0.0, $config->getTimeout());
+        $actual = $getter($config);
+        self::assertSame($expected, $actual);
     }
 
-    public function testConstructorAcceptsZeroReadTimeout(): void
+    /**
+     * @return array<string, array{RedisConnectionConfig, callable, mixed}>
+     */
+    public static function zeroValueProvider(): array
     {
-        $config = new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 100, 0.0);
-        self::assertSame(0.0, $config->getReadTimeout());
-    }
-
-    public function testConstructorAcceptsZeroMaxRetries(): void
-    {
-        $config = new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 100, 2.5, 0);
-        self::assertSame(0, $config->getMaxRetries());
-    }
-
-    public function testConstructorAcceptsZeroRetryInterval(): void
-    {
-        $config = new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 0);
-        self::assertSame(0, $config->getRetryInterval());
+        return [
+            'timeout' => [
+                new RedisConnectionConfig('localhost', 6379, 0.0),
+                static fn (RedisConnectionConfig $config): float => $config->getTimeout(),
+                0.0,
+            ],
+            'readTimeout' => [
+                new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 100, 0.0),
+                static fn (RedisConnectionConfig $config): float => $config->getReadTimeout(),
+                0.0,
+            ],
+            'maxRetries' => [
+                new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 100, 2.5, 0),
+                static fn (RedisConnectionConfig $config): int => $config->getMaxRetries(),
+                0,
+            ],
+            'retryInterval' => [
+                new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 0),
+                static fn (RedisConnectionConfig $config): int => $config->getRetryInterval(),
+                0,
+            ],
+        ];
     }
 
     public function testConstructorAcceptsPortBoundaryValues(): void

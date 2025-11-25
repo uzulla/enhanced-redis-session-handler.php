@@ -5,9 +5,6 @@ declare(strict_types=1);
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Integration;
 
 use PHPUnit\Framework\TestCase;
-use Redis;
-use Throwable;
-use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\Hook\DoubleWriteHook;
 use Uzulla\EnhancedRedisSessionHandler\Hook\LoggingHook;
@@ -15,9 +12,12 @@ use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
 use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
 use Uzulla\EnhancedRedisSessionHandler\Tests\Support\PsrTestLogger;
+use Uzulla\EnhancedRedisSessionHandler\Tests\Support\RedisIntegrationTestTrait;
 
 class WriteHookIntegrationTest extends TestCase
 {
+    use RedisIntegrationTestTrait;
+
     private RedisConnection $primaryConnection;
     private RedisConnection $secondaryConnection;
     private RedisSessionHandler $handler;
@@ -25,68 +25,26 @@ class WriteHookIntegrationTest extends TestCase
 
     protected function setUp(): void
     {
-        if (!extension_loaded('redis')) {
-            self::fail('Redis (phpredis) extension is required for this integration test');
-        }
-
-        $redisHost = getenv('SESSION_REDIS_HOST');
-        $redisPort = getenv('SESSION_REDIS_PORT');
-
-        if ($redisHost === false) {
-            self::fail('SESSION_REDIS_HOST environment variable must be set');
-        }
-        if ($redisPort === false) {
-            self::fail('SESSION_REDIS_PORT environment variable must be set');
-        }
-
-        if (!ctype_digit($redisPort)) {
-            self::fail('SESSION_REDIS_PORT must be a positive integer');
-        }
-
-        $host = $redisHost;
-        $port = (int)$redisPort;
-
-        $probe = new Redis();
-        if (!@$probe->connect($host, $port, 1.5)) {
-            self::fail("Redis/Valkey server not reachable at {$host}:{$port}");
-        }
-
-        try {
-            $pong = $probe->ping();
-            if ($pong !== true && $pong !== '+PONG' && $pong !== 'PONG') {
-                self::fail('Redis/Valkey server ping failed');
-            }
-        } catch (Throwable $e) {
-            self::fail('Redis/Valkey server check failed: ' . $e->getMessage());
-        } finally {
-            try {
-                $probe->close();
-            } catch (Throwable $e) {
-                // クリーンアップ中のエラーは無視：テストセットアップ時の接続切断失敗は影響しない
-            }
-        }
+        $params = $this->getRedisConnectionParameters();
+        $this->assertRedisAvailable($params['host'], $params['port']);
 
         $this->logger = new PsrTestLogger();
 
-        $primaryRedis = new Redis();
-        $primaryConfig = new RedisConnectionConfig(
-            $host,
-            $port,
-            2.5,
-            null,
+        $this->primaryConnection = $this->createRedisConnection(
+            $params['host'],
+            $params['port'],
+            $this->logger,
+            'session:',
             0
         );
-        $this->primaryConnection = new RedisConnection($primaryRedis, $primaryConfig, $this->logger);
 
-        $secondaryRedis = new Redis();
-        $secondaryConfig = new RedisConnectionConfig(
-            $host,
-            $port,
-            2.5,
-            null,
+        $this->secondaryConnection = $this->createRedisConnection(
+            $params['host'],
+            $params['port'],
+            $this->logger,
+            'session:',
             1
         );
-        $this->secondaryConnection = new RedisConnection($secondaryRedis, $secondaryConfig, $this->logger);
 
         $options = new RedisSessionHandlerOptions(null, null, $this->logger);
         $this->handler = new RedisSessionHandler($this->primaryConnection, new PhpSerializeSerializer(), $options);
@@ -94,27 +52,7 @@ class WriteHookIntegrationTest extends TestCase
 
     protected function tearDown(): void
     {
-        if (extension_loaded('redis')) {
-            try {
-                $this->primaryConnection->connect();
-                $keys = $this->primaryConnection->scan('*');
-                foreach ($keys as $key) {
-                    $this->primaryConnection->delete($key);
-                }
-            } catch (\Exception $e) {
-                // テスト後のクリーンアップ失敗は無視：次のテストに影響を与えない
-            }
-
-            try {
-                $this->secondaryConnection->connect();
-                $keys = $this->secondaryConnection->scan('*');
-                foreach ($keys as $key) {
-                    $this->secondaryConnection->delete($key);
-                }
-            } catch (\Exception $e) {
-                // テスト後のクリーンアップ失敗は無視：次のテストに影響を与えない
-            }
-        }
+        $this->cleanupRedisKeys($this->primaryConnection, $this->secondaryConnection);
     }
 
     public function testLoggingHookIntegration(): void
@@ -123,29 +61,15 @@ class WriteHookIntegrationTest extends TestCase
         $this->handler->addWriteHook($loggingHook);
 
         $this->handler->open('', '');
-        $sessionId = 'test_session_' . uniqid();
-        $sessionData = serialize(['user_id' => 123, 'username' => 'testuser']);
+        $sessionId = $this->generateTestSessionId();
+        $sessionData = $this->createTestSessionData(['user_id' => 123, 'username' => 'testuser']);
 
         $result = $this->handler->write($sessionId, $sessionData);
 
         self::assertTrue($result);
         self::assertTrue($this->logger->hasDebugRecords());
-
-        $records = $this->logger->getRecords();
-        $hasBeforeWrite = false;
-        $hasAfterWrite = false;
-
-        foreach ($records as $record) {
-            if ($record['message'] === 'Session write starting') {
-                $hasBeforeWrite = true;
-            }
-            if ($record['message'] === 'Session write successful') {
-                $hasAfterWrite = true;
-            }
-        }
-
-        self::assertTrue($hasBeforeWrite, 'beforeWrite log not found');
-        self::assertTrue($hasAfterWrite, 'afterWrite log not found');
+        self::assertTrue($this->logger->hasLogMessage('Session write starting'), 'beforeWrite log not found');
+        self::assertTrue($this->logger->hasLogMessage('Session write successful'), 'afterWrite log not found');
     }
 
     public function testDoubleWriteHookIntegration(): void
@@ -156,8 +80,8 @@ class WriteHookIntegrationTest extends TestCase
         $this->handler->open('', '');
         $this->secondaryConnection->connect();
 
-        $sessionId = 'test_session_' . uniqid();
-        $sessionData = serialize(['user_id' => 456, 'username' => 'doublewrite']);
+        $sessionId = $this->generateTestSessionId();
+        $sessionData = $this->createTestSessionData(['user_id' => 456, 'username' => 'doublewrite']);
 
         $result = $this->handler->write($sessionId, $sessionData);
 
@@ -187,13 +111,12 @@ class WriteHookIntegrationTest extends TestCase
         $this->handler->open('', '');
         $this->secondaryConnection->connect();
 
-        $sessionId = 'test_session_' . uniqid();
-        $sessionData = serialize(['user_id' => 789, 'action' => 'multiple_hooks']);
+        $sessionId = $this->generateTestSessionId();
+        $sessionData = $this->createTestSessionData(['user_id' => 789, 'action' => 'multiple_hooks']);
 
         $result = $this->handler->write($sessionId, $sessionData);
 
         self::assertTrue($result);
-
         self::assertTrue($this->logger->hasDebugRecords());
 
         $primaryData = $this->primaryConnection->get($sessionId);

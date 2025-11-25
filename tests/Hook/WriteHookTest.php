@@ -42,24 +42,13 @@ class WriteHookTest extends TestCase
 
         self::assertSame($data, $result);
         self::assertTrue($this->logger->hasDebugRecords());
+        self::assertTrue($this->logger->hasLogMessage('Session write starting'), 'Expected log message not found');
 
-        $records = $this->logger->getRecords();
-        $found = false;
-        foreach ($records as $record) {
-            if ($record['message'] === 'Session write starting') {
-                $found = true;
-                self::assertArrayHasKey('context', $record);
-                $context = $record['context'];
-                self::assertArrayHasKey('session_id', $context);
-                self::assertSame('...n_id', $context['session_id']);
-                self::assertArrayHasKey('data_keys', $context);
-                self::assertSame(['user_id', 'username'], $context['data_keys']);
-                self::assertArrayHasKey('data_size', $context);
-                self::assertSame(2, $context['data_size']);
-                break;
-            }
-        }
-        self::assertTrue($found, 'Expected log message not found');
+        $logRecord = $this->logger->findLogByMessage('Session write starting');
+        self::assertNotNull($logRecord);
+        self::assertSame('...n_id', $logRecord['context']['session_id']);
+        self::assertSame(['user_id', 'username'], $logRecord['context']['data_keys']);
+        self::assertSame(2, $logRecord['context']['data_size']);
     }
 
     public function testLoggingHookLogsAfterWriteSuccess(): void
@@ -69,22 +58,10 @@ class WriteHookTest extends TestCase
         $hook->afterWrite('test_session_id', true);
 
         self::assertTrue($this->logger->hasDebugRecords());
-
-        $records = $this->logger->getRecords();
-        $found = false;
-        foreach ($records as $record) {
-            if ($record['message'] === 'Session write successful') {
-                $found = true;
-                self::assertArrayHasKey('context', $record);
-                $context = $record['context'];
-                self::assertArrayHasKey('session_id', $context);
-                self::assertSame('...n_id', $context['session_id']);
-                self::assertArrayHasKey('success', $context);
-                self::assertTrue($context['success']);
-                break;
-            }
-        }
-        self::assertTrue($found, 'Expected log message not found');
+        self::assertTrue($this->logger->hasLogWithContext('Session write successful', [
+            'session_id' => '...n_id',
+            'success' => true,
+        ]), 'Expected log message not found');
     }
 
     public function testLoggingHookLogsAfterWriteFailure(): void
@@ -94,22 +71,10 @@ class WriteHookTest extends TestCase
         $hook->afterWrite('test_session_id', false);
 
         self::assertTrue($this->logger->hasDebugRecords());
-
-        $records = $this->logger->getRecords();
-        $found = false;
-        foreach ($records as $record) {
-            if ($record['message'] === 'Session write failed') {
-                $found = true;
-                self::assertArrayHasKey('context', $record);
-                $context = $record['context'];
-                self::assertArrayHasKey('session_id', $context);
-                self::assertSame('...n_id', $context['session_id']);
-                self::assertArrayHasKey('success', $context);
-                self::assertFalse($context['success']);
-                break;
-            }
-        }
-        self::assertTrue($found, 'Expected log message not found');
+        self::assertTrue($this->logger->hasLogWithContext('Session write failed', [
+            'session_id' => '...n_id',
+            'success' => false,
+        ]), 'Expected log message not found');
     }
 
     public function testLoggingHookLogsWriteError(): void
@@ -120,26 +85,12 @@ class WriteHookTest extends TestCase
         $hook->onWriteError('test_session_id', $exception);
 
         self::assertTrue($this->logger->hasErrorRecords());
-
-        $records = $this->logger->getRecords();
-        $found = false;
-        foreach ($records as $record) {
-            if ($record['message'] === 'Session write error occurred') {
-                $found = true;
-                self::assertArrayHasKey('context', $record);
-                $context = $record['context'];
-                self::assertArrayHasKey('session_id', $context);
-                self::assertSame('...n_id', $context['session_id']);
-                self::assertArrayHasKey('exception_class', $context);
-                self::assertSame('RuntimeException', $context['exception_class']);
-                self::assertArrayHasKey('exception_message', $context);
-                self::assertSame('Test error', $context['exception_message']);
-                self::assertArrayHasKey('exception_code', $context);
-                self::assertSame(123, $context['exception_code']);
-                break;
-            }
-        }
-        self::assertTrue($found, 'Expected log message not found');
+        self::assertTrue($this->logger->hasLogWithContext('Session write error occurred', [
+            'session_id' => '...n_id',
+            'exception_class' => 'RuntimeException',
+            'exception_message' => 'Test error',
+            'exception_code' => 123,
+        ]), 'Expected log message not found');
     }
 
     public function testLoggingHookWithDataLogging(): void
@@ -149,19 +100,9 @@ class WriteHookTest extends TestCase
 
         $hook->beforeWrite('test_session_id', $data);
 
-        $records = $this->logger->getRecords();
-        $found = false;
-        foreach ($records as $record) {
-            if ($record['message'] === 'Session write starting') {
-                $found = true;
-                self::assertArrayHasKey('context', $record);
-                $context = $record['context'];
-                self::assertArrayHasKey('data', $context);
-                self::assertSame($data, $context['data']);
-                break;
-            }
-        }
-        self::assertTrue($found, 'Expected log message with data not found');
+        self::assertTrue($this->logger->hasLogWithContext('Session write starting', [
+            'data' => $data,
+        ]), 'Expected log message with data not found');
     }
 
     public function testDoubleWriteHookStoresDataInBeforeWrite(): void
@@ -182,15 +123,10 @@ class WriteHookTest extends TestCase
         $hook->beforeWrite('test_session_id', $data);
         $hook->afterWrite('test_session_id', false);
 
-        $records = $this->logger->getRecords();
-        $found = false;
-        foreach ($records as $record) {
-            if (str_contains($record['message'], 'Primary write failed')) {
-                $found = true;
-                break;
-            }
-        }
-        self::assertTrue($found, 'Expected warning about primary write failure not found');
+        self::assertTrue(
+            $this->logger->hasLogMessageContaining('Primary write failed'),
+            'Expected warning about primary write failure not found'
+        );
     }
 
     public function testDoubleWriteHookCleansUpOnError(): void
@@ -202,15 +138,10 @@ class WriteHookTest extends TestCase
         $hook->beforeWrite('test_session_id', $data);
         $hook->onWriteError('test_session_id', $exception);
 
-        $records = $this->logger->getRecords();
-        $found = false;
-        foreach ($records as $record) {
-            if (str_contains($record['message'], 'Primary write error')) {
-                $found = true;
-                break;
-            }
-        }
-        self::assertTrue($found, 'Expected error log not found');
+        self::assertTrue(
+            $this->logger->hasLogMessageContaining('Primary write error'),
+            'Expected error log not found'
+        );
     }
 
     public function testMultipleHooksCanBeRegistered(): void

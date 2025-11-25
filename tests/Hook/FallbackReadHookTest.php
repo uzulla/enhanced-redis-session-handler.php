@@ -11,9 +11,12 @@ use RuntimeException;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Hook\FallbackReadHook;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
+use Uzulla\EnhancedRedisSessionHandler\Tests\Support\RedisIntegrationTestTrait;
 
 class FallbackReadHookTest extends TestCase
 {
+    use RedisIntegrationTestTrait;
+
     private Logger $logger;
 
     protected function setUp(): void
@@ -35,8 +38,9 @@ class FallbackReadHookTest extends TestCase
             self::fail('Redis extension is required for this test');
         }
 
+        $params = $this->getRedisConnectionParametersWithDefaults();
         $redis = new Redis();
-        $config = new RedisConnectionConfig('localhost', 6379);
+        $config = new RedisConnectionConfig($params['host'], $params['port']);
         $connection = new RedisConnection($redis, $config, $this->logger);
         $connection->connect();
 
@@ -51,8 +55,9 @@ class FallbackReadHookTest extends TestCase
             self::fail('Redis extension is required for this test');
         }
 
+        $params = $this->getRedisConnectionParametersWithDefaults();
         $redis = new Redis();
-        $config = new RedisConnectionConfig('localhost', 6379);
+        $config = new RedisConnectionConfig($params['host'], $params['port']);
         $connection = new RedisConnection($redis, $config, $this->logger);
         $connection->connect();
 
@@ -68,8 +73,9 @@ class FallbackReadHookTest extends TestCase
             self::fail('Redis extension is required for this test');
         }
 
+        $params = $this->getRedisConnectionParametersWithDefaults();
         $redis = new Redis();
-        $config = new RedisConnectionConfig('localhost', 6379);
+        $config = new RedisConnectionConfig($params['host'], $params['port']);
         $connection = new RedisConnection($redis, $config, $this->logger);
         $connection->connect();
 
@@ -84,13 +90,14 @@ class FallbackReadHookTest extends TestCase
             self::fail('Redis extension is required for this test');
         }
 
+        $params = $this->getRedisConnectionParametersWithDefaults();
         $redis1 = new Redis();
-        $config1 = new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'fallback1:');
+        $config1 = new RedisConnectionConfig($params['host'], $params['port'], 2.5, null, 0, 'fallback1:');
         $connection1 = new RedisConnection($redis1, $config1, $this->logger);
         $connection1->connect();
 
         $redis2 = new Redis();
-        $config2 = new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'fallback2:');
+        $config2 = new RedisConnectionConfig($params['host'], $params['port'], 2.5, null, 0, 'fallback2:');
         $connection2 = new RedisConnection($redis2, $config2, $this->logger);
         $connection2->connect();
 
@@ -110,13 +117,14 @@ class FallbackReadHookTest extends TestCase
             self::fail('Redis extension is required for this test');
         }
 
+        $params = $this->getRedisConnectionParametersWithDefaults();
         $redis1 = new Redis();
-        $config1 = new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'fallback1:');
+        $config1 = new RedisConnectionConfig($params['host'], $params['port'], 2.5, null, 0, 'fallback1:');
         $connection1 = new RedisConnection($redis1, $config1, $this->logger);
         $connection1->connect();
 
         $redis2 = new Redis();
-        $config2 = new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'fallback2:');
+        $config2 = new RedisConnectionConfig($params['host'], $params['port'], 2.5, null, 0, 'fallback2:');
         $connection2 = new RedisConnection($redis2, $config2, $this->logger);
         $connection2->connect();
 
@@ -132,12 +140,13 @@ class FallbackReadHookTest extends TestCase
             self::fail('Redis extension is required for this test');
         }
 
+        $params = $this->getRedisConnectionParametersWithDefaults();
         $redis1 = new Redis();
         $config1 = new RedisConnectionConfig('invalid-host', 6379);
         $connection1 = new RedisConnection($redis1, $config1, $this->logger);
 
         $redis2 = new Redis();
-        $config2 = new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'fallback2:');
+        $config2 = new RedisConnectionConfig($params['host'], $params['port'], 2.5, null, 0, 'fallback2:');
         $connection2 = new RedisConnection($redis2, $config2, $this->logger);
         $connection2->connect();
         $connection2->set('test-session-id', 'fallback-data-2', 3600);

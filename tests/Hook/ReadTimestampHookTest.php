@@ -8,13 +8,15 @@ use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
 use Redis;
 use RuntimeException;
-use Throwable;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Hook\ReadTimestampHook;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
+use Uzulla\EnhancedRedisSessionHandler\Tests\Support\RedisIntegrationTestTrait;
 
 class ReadTimestampHookTest extends TestCase
 {
+    use RedisIntegrationTestTrait;
+
     private Logger $logger;
     private RedisConnection $connection;
 
@@ -27,8 +29,10 @@ class ReadTimestampHookTest extends TestCase
         $this->logger = new Logger('test');
         $this->logger->pushHandler(new NullHandler());
 
+        $params = $this->getRedisConnectionParametersWithDefaults();
+
         $redis = new Redis();
-        $config = new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'timestamp:');
+        $config = new RedisConnectionConfig($params['host'], $params['port'], 2.5, null, 0, 'timestamp:');
         $this->connection = new RedisConnection($redis, $config, $this->logger);
         $this->connection->connect();
     }
