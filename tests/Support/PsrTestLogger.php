@@ -205,7 +205,6 @@ class PsrTestLogger implements LoggerInterface
             return false;
         }
 
-        // contextが欠けているか配列でない場合は空配列として扱う（防御的コード）
         /** @var array<string, mixed> $context */
         $context = $record['context'];
 
