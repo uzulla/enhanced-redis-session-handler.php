@@ -144,7 +144,7 @@ class RedisConnectionConfigTest extends TestCase
                 $config = new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 0);
                 break;
             default:
-                throw new \InvalidArgumentException("Unknown parameter: {$parameter}");
+                throw new InvalidArgumentException("Unknown parameter: {$parameter}");
         }
 
         switch ($parameter) {
@@ -161,7 +161,7 @@ class RedisConnectionConfigTest extends TestCase
                 $actual = $config->getRetryInterval();
                 break;
             default:
-                throw new \InvalidArgumentException("Unknown parameter: {$parameter}");
+                throw new InvalidArgumentException("Unknown parameter: {$parameter}");
         }
 
         self::assertSame($expected, $actual);
