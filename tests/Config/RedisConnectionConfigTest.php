@@ -142,22 +142,22 @@ class RedisConnectionConfigTest extends TestCase
         return [
             'timeout' => [
                 new RedisConnectionConfig('localhost', 6379, 0.0),
-                static fn (RedisConnectionConfig $c): float => $c->getTimeout(),
+                static fn (RedisConnectionConfig $config): float => $config->getTimeout(),
                 0.0,
             ],
             'readTimeout' => [
                 new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 100, 0.0),
-                static fn (RedisConnectionConfig $c): float => $c->getReadTimeout(),
+                static fn (RedisConnectionConfig $config): float => $config->getReadTimeout(),
                 0.0,
             ],
             'maxRetries' => [
                 new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 100, 2.5, 0),
-                static fn (RedisConnectionConfig $c): int => $c->getMaxRetries(),
+                static fn (RedisConnectionConfig $config): int => $config->getMaxRetries(),
                 0,
             ],
             'retryInterval' => [
                 new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 0),
-                static fn (RedisConnectionConfig $c): int => $c->getRetryInterval(),
+                static fn (RedisConnectionConfig $config): int => $config->getRetryInterval(),
                 0,
             ],
         ];
