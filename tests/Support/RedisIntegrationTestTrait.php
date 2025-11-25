@@ -50,18 +50,42 @@ trait RedisIntegrationTestTrait
         }
 
         $probe = new Redis();
-        if (!@$probe->connect($host, $port, 1.5)) {
-            self::fail("Redis/Valkey server not reachable at {$host}:{$port}");
-        }
+
+        // エラーを例外に変換するハンドラを設定
+        $previousHandler = set_error_handler(
+            /**
+             * @param int $errno
+             * @param string $errstr
+             * @return bool
+             * @throws \ErrorException
+             */
+            function (int $errno, string $errstr) use ($host, $port): bool {
+                throw new \ErrorException(
+                    "Redis connection error to {$host}:{$port}: {$errstr}",
+                    0,
+                    $errno
+                );
+            }
+        );
 
         try {
+            $connected = $probe->connect($host, $port, 1.5);
+            if (!$connected) {
+                self::fail("Redis/Valkey server not reachable at {$host}:{$port}");
+            }
+
             $pong = $probe->ping();
             if ($pong !== true && $pong !== '+PONG' && $pong !== 'PONG') {
                 self::fail('Redis/Valkey server ping failed');
             }
+        } catch (\ErrorException $e) {
+            self::fail($e->getMessage());
         } catch (Throwable $e) {
             self::fail('Redis/Valkey server check failed: ' . $e->getMessage());
         } finally {
+            // 元のエラーハンドラを復元
+            restore_error_handler();
+
             try {
                 $probe->close();
             } catch (Throwable $e) {
