@@ -27,8 +27,13 @@ class ReadHookTest extends TestCase
 
         $logger = new NullLogger();
 
+        $envHost = getenv('SESSION_REDIS_HOST');
+        $redisHost = $envHost !== false ? $envHost : 'localhost';
+        $envPort = getenv('SESSION_REDIS_PORT');
+        $redisPort = $envPort !== false ? (int)$envPort : 6379;
+
         $redis = new Redis();
-        $config = new RedisConnectionConfig('localhost', 6379);
+        $config = new RedisConnectionConfig($redisHost, $redisPort);
         $this->connection = new RedisConnection($redis, $config, $logger);
 
         $options = new RedisSessionHandlerOptions(null, null, $logger);

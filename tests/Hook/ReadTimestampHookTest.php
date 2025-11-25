@@ -27,8 +27,13 @@ class ReadTimestampHookTest extends TestCase
         $this->logger = new Logger('test');
         $this->logger->pushHandler(new NullHandler());
 
+        $envHost = getenv('SESSION_REDIS_HOST');
+        $redisHost = $envHost !== false ? $envHost : 'localhost';
+        $envPort = getenv('SESSION_REDIS_PORT');
+        $redisPort = $envPort !== false ? (int)$envPort : 6379;
+
         $redis = new Redis();
-        $config = new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'timestamp:');
+        $config = new RedisConnectionConfig($redisHost, $redisPort, 2.5, null, 0, 'timestamp:');
         $this->connection = new RedisConnection($redis, $config, $this->logger);
         $this->connection->connect();
     }
