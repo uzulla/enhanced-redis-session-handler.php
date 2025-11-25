@@ -38,6 +38,24 @@ trait RedisIntegrationTestTrait
     }
 
     /**
+     * Redis接続パラメータを取得する（デフォルト値付き）
+     *
+     * 環境変数が設定されていない場合はデフォルト値を使用する
+     *
+     * @return array{host: string, port: int}
+     */
+    protected function getRedisConnectionParametersWithDefaults(): array
+    {
+        $envHost = getenv('SESSION_REDIS_HOST');
+        $envPort = getenv('SESSION_REDIS_PORT');
+
+        return [
+            'host' => $envHost !== false ? $envHost : 'localhost',
+            'port' => $envPort !== false ? (int)$envPort : 6379,
+        ];
+    }
+
+    /**
      * Redisサーバーの接続性を検証する
      *
      * @param string $host Redis ホスト
@@ -52,7 +70,7 @@ trait RedisIntegrationTestTrait
         $probe = new Redis();
 
         // エラーを例外に変換するハンドラを設定
-        $previousHandler = set_error_handler(
+        set_error_handler(
             /**
              * @param int $errno
              * @param string $errstr
