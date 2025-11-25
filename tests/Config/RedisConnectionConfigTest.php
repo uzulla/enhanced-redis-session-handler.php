@@ -126,24 +126,43 @@ class RedisConnectionConfigTest extends TestCase
 
     /**
      * @dataProvider zeroValueProvider
+     * @param mixed $expected
      */
-    public function testConstructorAcceptsZeroValues(string $parameter, mixed $expected): void
+    public function testConstructorAcceptsZeroValues(string $parameter, $expected): void
     {
-        $config = match ($parameter) {
-            'timeout' => new RedisConnectionConfig('localhost', 6379, 0.0),
-            'readTimeout' => new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 100, 0.0),
-            'maxRetries' => new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 100, 2.5, 0),
-            'retryInterval' => new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 0),
-            default => throw new \InvalidArgumentException("Unknown parameter: {$parameter}"),
-        };
+        switch ($parameter) {
+            case 'timeout':
+                $config = new RedisConnectionConfig('localhost', 6379, 0.0);
+                break;
+            case 'readTimeout':
+                $config = new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 100, 0.0);
+                break;
+            case 'maxRetries':
+                $config = new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 100, 2.5, 0);
+                break;
+            case 'retryInterval':
+                $config = new RedisConnectionConfig('localhost', 6379, 2.5, null, 0, 'session:', false, 0);
+                break;
+            default:
+                throw new \InvalidArgumentException("Unknown parameter: {$parameter}");
+        }
 
-        $actual = match ($parameter) {
-            'timeout' => $config->getTimeout(),
-            'readTimeout' => $config->getReadTimeout(),
-            'maxRetries' => $config->getMaxRetries(),
-            'retryInterval' => $config->getRetryInterval(),
-            default => throw new \InvalidArgumentException("Unknown parameter: {$parameter}"),
-        };
+        switch ($parameter) {
+            case 'timeout':
+                $actual = $config->getTimeout();
+                break;
+            case 'readTimeout':
+                $actual = $config->getReadTimeout();
+                break;
+            case 'maxRetries':
+                $actual = $config->getMaxRetries();
+                break;
+            case 'retryInterval':
+                $actual = $config->getRetryInterval();
+                break;
+            default:
+                throw new \InvalidArgumentException("Unknown parameter: {$parameter}");
+        }
 
         self::assertSame($expected, $actual);
     }
