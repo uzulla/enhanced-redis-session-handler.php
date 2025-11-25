@@ -1,0 +1,65 @@
+name: Codecov
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis-fallback:
+        image: redis:7-alpine
+        ports:
+          - 6380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3'
+        extensions: redis
+        coverage: xdebug
+
+    - name: Cache Composer packages
+      id: composer-cache
+      uses: actions/cache@v4
+      with:
+        path: vendor
+        key: ${{ runner.os }}-php-8.3-${{ hashFiles('**/composer.json') }}
+        restore-keys: |
+          ${{ runner.os }}-php-8.3-
+
+    - name: Install dependencies
+      run: composer update --prefer-dist --no-progress --prefer-stable
+
+    - name: Run tests with coverage
+      run: vendor/bin/phpunit --coverage-clover coverage.xml
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: coverage.xml
+        fail_ci_if_error: true
+        verbose: true
