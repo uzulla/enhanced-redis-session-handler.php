@@ -273,18 +273,25 @@ class DoubleWriteHookTest extends TestCase
         $mockStorage->expects(self::never())
             ->method('set');
 
+        // secondaryConnectionも使われない（onWriteError後のafterWriteでも）
+        $this->secondaryConnection->expects(self::never())
+            ->method('set');
+
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects(self::once())
             ->method('error')
             ->with('Primary write error, secondary write skipped', self::anything());
+        // onWriteErrorでクリーンアップ後、afterWriteでデータが見つからないことを警告
+        $logger->expects(self::once())
+            ->method('warning')
+            ->with('No pending write data found for session', self::anything());
 
         $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $logger);
         $hook->beforeWrite('test_session', ['key' => 'value'], $mockStorage);
         $hook->onWriteError('test_session', new \Exception('Test error'));
 
-        // 後続のafterWriteでstorageが使われないことを確認
-        $this->secondaryConnection->expects(self::never())
-            ->method('set');
+        // onWriteError後にafterWriteを呼び出し、クリーンアップが正しく行われたことを検証
+        $hook->afterWrite('test_session', true);
     }
 
     public function testPrimaryWriteFailureCleansUpPendingStorages(): void

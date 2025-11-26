@@ -10,6 +10,7 @@ use Throwable;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisConnectionConfig;
 use Uzulla\EnhancedRedisSessionHandler\Config\RedisSessionHandlerOptions;
 use Uzulla\EnhancedRedisSessionHandler\Hook\ReadHookInterface;
+use Uzulla\EnhancedRedisSessionHandler\Hook\Storage\HookStorageInterface;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 use Uzulla\EnhancedRedisSessionHandler\RedisSessionHandler;
 use Uzulla\EnhancedRedisSessionHandler\Serializer\PhpSerializeSerializer;
@@ -60,7 +61,7 @@ class ReadHookTest extends TestCase
                 $this->testState->sessionId = $sessionId;
             }
 
-            public function afterRead(string $sessionId, string $data): string
+            public function afterRead(string $sessionId, string $data, ?HookStorageInterface $storage = null): string
             {
                 return $data;
             }
@@ -87,7 +88,7 @@ class ReadHookTest extends TestCase
             {
             }
 
-            public function afterRead(string $sessionId, string $data): string
+            public function afterRead(string $sessionId, string $data, ?HookStorageInterface $storage = null): string
             {
                 return 'modified:' . $data;
             }
@@ -132,7 +133,7 @@ class ReadHookTest extends TestCase
                 $this->testState->order = $order;
             }
 
-            public function afterRead(string $sessionId, string $data): string
+            public function afterRead(string $sessionId, string $data, ?HookStorageInterface $storage = null): string
             {
                 /** @var array<string> $order */
                 $order = $this->testState->order;
@@ -163,7 +164,7 @@ class ReadHookTest extends TestCase
                 $this->testState->order = $order;
             }
 
-            public function afterRead(string $sessionId, string $data): string
+            public function afterRead(string $sessionId, string $data, ?HookStorageInterface $storage = null): string
             {
                 /** @var array<string> $order */
                 $order = $this->testState->order;
@@ -211,7 +212,7 @@ class ReadHookTest extends TestCase
             {
             }
 
-            public function afterRead(string $sessionId, string $data): string
+            public function afterRead(string $sessionId, string $data, ?HookStorageInterface $storage = null): string
             {
                 throw new RuntimeException('Test error');
             }
@@ -245,7 +246,7 @@ class ReadHookTest extends TestCase
             {
             }
 
-            public function afterRead(string $sessionId, string $data): string
+            public function afterRead(string $sessionId, string $data, ?HookStorageInterface $storage = null): string
             {
                 throw new RuntimeException('Test error');
             }
@@ -275,7 +276,7 @@ class ReadHookTest extends TestCase
             {
             }
 
-            public function afterRead(string $sessionId, string $data): string
+            public function afterRead(string $sessionId, string $data, ?HookStorageInterface $storage = null): string
             {
                 throw new RuntimeException('Test error');
             }
@@ -291,7 +292,7 @@ class ReadHookTest extends TestCase
             {
             }
 
-            public function afterRead(string $sessionId, string $data): string
+            public function afterRead(string $sessionId, string $data, ?HookStorageInterface $storage = null): string
             {
                 return $data;
             }

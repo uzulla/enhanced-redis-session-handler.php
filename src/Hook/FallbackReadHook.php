@@ -39,7 +39,17 @@ class FallbackReadHook implements ReadHookInterface
     {
     }
 
-    public function afterRead(string $sessionId, string $data): string
+    /**
+     * Called after reading session data from Redis.
+     *
+     * Returns the data unchanged (fallback logic is handled in onReadError).
+     *
+     * @param string $sessionId The session ID
+     * @param string $data The session data read from Redis
+     * @param Storage\HookStorageInterface|null $storage Optional HookStorage (not used in this hook)
+     * @return string The unmodified session data
+     */
+    public function afterRead(string $sessionId, string $data, ?Storage\HookStorageInterface $storage = null): string
     {
         return $data;
     }

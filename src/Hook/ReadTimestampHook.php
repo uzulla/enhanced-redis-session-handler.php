@@ -51,6 +51,13 @@ class ReadTimestampHook implements ReadHookInterface
         $this->timestampTtl = $timestampTtl;
     }
 
+    /**
+     * Called before reading session data from Redis.
+     *
+     * This hook does not perform any action before reading.
+     *
+     * @param string $sessionId The session ID
+     */
     public function beforeRead(string $sessionId): void
     {
     }
@@ -69,6 +76,15 @@ class ReadTimestampHook implements ReadHookInterface
         return $data;
     }
 
+    /**
+     * Called when an error occurs during the read operation.
+     *
+     * This hook does not provide fallback data for read errors.
+     *
+     * @param string $sessionId The session ID
+     * @param Throwable $e The exception that occurred during read
+     * @return null Always returns null (no fallback data)
+     */
     public function onReadError(string $sessionId, Throwable $e): ?string
     {
         return null;

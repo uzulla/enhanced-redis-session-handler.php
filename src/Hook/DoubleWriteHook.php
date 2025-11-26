@@ -72,6 +72,17 @@ class DoubleWriteHook implements WriteHookInterface
         return $data;
     }
 
+    /**
+     * Called after writing session data to Redis.
+     *
+     * If the primary write was successful, performs the secondary write using
+     * either HookStorage (if provided in beforeWrite) or direct connection.
+     * Cleans up pending data regardless of success or failure.
+     *
+     * @param string $sessionId The session ID
+     * @param bool $success Whether the primary write operation was successful
+     * @throws RuntimeException If secondary write fails and failOnSecondaryError is true
+     */
     public function afterWrite(string $sessionId, bool $success): void
     {
         if (!$success) {
@@ -122,6 +133,15 @@ class DoubleWriteHook implements WriteHookInterface
         }
     }
 
+    /**
+     * Called when an error occurs during the primary write operation.
+     *
+     * Logs the error and cleans up pending writes and storages.
+     * Secondary write is skipped when primary write fails.
+     *
+     * @param string $sessionId The session ID
+     * @param Throwable $exception The exception that occurred during primary write
+     */
     public function onWriteError(string $sessionId, Throwable $exception): void
     {
         $this->logger->error('Primary write error, secondary write skipped', [
