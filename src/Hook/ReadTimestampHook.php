@@ -92,17 +92,18 @@ class ReadTimestampHook implements ReadHookInterface
                     'session_id' => SessionIdMasker::mask($sessionId),
                     'timestamp' => $timestamp,
                 ]);
-            } else {
-                $this->connection->set($timestampKey, $timestamp, $this->timestampTtl);
-                $this->logger->debug('Recorded session read timestamp via direct connection', [
-                    'session_id' => SessionIdMasker::mask($sessionId),
-                    'timestamp' => $timestamp,
-                ]);
+                return;
             }
-        } catch (Throwable $e) {
+
+            $this->connection->set($timestampKey, $timestamp, $this->timestampTtl);
+            $this->logger->debug('Recorded session read timestamp via direct connection', [
+                'session_id' => SessionIdMasker::mask($sessionId),
+                'timestamp' => $timestamp,
+            ]);
+        } catch (Throwable $ex) {
             $this->logger->warning('Failed to record session read timestamp', [
                 'session_id' => SessionIdMasker::mask($sessionId),
-                'exception' => $e,
+                'exception' => $ex,
             ]);
         }
     }

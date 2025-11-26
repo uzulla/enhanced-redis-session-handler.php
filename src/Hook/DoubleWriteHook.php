@@ -20,8 +20,8 @@ use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
  * - Replicating sessions across data centers
  * - Migrating sessions to a new Redis instance
  *
- * HookStorageを使用するかどうかはコンストラクタで設定できます。
- * デフォルトでは直接接続を使用します（パフォーマンスのため）。
+ * HookStorageInterfaceがbeforeWriteで提供された場合はそれを経由して書き込み、
+ * 提供されない場合は直接RedisConnectionを使用します（後方互換性のため）。
  */
 class DoubleWriteHook implements WriteHookInterface
 {
@@ -29,7 +29,6 @@ class DoubleWriteHook implements WriteHookInterface
     private LoggerInterface $logger;
     private bool $failOnSecondaryError;
     private int $ttl;
-    private bool $useHookStorage;
     /** @var array<string, array<string, mixed>> */
     private array $pendingWrites = [];
     /** @var array<string, Storage\HookStorageInterface> */
@@ -40,14 +39,12 @@ class DoubleWriteHook implements WriteHookInterface
      * @param int $ttl Time to live for session data in seconds
      * @param bool $failOnSecondaryError If true, throw exception when secondary write fails
      * @param LoggerInterface|null $logger Optional logger for debugging
-     * @param bool $useHookStorage If true, use HookStorage for secondary writes when provided
      */
     public function __construct(
         RedisConnection $secondaryConnection,
         int $ttl = 1440,
         bool $failOnSecondaryError = false,
-        ?LoggerInterface $logger = null,
-        bool $useHookStorage = false
+        ?LoggerInterface $logger = null
     ) {
         if ($ttl <= 0) {
             throw new InvalidArgumentException('TTL must be positive');
@@ -56,7 +53,6 @@ class DoubleWriteHook implements WriteHookInterface
         $this->ttl = $ttl;
         $this->failOnSecondaryError = $failOnSecondaryError;
         $this->logger = $logger ?? new NullLogger();
-        $this->useHookStorage = $useHookStorage;
     }
 
     /**
@@ -70,7 +66,7 @@ class DoubleWriteHook implements WriteHookInterface
     public function beforeWrite(string $sessionId, array $data, ?Storage\HookStorageInterface $storage = null): array
     {
         $this->pendingWrites[$sessionId] = $data;
-        if ($storage !== null && $this->useHookStorage) {
+        if ($storage !== null) {
             $this->pendingStorages[$sessionId] = $storage;
         }
         return $data;
@@ -162,10 +158,11 @@ class DoubleWriteHook implements WriteHookInterface
             $this->logger->debug('Secondary Redis write successful via HookStorage', [
                 'session_id' => SessionIdMasker::mask($sessionId),
             ]);
-        } else {
-            $this->logger->debug('Secondary Redis write successful via direct connection', [
-                'session_id' => SessionIdMasker::mask($sessionId),
-            ]);
+            return;
         }
+
+        $this->logger->debug('Secondary Redis write successful via direct connection', [
+            'session_id' => SessionIdMasker::mask($sessionId),
+        ]);
     }
 }

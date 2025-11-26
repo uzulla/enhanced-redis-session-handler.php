@@ -168,17 +168,11 @@ class DoubleWriteHookTest extends TestCase
     // HookStorage対応テスト
     // ========================================
 
-    public function testConstructorWithUseHookStorageFlag(): void
-    {
-        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, null, true);
-        self::assertInstanceOf(DoubleWriteHook::class, $hook);
-    }
-
     public function testBeforeWriteWithHookStorageStoresStorage(): void
     {
         $mockStorage = $this->createMock(HookStorageInterface::class);
 
-        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, null, true);
+        $hook = new DoubleWriteHook($this->secondaryConnection);
         $data = ['user_id' => 123, 'username' => 'test'];
 
         $result = $hook->beforeWrite('test_session', $data, $mockStorage);
@@ -206,7 +200,7 @@ class DoubleWriteHookTest extends TestCase
         $this->secondaryConnection->expects(self::never())
             ->method('set');
 
-        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $logger, true);
+        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $logger);
         $hook->beforeWrite('test_session', ['key' => 'value'], $mockStorage);
         $hook->afterWrite('test_session', true);
 
@@ -229,33 +223,9 @@ class DoubleWriteHookTest extends TestCase
             )
             ->willReturn(true);
 
-        // useHookStorage=trueでも、storageが渡されなければdirect connectionを使用
-        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $logger, true);
+        // storageが渡されなければdirect connectionを使用
+        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $logger);
         $hook->beforeWrite('test_session', ['key' => 'value']);
-        $hook->afterWrite('test_session', true);
-
-        // direct connection経由のログメッセージを確認
-        self::assertTrue($testHandler->hasDebugThatContains('via direct connection'));
-    }
-
-    public function testAfterWriteWithHookStorageDisabledUsesDirectConnection(): void
-    {
-        $testHandler = new TestHandler();
-        $logger = new Logger('test');
-        $logger->pushHandler($testHandler);
-
-        $mockStorage = $this->createMock(HookStorageInterface::class);
-        // storageは使われない
-        $mockStorage->expects(self::never())
-            ->method('set');
-
-        // useHookStorage=false（デフォルト）の場合、storageが渡されてもdirect connectionを使用
-        $this->secondaryConnection->expects(self::once())
-            ->method('set')
-            ->willReturn(true);
-
-        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $logger, false);
-        $hook->beforeWrite('test_session', ['key' => 'value'], $mockStorage);
         $hook->afterWrite('test_session', true);
 
         // direct connection経由のログメッセージを確認
@@ -273,7 +243,7 @@ class DoubleWriteHookTest extends TestCase
             ->method('set')
             ->willReturn(false);
 
-        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $logger, true);
+        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $logger);
         $hook->beforeWrite('test_session', ['key' => 'value'], $mockStorage);
         $hook->afterWrite('test_session', true);
 
@@ -291,7 +261,7 @@ class DoubleWriteHookTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Secondary Redis write failed');
 
-        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, true, null, true);
+        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, true);
         $hook->beforeWrite('test_session', ['key' => 'value'], $mockStorage);
         $hook->afterWrite('test_session', true);
     }
@@ -308,7 +278,7 @@ class DoubleWriteHookTest extends TestCase
             ->method('error')
             ->with('Primary write error, secondary write skipped', self::anything());
 
-        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $logger, true);
+        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $logger);
         $hook->beforeWrite('test_session', ['key' => 'value'], $mockStorage);
         $hook->onWriteError('test_session', new \Exception('Test error'));
 
@@ -333,7 +303,7 @@ class DoubleWriteHookTest extends TestCase
         $this->secondaryConnection->expects(self::never())
             ->method('set');
 
-        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $logger, true);
+        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $logger);
         $hook->beforeWrite('test_session', ['key' => 'value'], $mockStorage);
         $hook->afterWrite('test_session', false);
     }
