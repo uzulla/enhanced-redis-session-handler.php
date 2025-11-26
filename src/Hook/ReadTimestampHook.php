@@ -15,6 +15,9 @@ use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
  *
  * This is a sample implementation that demonstrates how to use ReadHookInterface.
  * It stores the last read timestamp for each session in a separate Redis key.
+ *
+ * HookStorageInterfaceが提供された場合はそれを経由してタイムスタンプを記録し、
+ * 提供されない場合は直接RedisConnectionを使用します（後方互換性のため）。
  */
 class ReadTimestampHook implements ReadHookInterface
 {
@@ -52,9 +55,17 @@ class ReadTimestampHook implements ReadHookInterface
     {
     }
 
-    public function afterRead(string $sessionId, string $data): string
+    /**
+     * Called after reading session data from Redis.
+     *
+     * @param string $sessionId The session ID
+     * @param string $data The session data read from Redis
+     * @param Storage\HookStorageInterface|null $storage Optional HookStorage for timestamp recording
+     * @return string The modified session data
+     */
+    public function afterRead(string $sessionId, string $data, ?Storage\HookStorageInterface $storage = null): string
     {
-        $this->recordReadTimestamp($sessionId);
+        $this->recordReadTimestamp($sessionId, $storage);
         return $data;
     }
 
@@ -63,17 +74,31 @@ class ReadTimestampHook implements ReadHookInterface
         return null;
     }
 
-    private function recordReadTimestamp(string $sessionId): void
+    /**
+     * Record the read timestamp using HookStorage or direct connection.
+     *
+     * @param string $sessionId The session ID
+     * @param Storage\HookStorageInterface|null $storage Optional HookStorage for timestamp recording
+     */
+    private function recordReadTimestamp(string $sessionId, ?Storage\HookStorageInterface $storage = null): void
     {
         try {
             $timestampKey = $this->timestampKeyPrefix . $sessionId;
             $timestamp = (string) time();
-            $this->connection->set($timestampKey, $timestamp, $this->timestampTtl);
 
-            $this->logger->debug('Recorded session read timestamp', [
-                'session_id' => SessionIdMasker::mask($sessionId),
-                'timestamp' => $timestamp,
-            ]);
+            if ($storage !== null) {
+                $storage->set($timestampKey, $timestamp, $this->timestampTtl);
+                $this->logger->debug('Recorded session read timestamp via HookStorage', [
+                    'session_id' => SessionIdMasker::mask($sessionId),
+                    'timestamp' => $timestamp,
+                ]);
+            } else {
+                $this->connection->set($timestampKey, $timestamp, $this->timestampTtl);
+                $this->logger->debug('Recorded session read timestamp via direct connection', [
+                    'session_id' => SessionIdMasker::mask($sessionId),
+                    'timestamp' => $timestamp,
+                ]);
+            }
         } catch (Throwable $e) {
             $this->logger->warning('Failed to record session read timestamp', [
                 'session_id' => SessionIdMasker::mask($sessionId),
