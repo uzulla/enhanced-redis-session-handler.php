@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace Uzulla\EnhancedRedisSessionHandler\Tests\Hook;
 
 use InvalidArgumentException;
+use Monolog\Handler\TestHandler;
+use Monolog\Logger;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use RuntimeException;
 use Uzulla\EnhancedRedisSessionHandler\Hook\DoubleWriteHook;
+use Uzulla\EnhancedRedisSessionHandler\Hook\Storage\HookStorageInterface;
 use Uzulla\EnhancedRedisSessionHandler\RedisConnection;
 
 class DoubleWriteHookTest extends TestCase
@@ -159,5 +162,175 @@ class DoubleWriteHookTest extends TestCase
 
         // 例外が投げられないことを確認（モックの期待値がチェックされる）
         $this->addToAssertionCount(1);
+    }
+
+    // ========================================
+    // HookStorage対応テスト
+    // ========================================
+
+    public function testBeforeWriteWithHookStorageStoresStorage(): void
+    {
+        $mockStorage = $this->createMock(HookStorageInterface::class);
+
+        $hook = new DoubleWriteHook($this->secondaryConnection);
+        $data = ['user_id' => 123, 'username' => 'test'];
+
+        $result = $hook->beforeWrite('test_session', $data, $mockStorage);
+
+        self::assertSame($data, $result);
+    }
+
+    public function testAfterWriteWithHookStorageUsesStorageForSecondaryWrite(): void
+    {
+        $testHandler = new TestHandler();
+        $logger = new Logger('test');
+        $logger->pushHandler($testHandler);
+
+        $mockStorage = $this->createMock(HookStorageInterface::class);
+        $mockStorage->expects(self::once())
+            ->method('set')
+            ->with(
+                'test_session',
+                self::anything(),
+                1440
+            )
+            ->willReturn(true);
+
+        // secondaryConnectionは使われない
+        $this->secondaryConnection->expects(self::never())
+            ->method('set');
+
+        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $logger);
+        $hook->beforeWrite('test_session', ['key' => 'value'], $mockStorage);
+        $hook->afterWrite('test_session', true);
+
+        // HookStorage経由のログメッセージを確認
+        self::assertTrue($testHandler->hasDebugThatContains('via HookStorage'));
+    }
+
+    public function testAfterWriteWithoutHookStorageUsesDirectConnection(): void
+    {
+        $testHandler = new TestHandler();
+        $logger = new Logger('test');
+        $logger->pushHandler($testHandler);
+
+        $this->secondaryConnection->expects(self::once())
+            ->method('set')
+            ->with(
+                'test_session',
+                self::anything(),
+                1440
+            )
+            ->willReturn(true);
+
+        // storageが渡されなければdirect connectionを使用
+        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $logger);
+        $hook->beforeWrite('test_session', ['key' => 'value']);
+        $hook->afterWrite('test_session', true);
+
+        // direct connection経由のログメッセージを確認
+        self::assertTrue($testHandler->hasDebugThatContains('via direct connection'));
+    }
+
+    public function testAfterWriteWithHookStorageHandlesFailure(): void
+    {
+        $testHandler = new TestHandler();
+        $logger = new Logger('test');
+        $logger->pushHandler($testHandler);
+
+        $mockStorage = $this->createMock(HookStorageInterface::class);
+        $mockStorage->expects(self::once())
+            ->method('set')
+            ->willReturn(false);
+
+        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $logger);
+        $hook->beforeWrite('test_session', ['key' => 'value'], $mockStorage);
+        $hook->afterWrite('test_session', true);
+
+        // 書き込み失敗のエラーログが出力されていることを確認
+        self::assertTrue($testHandler->hasErrorThatContains('Secondary Redis write failed'));
+    }
+
+    public function testAfterWriteWithHookStorageThrowsExceptionOnFailure(): void
+    {
+        $mockStorage = $this->createMock(HookStorageInterface::class);
+        $mockStorage->expects(self::once())
+            ->method('set')
+            ->willReturn(false);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Secondary Redis write failed');
+
+        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, true);
+        $hook->beforeWrite('test_session', ['key' => 'value'], $mockStorage);
+        $hook->afterWrite('test_session', true);
+    }
+
+    public function testOnWriteErrorCleansUpPendingStorages(): void
+    {
+        $mockStorage = $this->createMock(HookStorageInterface::class);
+        // storageは使われない（エラーでクリーンアップされるため）
+        $mockStorage->expects(self::never())
+            ->method('set');
+
+        // secondaryConnectionも使われない（onWriteError後のafterWriteでも）
+        $this->secondaryConnection->expects(self::never())
+            ->method('set');
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects(self::once())
+            ->method('error')
+            ->with('Primary write error, secondary write skipped', self::anything());
+        // onWriteErrorでクリーンアップ後、afterWriteでデータが見つからないことを警告
+        $logger->expects(self::once())
+            ->method('warning')
+            ->with('No pending write data found for session', self::anything());
+
+        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $logger);
+        $hook->beforeWrite('test_session', ['key' => 'value'], $mockStorage);
+        $hook->onWriteError('test_session', new \Exception('Test error'));
+
+        // onWriteError後にafterWriteを呼び出し、クリーンアップが正しく行われたことを検証
+        $hook->afterWrite('test_session', true);
+    }
+
+    public function testPrimaryWriteFailureCleansUpPendingStorages(): void
+    {
+        $mockStorage = $this->createMock(HookStorageInterface::class);
+        // storageは使われない（プライマリ失敗でスキップされるため）
+        $mockStorage->expects(self::never())
+            ->method('set');
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects(self::once())
+            ->method('warning')
+            ->with('Primary write failed, skipping secondary write', self::anything());
+
+        // secondaryConnectionも使われない
+        $this->secondaryConnection->expects(self::never())
+            ->method('set');
+
+        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $logger);
+        $hook->beforeWrite('test_session', ['key' => 'value'], $mockStorage);
+        $hook->afterWrite('test_session', false);
+    }
+
+    public function testBackwardCompatibilityWithoutStorageParameter(): void
+    {
+        // 新しいパラメータを使わずに従来の使い方ができることを確認
+        $testHandler = new TestHandler();
+        $logger = new Logger('test');
+        $logger->pushHandler($testHandler);
+
+        $this->secondaryConnection->expects(self::once())
+            ->method('set')
+            ->willReturn(true);
+
+        $hook = new DoubleWriteHook($this->secondaryConnection, 1440, false, $logger);
+        $hook->beforeWrite('test_session', ['key' => 'value']);
+        $hook->afterWrite('test_session', true);
+
+        // direct connection経由のログメッセージを確認
+        self::assertTrue($testHandler->hasDebugThatContains('via direct connection'));
     }
 }

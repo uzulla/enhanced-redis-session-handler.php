@@ -135,7 +135,17 @@ class SessionMigrationHook implements WriteHookInterface
         return $this->targetSessionId;
     }
 
-    public function beforeWrite(string $sessionId, array $data): array
+    /**
+     * Called before writing session data to Redis.
+     *
+     * Stores the session data for potential migration in afterWrite.
+     *
+     * @param string $sessionId The session ID
+     * @param array<string, mixed> $data The unserialized session data
+     * @param Storage\HookStorageInterface|null $storage Optional HookStorage (not used in this hook)
+     * @return array<string, mixed> The unmodified session data
+     */
+    public function beforeWrite(string $sessionId, array $data, ?Storage\HookStorageInterface $storage = null): array
     {
         // afterWriteで使用するためデータを保存
         $this->pendingWrites[$sessionId] = $data;

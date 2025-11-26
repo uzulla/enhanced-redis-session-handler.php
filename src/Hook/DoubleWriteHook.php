@@ -19,6 +19,9 @@ use Uzulla\EnhancedRedisSessionHandler\Support\SessionIdMasker;
  * - Creating backup copies of session data
  * - Replicating sessions across data centers
  * - Migrating sessions to a new Redis instance
+ *
+ * HookStorageInterfaceがbeforeWriteで提供された場合はそれを経由して書き込み、
+ * 提供されない場合は直接RedisConnectionを使用します（後方互換性のため）。
  */
 class DoubleWriteHook implements WriteHookInterface
 {
@@ -28,6 +31,8 @@ class DoubleWriteHook implements WriteHookInterface
     private int $ttl;
     /** @var array<string, array<string, mixed>> */
     private array $pendingWrites = [];
+    /** @var array<string, Storage\HookStorageInterface> */
+    private array $pendingStorages = [];
 
     /**
      * @param RedisConnection $secondaryConnection The secondary Redis connection
@@ -50,19 +55,41 @@ class DoubleWriteHook implements WriteHookInterface
         $this->logger = $logger ?? new NullLogger();
     }
 
-    public function beforeWrite(string $sessionId, array $data): array
+    /**
+     * Called before writing session data to Redis.
+     *
+     * @param string $sessionId The session ID
+     * @param array<string, mixed> $data The unserialized session data
+     * @param Storage\HookStorageInterface|null $storage Optional HookStorage for secondary writes
+     * @return array<string, mixed> The modified session data
+     */
+    public function beforeWrite(string $sessionId, array $data, ?Storage\HookStorageInterface $storage = null): array
     {
         $this->pendingWrites[$sessionId] = $data;
+        if ($storage !== null) {
+            $this->pendingStorages[$sessionId] = $storage;
+        }
         return $data;
     }
 
+    /**
+     * Called after writing session data to Redis.
+     *
+     * If the primary write was successful, performs the secondary write using
+     * either HookStorage (if provided in beforeWrite) or direct connection.
+     * Cleans up pending data regardless of success or failure.
+     *
+     * @param string $sessionId The session ID
+     * @param bool $success Whether the primary write operation was successful
+     * @throws RuntimeException If secondary write fails and failOnSecondaryError is true
+     */
     public function afterWrite(string $sessionId, bool $success): void
     {
         if (!$success) {
             $this->logger->warning('Primary write failed, skipping secondary write', [
                 'session_id' => SessionIdMasker::mask($sessionId),
             ]);
-            unset($this->pendingWrites[$sessionId]);
+            unset($this->pendingWrites[$sessionId], $this->pendingStorages[$sessionId]);
             return;
         }
 
@@ -77,7 +104,7 @@ class DoubleWriteHook implements WriteHookInterface
             $data = $this->pendingWrites[$sessionId];
             $serializedData = serialize($data);
 
-            $secondarySuccess = $this->secondaryConnection->set($sessionId, $serializedData, $this->ttl);
+            $secondarySuccess = $this->executeSecondaryWrite($sessionId, $serializedData);
 
             if (!$secondarySuccess) {
                 $message = 'Secondary Redis write failed';
@@ -91,9 +118,7 @@ class DoubleWriteHook implements WriteHookInterface
                 return;
             }
 
-            $this->logger->debug('Secondary Redis write successful', [
-                'session_id' => SessionIdMasker::mask($sessionId),
-            ]);
+            $this->logSecondaryWriteSuccess($sessionId);
         } catch (Throwable $e) {
             $this->logger->error('Exception during secondary Redis write', [
                 'session_id' => SessionIdMasker::mask($sessionId),
@@ -104,16 +129,60 @@ class DoubleWriteHook implements WriteHookInterface
                 throw $e;
             }
         } finally {
-            unset($this->pendingWrites[$sessionId]);
+            unset($this->pendingWrites[$sessionId], $this->pendingStorages[$sessionId]);
         }
     }
 
+    /**
+     * Called when an error occurs during the primary write operation.
+     *
+     * Logs the error and cleans up pending writes and storages.
+     * Secondary write is skipped when primary write fails.
+     *
+     * @param string $sessionId The session ID
+     * @param Throwable $exception The exception that occurred during primary write
+     */
     public function onWriteError(string $sessionId, Throwable $exception): void
     {
         $this->logger->error('Primary write error, secondary write skipped', [
             'session_id' => SessionIdMasker::mask($sessionId),
             'exception' => $exception,
         ]);
-        unset($this->pendingWrites[$sessionId]);
+        unset($this->pendingWrites[$sessionId], $this->pendingStorages[$sessionId]);
+    }
+
+    /**
+     * Execute the secondary write using HookStorage or direct connection.
+     *
+     * @param string $sessionId The session ID
+     * @param string $serializedData The serialized session data
+     * @return bool Whether the write was successful
+     */
+    private function executeSecondaryWrite(string $sessionId, string $serializedData): bool
+    {
+        if (isset($this->pendingStorages[$sessionId])) {
+            return $this->pendingStorages[$sessionId]->set($sessionId, $serializedData, $this->ttl);
+        }
+
+        return $this->secondaryConnection->set($sessionId, $serializedData, $this->ttl);
+    }
+
+    /**
+     * Log secondary write success with appropriate message.
+     *
+     * @param string $sessionId The session ID
+     */
+    private function logSecondaryWriteSuccess(string $sessionId): void
+    {
+        if (isset($this->pendingStorages[$sessionId])) {
+            $this->logger->debug('Secondary Redis write successful via HookStorage', [
+                'session_id' => SessionIdMasker::mask($sessionId),
+            ]);
+            return;
+        }
+
+        $this->logger->debug('Secondary Redis write successful via direct connection', [
+            'session_id' => SessionIdMasker::mask($sessionId),
+        ]);
     }
 }

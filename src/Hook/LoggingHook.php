@@ -63,7 +63,17 @@ class LoggingHook implements WriteHookInterface
         $this->logData = $logData;
     }
 
-    public function beforeWrite(string $sessionId, array $data): array
+    /**
+     * Called before writing session data to Redis.
+     *
+     * Logs the session write operation with configured log level.
+     *
+     * @param string $sessionId The session ID
+     * @param array<string, mixed> $data The unserialized session data
+     * @param Storage\HookStorageInterface|null $storage Optional HookStorage (not used in this hook)
+     * @return array<string, mixed> The unmodified session data
+     */
+    public function beforeWrite(string $sessionId, array $data, ?Storage\HookStorageInterface $storage = null): array
     {
         $context = [
             'session_id' => SessionIdMasker::mask($sessionId),
